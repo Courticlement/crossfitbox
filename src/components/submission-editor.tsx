@@ -3,7 +3,6 @@
 import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { submitClassReport, clearMySubmission } from "@/lib/actions/submissions";
-import { SubstituteSelect } from "@/components/substitute-select";
 
 function StatusSelect({
   status,
@@ -56,15 +55,11 @@ export function SubmissionEditor({
   coachId,
   assignedCoachName,
   mySubmission,
-  substituteCoachId,
-  coaches,
 }: {
   classInstanceId: string;
   coachId: string;
   assignedCoachName: string | null;
   mySubmission: { status: string } | null;
-  substituteCoachId: string | null;
-  coaches: { id: string; name: string }[];
 }) {
   const [status, setStatus] = useState(mySubmission?.status ?? "");
   const formRef = useRef<HTMLFormElement>(null);
@@ -88,14 +83,6 @@ export function SubmissionEditor({
         />
         {mySubmission && <ClearButton />}
       </form>
-      {status === "MISSED" && (
-        <SubstituteSelect
-          classInstanceId={classInstanceId}
-          coachId={coachId}
-          substituteCoachId={substituteCoachId}
-          coaches={coaches}
-        />
-      )}
     </div>
   );
 }

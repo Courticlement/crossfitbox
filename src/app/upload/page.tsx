@@ -9,6 +9,7 @@ import {
   toDateOnly,
 } from "@/lib/dates";
 import { CoachWeekPicker } from "@/components/coach-week-picker";
+import { MissedClassesPanel } from "@/components/missed-classes-panel";
 import { PrivateClassForm } from "@/components/private-class-form";
 import { SubmissionEditor } from "@/components/submission-editor";
 import { WeekGrid } from "@/components/week-grid";
@@ -74,9 +75,9 @@ export default async function UploadPage({
         <p className="mb-4 text-sm text-neutral-500">
           Pick your name and week — you&apos;ll see the whole week&apos;s
           planning. Mark any class you did (or missed); it doesn&apos;t have
-          to be one assigned to you. If you miss a class, you can note who
-          covered it right there. If more than one coach reports doing the
-          same class, whoever reports most recently is what counts.
+          to be one assigned to you. If you miss a class, note who covered it
+          in the panel below. If more than one coach reports doing the same
+          class, whoever reports most recently is what counts.
         </p>
 
         <div className="mb-6 flex items-center gap-3 text-sm">
@@ -124,8 +125,6 @@ export default async function UploadPage({
                   coachId={selectedCoach.id}
                   assignedCoachName={inst.coach?.name ?? null}
                   mySubmission={mySubmissionByInstance.get(inst.id) ?? null}
-                  substituteCoachId={inst.substituteCoachId}
-                  coaches={coaches}
                 />
               )}
             />
@@ -134,6 +133,16 @@ export default async function UploadPage({
               No classes this week.
             </p>
           )
+        )}
+
+        {selectedCoach && (
+          <MissedClassesPanel
+            title="Your missed classes — find a substitute"
+            instances={instances.filter(
+              (i) => i.status === "MISSED" && i.coachId === selectedCoach.id
+            )}
+            coaches={coaches.filter((c) => c.id !== selectedCoach.id)}
+          />
         )}
       </main>
     </div>
