@@ -1,0 +1,301 @@
+import { prisma } from "@/lib/prisma";
+import { dayName } from "@/lib/dates";
+import { ROOMS } from "@/lib/rooms";
+import {
+  createTemplate,
+  updateTemplates,
+  toggleTemplateActive,
+  deleteTemplate,
+} from "@/lib/actions/templates";
+
+const FIELD_CLASS =
+  "w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-sm text-white hover:border-neutral-700 focus:border-neutral-500 focus:outline-none";
+
+// All rows' editable fields share this one form (via the `form=` attribute,
+// since a <form> can't literally wrap <tr>s without breaking each row's own
+// Remove/Active-toggle forms) — one submit saves every edited row at once.
+const BULK_FORM_ID = "templates-bulk-form";
+
+export default async function ClassTemplatesPage() {
+  const [templates, coaches] = await Promise.all([
+    prisma.classTemplate.findMany({
+      include: { coach: true },
+      orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
+    }),
+    prisma.coach.findMany({ orderBy: { name: "asc" } }),
+  ]);
+
+  return (
+    <div className="text-neutral-300">
+      <h1 className="mb-1 text-lg font-semibold text-white">
+        Class Templates
+      </h1>
+      <p className="mb-4 text-sm text-neutral-500">
+        The box&apos;s recurring weekly timetable. Used to generate each
+        week&apos;s classes on the Planning page. Edit as many rows as you
+        like, then save them all at once.
+      </p>
+
+      <form id={BULK_FORM_ID} action={updateTemplates} />
+
+      <div className="mb-3 flex justify-end">
+        <button
+          type="submit"
+          form={BULK_FORM_ID}
+          className="rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
+        >
+          Save changes
+        </button>
+      </div>
+
+      <div className="mb-8 overflow-hidden rounded-lg border border-neutral-800">
+        <table className="w-full text-sm">
+          <thead className="bg-neutral-900 text-left text-neutral-400">
+            <tr>
+              <th className="px-4 py-2 font-medium">Day</th>
+              <th className="px-4 py-2 font-medium">Time</th>
+              <th className="px-4 py-2 font-medium">Room</th>
+              <th className="px-4 py-2 font-medium">Label</th>
+              <th className="px-4 py-2 font-medium">Private</th>
+              <th className="px-4 py-2 font-medium">Coach</th>
+              <th className="px-4 py-2 font-medium">Status</th>
+              <th className="px-4 py-2 font-medium" />
+            </tr>
+          </thead>
+          <tbody>
+            {templates.map((tpl) => {
+              // Keying on the editable fields (not just tpl.id) forces this
+              // row to remount after a successful save — otherwise the
+              // uncontrolled select/input elements keep showing whatever
+              // was last typed/selected instead of the saved value.
+              const rowKey = [
+                tpl.id,
+                tpl.dayOfWeek,
+                tpl.startTime,
+                tpl.endTime,
+                tpl.room,
+                tpl.label,
+                tpl.coachId ?? "",
+              ].join(":");
+              return (
+                <tr key={rowKey} className="border-t border-neutral-800">
+                  <td className="px-1 py-1">
+                    <input type="hidden" name="ids" value={tpl.id} form={BULK_FORM_ID} />
+                    <select
+                      name={`dayOfWeek:${tpl.id}`}
+                      form={BULK_FORM_ID}
+                      defaultValue={tpl.dayOfWeek}
+                      className={FIELD_CLASS}
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+                        <option key={d} value={d}>
+                          {dayName(d)}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-1 py-1">
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="time"
+                        name={`startTime:${tpl.id}`}
+                        form={BULK_FORM_ID}
+                        defaultValue={tpl.startTime}
+                        className={FIELD_CLASS}
+                      />
+                      <input
+                        type="time"
+                        name={`endTime:${tpl.id}`}
+                        form={BULK_FORM_ID}
+                        defaultValue={tpl.endTime}
+                        className={FIELD_CLASS}
+                      />
+                    </div>
+                  </td>
+                  <td className="px-1 py-1">
+                    <select
+                      name={`room:${tpl.id}`}
+                      form={BULK_FORM_ID}
+                      defaultValue={tpl.room}
+                      className={FIELD_CLASS}
+                    >
+                      {ROOMS.map((room) => (
+                        <option key={room} value={room}>
+                          {room}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-1 py-1">
+                    <input
+                      type="text"
+                      name={`label:${tpl.id}`}
+                      form={BULK_FORM_ID}
+                      defaultValue={tpl.label}
+                      className={FIELD_CLASS}
+                    />
+                  </td>
+                  <td className="px-4 py-2 text-neutral-400">
+                    {tpl.isPrivate ? "Yes" : "—"}
+                  </td>
+                  <td className="px-1 py-1">
+                    <select
+                      name={`coachId:${tpl.id}`}
+                      form={BULK_FORM_ID}
+                      defaultValue={tpl.coachId ?? ""}
+                      className={FIELD_CLASS}
+                    >
+                      <option value="">Unassigned</option>
+                      {coaches.map((coach) => (
+                        <option key={coach.id} value={coach.id}>
+                          {coach.name}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-4 py-2">
+                    <form action={toggleTemplateActive}>
+                      <input type="hidden" name="id" value={tpl.id} />
+                      <input
+                        type="hidden"
+                        name="active"
+                        value={String(tpl.active)}
+                      />
+                      <button
+                        type="submit"
+                        className={
+                          tpl.active
+                            ? "rounded-full bg-emerald-900/40 px-2 py-0.5 text-xs text-emerald-300"
+                            : "rounded-full bg-neutral-800 px-2 py-0.5 text-xs text-neutral-500"
+                        }
+                      >
+                        {tpl.active ? "Active" : "Inactive"}
+                      </button>
+                    </form>
+                  </td>
+                  <td className="px-4 py-2 text-right whitespace-nowrap">
+                    <form action={deleteTemplate} className="inline">
+                      <input type="hidden" name="id" value={tpl.id} />
+                      <button
+                        type="submit"
+                        className="text-xs text-red-400 hover:text-red-300"
+                      >
+                        Remove
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              );
+            })}
+            {templates.length === 0 && (
+              <tr>
+                <td
+                  colSpan={8}
+                  className="px-4 py-6 text-center text-neutral-500"
+                >
+                  No class templates yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="max-w-sm rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+        <h2 className="mb-3 text-sm font-medium text-white">
+          Add a weekly slot
+        </h2>
+        <form action={createTemplate} className="flex flex-col gap-2">
+          <div>
+            <span className="mb-1 block text-xs text-neutral-500">
+              Day(s) of week
+            </span>
+            <div className="flex flex-wrap gap-3">
+              {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+                <label
+                  key={d}
+                  className="flex items-center gap-1.5 text-sm text-neutral-300"
+                >
+                  <input
+                    type="checkbox"
+                    name="dayOfWeek"
+                    value={d}
+                    className="accent-white"
+                  />
+                  {dayName(d).slice(0, 3)}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
+            <span className="mb-1 block text-xs text-neutral-500">Room(s)</span>
+            <div className="flex flex-wrap gap-3">
+              {ROOMS.map((room) => (
+                <label
+                  key={room}
+                  className="flex items-center gap-1.5 text-sm text-neutral-300"
+                >
+                  <input
+                    type="checkbox"
+                    name="room"
+                    value={room}
+                    className="accent-white"
+                  />
+                  {room}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="time"
+              name="startTime"
+              required
+              className="w-1/2 rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
+            />
+            <input
+              type="time"
+              name="endTime"
+              required
+              className="w-1/2 rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
+            />
+          </div>
+          <input
+            type="text"
+            name="label"
+            required
+            placeholder="Label (e.g. 6am WOD)"
+            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
+          />
+          <label className="flex items-center gap-1.5 text-sm text-neutral-300">
+            <input type="checkbox" name="isPrivate" className="accent-white" />
+            Private class
+          </label>
+          <div>
+            <span className="mb-1 block text-xs text-neutral-500">
+              Default coach (optional)
+            </span>
+            <select
+              name="coachId"
+              defaultValue=""
+              className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
+            >
+              <option value="">No default coach</option>
+              {coaches.map((coach) => (
+                <option key={coach.id} value={coach.id}>
+                  {coach.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="submit"
+            className="mt-1 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
+          >
+            Add slot
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}

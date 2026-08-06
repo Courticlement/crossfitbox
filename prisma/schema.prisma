@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// --- App models ---
+
+model Coach {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  level     String? // free-text CrossFit level, e.g. "CF-L1"
+  createdAt DateTime @default(now())
+
+  classInstances    ClassInstance[]    @relation("PrimaryCoach")
+  substituteClasses ClassInstance[]    @relation("SubstituteCoach")
+  templates         ClassTemplate[]    @relation("DefaultCoach")
+  weeklyQuotas      CoachWeeklyQuota[]
+  submissions       ClassSubmission[]
+}
+
+model ClassTemplate {
+  id        String   @id @default(cuid())
+  dayOfWeek Int // 1 = Monday ... 7 = Sunday
+  startTime String // "HH:mm"
+  endTime   String // "HH:mm"
+  label     String
+  room      String   @default("Room 1")
+  isPrivate Boolean  @default(false)
+  active    Boolean  @default(true)
+  coachId   String? // default coach applied when a week is generated from this slot
+  coach     Coach?   @relation("DefaultCoach", fields: [coachId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  instances ClassInstance[]
+}
+
+model ClassInstance {
+  id                String         @id @default(cuid())
+  templateId        String?
+  template          ClassTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  date              DateTime // date only (time zeroed), the day this class occurs
+  startTime         String // "HH:mm"
+  endTime           String // "HH:mm"
+  label             String
+  room              String         @default("Room 1")
+  isPrivate         Boolean        @default(false)
+  // Who's credited with this class. For a still-PLANNED class this is the
+  // planning assignment (set by the admin). Once any coach self-reports a
+  // DONE class, this is overwritten to whoever reported it — the most
+  // recent DONE report always wins, so any coach can reclaim a wrongly
+  // claimed class just by reporting it themselves. A MISSED report never
+  // changes this — it only ever records who was on the hook, not who's
+  // reporting.
+  coachId           String?
+  coach             Coach?         @relation("PrimaryCoach", fields: [coachId], references: [id], onDelete: SetNull)
+  // Reserved for the admin's proactive "find a substitute for this missed
+  // class" workflow (assignSubstitute) — unrelated to coach self-reporting.
+  substituteCoachId String?
+  substituteCoach   Coach?         @relation("SubstituteCoach", fields: [substituteCoachId], references: [id], onDelete: SetNull)
+  status            String         @default("PLANNED") // "PLANNED" | "DONE" | "MISSED" | "CANCELLED"
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  submissions ClassSubmission[]
+
+  @@index([date])
+  @@index([coachId])
+  @@index([substituteCoachId])
+}
+
+model CoachWeeklyQuota {
+  id         String   @id @default(cuid())
+  coachId    String
+  coach      Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  weekStart  DateTime // Monday 00:00 of the target week
+  maxLessons Int
+
+  @@unique([coachId, weekStart])
+}
+
+// A coach's self-report that they taught (or missed) a given class. Any
+// coach can submit for any class in the week's planning, not just the one
+// it's assigned to — this is what lets two coaches independently claim the
+// same class so a false claim can always be corrected: either coach can
+// clear their own submission, and the most recently updated submission is
+// always what's reflected on the class (see ClassInstance.coachId).
+model ClassSubmission {
+  id              String        @id @default(cuid())
+  classInstanceId String
+  classInstance   ClassInstance @relation(fields: [classInstanceId], references: [id], onDelete: Cascade)
+  coachId         String
+  coach           Coach         @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  status          String // "DONE" | "MISSED"
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([classInstanceId, coachId])
+  @@index([classInstanceId])
+}
