@@ -23,7 +23,7 @@ type OfficialSubmission = {
 } | null;
 
 // Applies a submission as the class's official record, or (if null) resets
-// the class back to an unreported PLANNED state with nobody credited.
+// the class back to an unreported PLANNED state.
 //
 // For a DONE report, coachId is overwritten to whoever just reported it —
 // there's no "earliest wins" gate, so the most recent DONE report is always
@@ -38,6 +38,12 @@ type OfficialSubmission = {
 // is preserved across MISSED reports so re-submitting doesn't clobber it,
 // but is cleared on a DONE report — once someone confirms they personally
 // delivered the class, a leftover "covered by" note no longer applies.
+//
+// When no submission is left at all, coachId is deliberately left alone —
+// undoing a self-report shouldn't also erase the Planning assignment (or a
+// previous coach's claim) that had nothing to do with it. An admin can
+// always explicitly unassign a class from the Planning tab if that's really
+// what's needed.
 async function applyOfficial(classInstanceId: string, submission: OfficialSubmission) {
   const instance = await prisma.classInstance.findUnique({ where: { id: classInstanceId } });
   if (!instance) return;
@@ -45,7 +51,7 @@ async function applyOfficial(classInstanceId: string, submission: OfficialSubmis
   if (!submission) {
     await prisma.classInstance.update({
       where: { id: classInstanceId },
-      data: { status: "PLANNED", coachId: null, substituteCoachId: null },
+      data: { status: "PLANNED", substituteCoachId: null },
     });
     return;
   }
