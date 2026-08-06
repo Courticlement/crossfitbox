@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { addDays, parseDateOnly } from "@/lib/dates";
 
@@ -9,13 +9,8 @@ function revalidateAll() {
   revalidatePath("/admin/planning");
   revalidatePath("/admin");
   revalidatePath("/upload");
+  refresh();
 }
-
-const SubmitSchema = z.object({
-  classInstanceId: z.string().min(1),
-  coachId: z.string().min(1),
-  status: z.enum(["DONE", "MISSED"]),
-});
 
 type OfficialSubmission = {
   coachId: string;
@@ -66,31 +61,44 @@ async function applyOfficial(classInstanceId: string, submission: OfficialSubmis
   });
 }
 
-// Any coach can report on any class in the week, not just the one they're
-// assigned to — and every report takes effect immediately as the class's
-// official record. All submissions are kept (not just the latest), so if a
-// report turns out to be wrong, clearing it falls back to whatever's next
-// most recent instead of losing the history.
-export async function submitClassReport(formData: FormData) {
-  const parsed = SubmitSchema.safeParse({
-    classInstanceId: formData.get("classInstanceId"),
-    coachId: formData.get("coachId"),
-    status: formData.get("status"),
-  });
-  if (!parsed.success) return;
+const StatusValue = z.enum(["DONE", "MISSED"]);
 
-  const { classInstanceId, coachId, status } = parsed.data;
+// Batch save for My Classes: every class's status select on the week grid
+// lives in one shared form (see the `ids` hidden inputs, one per class),
+// namespaced per class instance id (`status:${id}`) the same way Class
+// Templates' bulk save works — one submit reports every class the coach
+// picked a status for. Rows still at the unselected placeholder are
+// skipped rather than erroring the whole save. Any coach can report on any
+// class in the week, not just the one they're assigned to — and every
+// report takes effect immediately as the class's official record. All
+// submissions are kept (not just the latest), so if a report turns out to
+// be wrong, clearing it falls back to whatever's next most recent instead
+// of losing the history.
+export async function submitClassReports(formData: FormData) {
+  const coachId = String(formData.get("coachId") ?? "");
+  if (!coachId) return;
 
-  const instance = await prisma.classInstance.findUnique({ where: { id: classInstanceId } });
-  if (!instance) return;
+  const ids = Array.from(new Set(formData.getAll("ids").map(String)));
 
-  await prisma.classSubmission.upsert({
-    where: { classInstanceId_coachId: { classInstanceId, coachId } },
-    create: { classInstanceId, coachId, status },
-    update: { status },
-  });
+  await Promise.all(
+    ids.map(async (classInstanceId) => {
+      const parsed = StatusValue.safeParse(formData.get(`status:${classInstanceId}`));
+      if (!parsed.success) return;
+      const status = parsed.data;
 
-  await applyOfficial(classInstanceId, { coachId, status });
+      const instance = await prisma.classInstance.findUnique({ where: { id: classInstanceId } });
+      if (!instance) return;
+
+      await prisma.classSubmission.upsert({
+        where: { classInstanceId_coachId: { classInstanceId, coachId } },
+        create: { classInstanceId, coachId, status },
+        update: { status },
+      });
+
+      await applyOfficial(classInstanceId, { coachId, status });
+    })
+  );
+
   revalidateAll();
 }
 

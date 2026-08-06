@@ -4,9 +4,10 @@ import { timeToMinutes, formatHourLabel, layoutDayEventsToGrid } from "@/lib/cal
 
 const SLOT_MINUTES = 5;
 const SLOTS_PER_HOUR = 60 / SLOT_MINUTES;
-const ROW_PX = 8; // SLOTS_PER_HOUR * ROW_PX = 96px per hour — tall enough that
-// a 30-min class still has room to show its time, label, and coach without
-// clipping (see the overflow-hidden event block below).
+const ROW_PX = 11; // SLOTS_PER_HOUR * ROW_PX = 132px per hour — a MISSED
+// class can grow a 4th row (the substitute picker) on top of time/label/
+// coach, so this needs more headroom than a plain class does; see the
+// overflow-hidden event block below.
 const DEFAULT_START_HOUR = 7;
 const DEFAULT_END_HOUR = 21;
 const GUTTER_COL = "64px";
@@ -17,6 +18,15 @@ const STATUS_BORDER: Record<string, string> = {
   DONE: "border-l-emerald-500",
   MISSED: "border-l-red-500",
   CANCELLED: "border-l-neutral-700",
+};
+
+// DONE/MISSED get a strong status-colored background so the outcome reads
+// at a glance — that matters more once a class is resolved than which room
+// it was in. Still-PLANNED (and CANCELLED) classes keep the room tint
+// instead, since the room is the more useful signal before it's resolved.
+const STATUS_BG: Record<string, string> = {
+  DONE: "bg-emerald-950/50",
+  MISSED: "bg-red-950/50",
 };
 
 const ROOM_BG: Record<string, string> = {
@@ -145,7 +155,7 @@ export function WeekGrid<T extends WeekGridInstance>({
               <div
                 key={inst.id}
                 title={`${inst.label} · ${inst.room} · ${inst.startTime}–${inst.endTime} · ${inst.status}`}
-                className={`group relative z-10 flex flex-col gap-1 overflow-hidden rounded-md border-l-4 p-1.5 transition-opacity ${STATUS_BORDER[inst.status] ?? "border-l-neutral-600"} ${ROOM_BG[inst.room] ?? "bg-neutral-900"} ${needsCoach ? "ring-1 ring-inset ring-amber-600/60" : ""} ${isMineGroup ? "ring-2 ring-inset ring-white/80" : ""} ${faded ? "opacity-40" : ""}`}
+                className={`group relative z-10 flex flex-col gap-1 overflow-hidden rounded-md border-l-4 p-1.5 transition-opacity ${STATUS_BORDER[inst.status] ?? "border-l-neutral-600"} ${STATUS_BG[inst.status] ?? ROOM_BG[inst.room] ?? "bg-neutral-900"} ${needsCoach ? "ring-1 ring-inset ring-amber-600/60" : ""} ${isMineGroup ? "ring-2 ring-inset ring-white/80" : ""} ${faded ? "opacity-40" : ""}`}
                 style={{
                   gridColumn: dayIdx + 2,
                   gridRow: `${1 + rowStart} / ${1 + rowEnd}`,

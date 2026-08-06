@@ -45,7 +45,7 @@ export function computeCoachStats(
 
   for (const inst of instances) {
     // Who actually delivered this class: a DONE report always directly
-    // credits its coachId (see submitClassReport — the most recent DONE
+    // credits its coachId (see submitClassReports — the most recent DONE
     // report always wins), while a MISSED report credits whoever covered it
     // as a substitute, if anyone did.
     const deliveredBy =

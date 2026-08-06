@@ -10,17 +10,14 @@ import {
 } from "@/lib/dates";
 import { CoachSelect } from "@/components/coach-select";
 import { ConflictsPanel, type ConflictInstance } from "@/components/conflicts-panel";
-import { MissedClassesPanel } from "@/components/missed-classes-panel";
+import { DeleteClassButton } from "@/components/delete-class-button";
 import { PlanningFilters } from "@/components/planning-filters";
 import { ResetWeekButton } from "@/components/reset-week-button";
+import { SubstituteSelect } from "@/components/substitute-select";
 import { TimeConflictsPanel, type TimeConflictGroup } from "@/components/time-conflicts-panel";
 import { WeekGrid } from "@/components/week-grid";
 import { ROOMS } from "@/lib/rooms";
-import {
-  generateWeek,
-  addAdHocClass,
-  deleteClassInstance,
-} from "@/lib/actions/planning";
+import { generateWeek, addAdHocClass } from "@/lib/actions/planning";
 
 export default async function PlanningPage({
   searchParams,
@@ -182,31 +179,29 @@ export default async function PlanningPage({
         weekStart={weekStart}
         instances={filteredInstances}
         headerAction={(inst) => (
-          <form action={deleteClassInstance}>
-            <input type="hidden" name="id" value={inst.id} />
-            <button
-              type="submit"
-              className="shrink-0 text-[10px] text-neutral-500 opacity-0 hover:text-red-300 group-hover:opacity-100"
-            >
-              ✕
-            </button>
-          </form>
-        )}
-        control={(inst) => (
-          <CoachSelect
-            classInstanceId={inst.id}
-            coachId={inst.coachId}
-            coaches={coaches}
-            templateCoachName={inst.template?.coach?.name ?? null}
+          <DeleteClassButton
+            id={inst.id}
+            reported={inst.status === "DONE" || inst.status === "MISSED"}
           />
         )}
-      />
-
-      <MissedClassesPanel
-        title="Missed classes — needs a substitute"
-        instances={filteredInstances.filter((i) => i.status === "MISSED" && i.coachId)}
-        coaches={coaches}
-        showMissedBy
+        control={(inst) => (
+          <div className="flex flex-col gap-0.5">
+            <CoachSelect
+              classInstanceId={inst.id}
+              coachId={inst.coachId}
+              coaches={coaches}
+              templateCoachName={inst.template?.coach?.name ?? null}
+            />
+            {inst.status === "MISSED" && (
+              <SubstituteSelect
+                classInstanceId={inst.id}
+                coachId={inst.coachId}
+                substituteCoachId={inst.substituteCoachId}
+                coaches={coaches}
+              />
+            )}
+          </div>
+        )}
       />
 
       <div className="max-w-sm rounded-lg border border-neutral-800 bg-neutral-900 p-4">

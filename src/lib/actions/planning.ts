@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { addDays, formatDateISO, parseDateOnly } from "@/lib/dates";
 
@@ -8,6 +8,12 @@ function revalidateAll() {
   revalidatePath("/admin/planning");
   revalidatePath("/admin");
   revalidatePath("/upload");
+  // Reassigning a coach affects more than the dropdown that was touched —
+  // conflict panels, the missed-classes list, and other rows on the same
+  // page all derive from the same data. refresh() makes sure this route's
+  // RSC payload is re-fetched in the same response instead of requiring a
+  // manual page reload to see those knock-on changes.
+  refresh();
 }
 
 export async function resetWeek(formData: FormData) {
@@ -148,10 +154,10 @@ export async function assignCoach(
   const coachId = String(formData.get("coachId") ?? "");
   if (!id) return { error: null };
 
-  if (coachId) {
-    const instance = await prisma.classInstance.findUnique({ where: { id } });
-    if (!instance) return { error: null };
+  const instance = await prisma.classInstance.findUnique({ where: { id } });
+  if (!instance) return { error: null };
 
+  if (coachId) {
     const conflict = await findSchedulingConflict(coachId, instance);
     if (conflict) {
       return {
@@ -160,9 +166,19 @@ export async function assignCoach(
     }
   }
 
+  // Unassigning a class that's already been reported DONE/MISSED would
+  // otherwise leave it credited to nobody while still showing as
+  // resolved — the coach's hours would silently drop out of the salary
+  // numbers. Reset it to PLANNED instead, so it's clearly open again
+  // rather than a done-but-orphaned record.
+  const orphaning = !coachId && instance.status !== "PLANNED";
+
   await prisma.classInstance.update({
     where: { id },
-    data: { coachId: coachId || null },
+    data: {
+      coachId: coachId || null,
+      ...(orphaning ? { status: "PLANNED", substituteCoachId: null } : {}),
+    },
   });
   revalidateAll();
   return { error: null };

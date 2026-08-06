@@ -9,10 +9,15 @@ import {
   toDateOnly,
 } from "@/lib/dates";
 import { CoachWeekPicker } from "@/components/coach-week-picker";
-import { MissedClassesPanel } from "@/components/missed-classes-panel";
 import { PrivateClassForm } from "@/components/private-class-form";
 import { SubmissionEditor } from "@/components/submission-editor";
 import { WeekGrid } from "@/components/week-grid";
+import { submitClassReports } from "@/lib/actions/submissions";
+
+// Every class's status select on the grid shares this one form (via the
+// `form=` attribute) so "Save all changes" commits every pick in one submit
+// instead of the coach having to save each class individually.
+const BULK_FORM_ID = "my-classes-bulk-form";
 
 export default async function UploadPage({
   searchParams,
@@ -75,9 +80,9 @@ export default async function UploadPage({
         <p className="mb-4 text-sm text-neutral-500">
           Pick your name and week — you&apos;ll see the whole week&apos;s
           planning. Mark any class you did (or missed); it doesn&apos;t have
-          to be one assigned to you. If you miss a class, note who covered it
-          in the panel below. If more than one coach reports doing the same
-          class, whoever reports most recently is what counts.
+          to be one assigned to you. Once a class is saved as Missed, you can
+          note who covered it right there. If more than one coach reports
+          doing the same class, whoever reports most recently is what counts.
         </p>
 
         <div className="mb-6 flex items-center gap-3 text-sm">
@@ -114,6 +119,22 @@ export default async function UploadPage({
           />
         )}
 
+        {selectedCoach && instances.length > 0 && (
+          <>
+            <form id={BULK_FORM_ID} action={submitClassReports} />
+            <input type="hidden" name="coachId" value={selectedCoach.id} form={BULK_FORM_ID} />
+            <div className="mb-3 flex justify-end">
+              <button
+                type="submit"
+                form={BULK_FORM_ID}
+                className="rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
+              >
+                Save all changes
+              </button>
+            </div>
+          </>
+        )}
+
         {selectedCoach && (
           instances.length > 0 ? (
             <WeekGrid
@@ -126,6 +147,10 @@ export default async function UploadPage({
                   coachId={selectedCoach.id}
                   assignedCoachName={inst.coach?.name ?? null}
                   mySubmission={mySubmissionByInstance.get(inst.id) ?? null}
+                  bulkFormId={BULK_FORM_ID}
+                  status={inst.status}
+                  substituteCoachId={inst.substituteCoachId}
+                  coaches={coaches}
                 />
               )}
             />
@@ -134,16 +159,6 @@ export default async function UploadPage({
               No classes this week.
             </p>
           )
-        )}
-
-        {selectedCoach && (
-          <MissedClassesPanel
-            title="Your missed classes — find a substitute"
-            instances={instances.filter(
-              (i) => i.status === "MISSED" && i.coachId === selectedCoach.id
-            )}
-            coaches={coaches.filter((c) => c.id !== selectedCoach.id)}
-          />
         )}
       </main>
     </div>
