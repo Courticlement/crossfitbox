@@ -26,14 +26,19 @@ export default async function AdminDashboardPage({
 
   const [coaches, instances, quotas] = await Promise.all([
     prisma.coach.findMany({ orderBy: { name: "asc" } }),
+    // Unfiltered by coach on purpose — the box-wide summary below needs
+    // unassigned classes too, not just ones already claimed by someone.
     prisma.classInstance.findMany({
-      where: {
-        date: { gte: weekStart, lt: weekEnd },
-        OR: [{ coachId: { not: null } }, { substituteCoachId: { not: null } }],
-      },
+      where: { date: { gte: weekStart, lt: weekEnd } },
     }),
     prisma.coachWeeklyQuota.findMany({ where: { weekStart } }),
   ]);
+
+  const activeInstances = instances.filter((i) => i.status !== "CANCELLED");
+  const totalClasses = activeInstances.length;
+  const unassignedClasses = activeInstances.filter((i) => !i.coachId).length;
+  const groupClasses = activeInstances.filter((i) => !i.isPrivate).length;
+  const privateClasses = activeInstances.filter((i) => i.isPrivate).length;
 
   const rows = coaches.map((coach) => {
     const coachInstances = instances.filter((i) => i.coachId === coach.id);
@@ -41,6 +46,9 @@ export default async function AdminDashboardPage({
     const done = coachInstances.filter((i) => i.status === "DONE").length;
     const missed = coachInstances.filter((i) => i.status === "MISSED").length;
     const planned = coachInstances.filter((i) => i.status === "PLANNED").length;
+    const groupDone = coachInstances.filter(
+      (i) => i.status === "DONE" && !i.isPrivate
+    ).length;
     const privateDone = coachInstances.filter(
       (i) => i.status === "DONE" && i.isPrivate
     ).length;
@@ -50,7 +58,18 @@ export default async function AdminDashboardPage({
     const substituted = instances.filter((i) => i.substituteCoachId === coach.id).length;
     const quota = quotas.find((q) => q.coachId === coach.id)?.maxLessons ?? null;
     const overQuota = quota !== null && assigned > quota;
-    return { coach, assigned, done, missed, planned, privateDone, substituted, quota, overQuota };
+    return {
+      coach,
+      assigned,
+      done,
+      missed,
+      planned,
+      groupDone,
+      privateDone,
+      substituted,
+      quota,
+      overQuota,
+    };
   });
 
   return (
@@ -76,6 +95,31 @@ export default async function AdminDashboardPage({
         </div>
       </div>
 
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+          <dt className="text-xs text-neutral-500">Classes this week</dt>
+          <dd className="text-2xl font-semibold text-white">{totalClasses}</dd>
+        </div>
+        <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+          <dt className="text-xs text-neutral-500">Unassigned</dt>
+          <dd
+            className={`text-2xl font-semibold ${
+              unassignedClasses > 0 ? "text-amber-400" : "text-white"
+            }`}
+          >
+            {unassignedClasses}
+          </dd>
+        </div>
+        <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+          <dt className="text-xs text-neutral-500">Group classes</dt>
+          <dd className="text-2xl font-semibold text-white">{groupClasses}</dd>
+        </div>
+        <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+          <dt className="text-xs text-neutral-500">Private classes</dt>
+          <dd className="text-2xl font-semibold text-white">{privateClasses}</dd>
+        </div>
+      </div>
+
       <div className="mb-6 overflow-hidden rounded-lg border border-neutral-800">
         <table className="w-full text-sm">
           <thead className="bg-neutral-900 text-left text-neutral-400">
@@ -87,12 +131,13 @@ export default async function AdminDashboardPage({
               <th className="px-4 py-2 font-medium">Missed</th>
               <th className="px-4 py-2 font-medium">Substituted</th>
               <th className="px-4 py-2 font-medium">Planned</th>
+              <th className="px-4 py-2 font-medium">Group</th>
               <th className="px-4 py-2 font-medium">Private</th>
               <th className="px-4 py-2 font-medium">Alert</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ coach, assigned, done, missed, planned, privateDone, substituted, quota, overQuota }) => (
+            {rows.map(({ coach, assigned, done, missed, planned, groupDone, privateDone, substituted, quota, overQuota }) => (
               <tr key={coach.id} className="border-t border-neutral-800">
                 <td className="px-4 py-2 text-white">{coach.name}</td>
                 <td className="px-4 py-2">
@@ -120,6 +165,7 @@ export default async function AdminDashboardPage({
                 <td className="px-4 py-2 text-red-400">{missed}</td>
                 <td className="px-4 py-2 text-sky-400">{substituted}</td>
                 <td className="px-4 py-2 text-neutral-400">{planned}</td>
+                <td className="px-4 py-2 text-neutral-400">{groupDone}</td>
                 <td className="px-4 py-2 text-neutral-400">{privateDone}</td>
                 <td className="px-4 py-2">
                   {overQuota && (
@@ -132,7 +178,7 @@ export default async function AdminDashboardPage({
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-6 text-center text-neutral-500">
+                <td colSpan={10} className="px-4 py-6 text-center text-neutral-500">
                   No coaches yet.
                 </td>
               </tr>
