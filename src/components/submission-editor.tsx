@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { submitClassReport, clearMySubmission } from "@/lib/actions/submissions";
 
@@ -50,6 +50,23 @@ function ClearButton() {
   );
 }
 
+// Picking a status no longer saves it immediately — this confirms it. Only
+// enabled once there's an actual pending choice to commit, so it's obvious
+// whether a selection has been saved yet or is still just sitting in the
+// dropdown.
+function SaveButton({ dirty }: { dirty: boolean }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending || !dirty}
+      className="shrink-0 rounded border border-neutral-700 bg-neutral-900 px-1.5 py-0.5 text-[9px] font-medium text-white hover:border-neutral-500 disabled:cursor-default disabled:border-transparent disabled:bg-transparent disabled:text-neutral-600"
+    >
+      {pending ? "Saving…" : "Save"}
+    </button>
+  );
+}
+
 export function SubmissionEditor({
   classInstanceId,
   coachId,
@@ -62,7 +79,7 @@ export function SubmissionEditor({
   mySubmission: { status: string } | null;
 }) {
   const [status, setStatus] = useState(mySubmission?.status ?? "");
-  const formRef = useRef<HTMLFormElement>(null);
+  const dirty = status !== "" && status !== (mySubmission?.status ?? "");
 
   return (
     <div className="flex flex-col gap-0.5">
@@ -71,17 +88,14 @@ export function SubmissionEditor({
           Assigned: {assignedCoachName}
         </div>
       )}
-      <form ref={formRef} action={submitClassReport} className="flex items-center gap-1">
+      <form action={submitClassReport} className="flex flex-col gap-1">
         <input type="hidden" name="classInstanceId" value={classInstanceId} />
         <input type="hidden" name="coachId" value={coachId} />
-        <StatusSelect
-          status={status}
-          onChange={(next) => {
-            setStatus(next);
-            formRef.current?.requestSubmit();
-          }}
-        />
-        {mySubmission && <ClearButton />}
+        <div className="flex items-center gap-1">
+          <StatusSelect status={status} onChange={setStatus} />
+          {mySubmission && <ClearButton />}
+        </div>
+        <SaveButton dirty={dirty} />
       </form>
     </div>
   );
