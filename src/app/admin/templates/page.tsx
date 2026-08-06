@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { dayName } from "@/lib/dates";
 import { ROOMS } from "@/lib/rooms";
+import { TemplateFilters } from "@/components/template-filters";
 import {
   createTemplate,
   updateTemplates,
@@ -16,9 +17,27 @@ const FIELD_CLASS =
 // Remove/Active-toggle forms) — one submit saves every edited row at once.
 const BULK_FORM_ID = "templates-bulk-form";
 
-export default async function ClassTemplatesPage() {
+export default async function ClassTemplatesPage({
+  searchParams,
+}: PageProps<"/admin/templates">) {
+  const params = await searchParams;
+  const dayOfWeekFilter = typeof params?.dayOfWeek === "string" ? params.dayOfWeek : "";
+  const roomFilter = typeof params?.room === "string" ? params.room : "";
+  const coachIdFilter = typeof params?.coachId === "string" ? params.coachId : "";
+  const statusFilter = typeof params?.status === "string" ? params.status : "";
+
   const [templates, coaches] = await Promise.all([
     prisma.classTemplate.findMany({
+      where: {
+        ...(dayOfWeekFilter ? { dayOfWeek: Number(dayOfWeekFilter) } : {}),
+        ...(roomFilter ? { room: roomFilter } : {}),
+        ...(coachIdFilter === "none"
+          ? { coachId: null }
+          : coachIdFilter
+            ? { coachId: coachIdFilter }
+            : {}),
+        ...(statusFilter ? { active: statusFilter === "active" } : {}),
+      },
       include: { coach: true },
       orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
     }),
@@ -35,6 +54,14 @@ export default async function ClassTemplatesPage() {
         week&apos;s classes on the Planning page. Edit as many rows as you
         like, then save them all at once.
       </p>
+
+      <TemplateFilters
+        dayOfWeek={dayOfWeekFilter}
+        room={roomFilter}
+        coachId={coachIdFilter}
+        status={statusFilter}
+        coaches={coaches}
+      />
 
       <form id={BULK_FORM_ID} action={updateTemplates} />
 
@@ -163,13 +190,18 @@ export default async function ClassTemplatesPage() {
                       />
                       <button
                         type="submit"
-                        className={
-                          tpl.active
-                            ? "rounded-full bg-emerald-900/40 px-2 py-0.5 text-xs text-emerald-300"
-                            : "rounded-full bg-neutral-800 px-2 py-0.5 text-xs text-neutral-500"
-                        }
+                        role="switch"
+                        aria-checked={tpl.active}
+                        title={tpl.active ? "Active — click to turn off" : "Inactive — click to turn on"}
+                        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+                          tpl.active ? "bg-emerald-600" : "bg-neutral-700"
+                        }`}
                       >
-                        {tpl.active ? "Active" : "Inactive"}
+                        <span
+                          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                            tpl.active ? "translate-x-[18px]" : "translate-x-[2px]"
+                          }`}
+                        />
                       </button>
                     </form>
                   </td>
