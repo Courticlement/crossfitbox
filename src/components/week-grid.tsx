@@ -41,11 +41,18 @@ export function WeekGrid<T extends WeekGridInstance>({
   instances,
   headerAction,
   control,
+  highlightCoachId,
 }: {
   weekStart: Date;
   instances: T[];
   headerAction?: (inst: T) => ReactNode;
   control: (inst: T) => ReactNode;
+  // When set, the selected coach's own group classes get a bright ring and
+  // everyone else's classes fade back — makes "which of these are mine"
+  // answerable at a glance instead of reading each block's assignment.
+  // Private classes aren't dimmed either way (they're already unambiguous —
+  // a coach's own private classes only ever show up on their own page).
+  highlightCoachId?: string | null;
 }) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
@@ -131,11 +138,14 @@ export function WeekGrid<T extends WeekGridInstance>({
 
           return positioned.map(({ item: inst, rowStart, rowEnd, left, width }) => {
             const needsCoach = !inst.coachId && inst.status === "PLANNED";
+            const isMine = highlightCoachId != null && inst.coachId === highlightCoachId;
+            const isMineGroup = isMine && !inst.isPrivate;
+            const faded = highlightCoachId != null && !isMine;
             return (
               <div
                 key={inst.id}
                 title={`${inst.label} · ${inst.room} · ${inst.startTime}–${inst.endTime} · ${inst.status}`}
-                className={`group relative z-10 flex flex-col gap-1 overflow-hidden rounded-md border-l-4 p-1.5 ${STATUS_BORDER[inst.status] ?? "border-l-neutral-600"} ${ROOM_BG[inst.room] ?? "bg-neutral-900"} ${needsCoach ? "ring-1 ring-inset ring-amber-600/60" : ""}`}
+                className={`group relative z-10 flex flex-col gap-1 overflow-hidden rounded-md border-l-4 p-1.5 transition-opacity ${STATUS_BORDER[inst.status] ?? "border-l-neutral-600"} ${ROOM_BG[inst.room] ?? "bg-neutral-900"} ${needsCoach ? "ring-1 ring-inset ring-amber-600/60" : ""} ${isMineGroup ? "ring-2 ring-inset ring-white/80" : ""} ${faded ? "opacity-40" : ""}`}
                 style={{
                   gridColumn: dayIdx + 2,
                   gridRow: `${1 + rowStart} / ${1 + rowEnd}`,

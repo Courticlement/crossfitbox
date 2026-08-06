@@ -119,6 +119,7 @@ export default async function UploadPage({
             <WeekGrid
               weekStart={weekStart}
               instances={instances}
+              highlightCoachId={selectedCoach.id}
               control={(inst) => (
                 <SubmissionEditor
                   classInstanceId={inst.id}
