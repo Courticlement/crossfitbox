@@ -11,6 +11,8 @@ import {
 import { setQuota } from "@/lib/actions/quotas";
 import { sendWeeklyDigest } from "@/lib/actions/digest";
 
+const PRIVATE_CLASS_WEEKLY_LIMIT = 10;
+
 export default async function AdminDashboardPage({
   searchParams,
 }: PageProps<"/admin">) {
@@ -62,6 +64,9 @@ export default async function AdminDashboardPage({
     const substituted = instances.filter((i) => i.substituteCoachId === coach.id).length;
     const quota = quotas.find((q) => q.coachId === coach.id)?.maxLessons ?? null;
     const overQuota = quota !== null && assigned > quota;
+    const underQuota = quota !== null && assigned < quota;
+    const hasMissed = missed > 0;
+    const privateOverLimit = privateDone > PRIVATE_CLASS_WEEKLY_LIMIT;
     return {
       coach,
       assigned,
@@ -72,6 +77,9 @@ export default async function AdminDashboardPage({
       substituted,
       quota,
       overQuota,
+      underQuota,
+      hasMissed,
+      privateOverLimit,
     };
   });
 
@@ -164,7 +172,20 @@ export default async function AdminDashboardPage({
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ coach, assigned, done, missed, planned, privateDone, substituted, quota, overQuota }) => (
+            {rows.map(({
+              coach,
+              assigned,
+              done,
+              missed,
+              planned,
+              privateDone,
+              substituted,
+              quota,
+              overQuota,
+              underQuota,
+              hasMissed,
+              privateOverLimit,
+            }) => (
               <tr key={coach.id} className="border-t border-neutral-800">
                 <td className="px-4 py-2 text-white">{coach.name}</td>
                 <td className="px-4 py-2">
@@ -196,11 +217,28 @@ export default async function AdminDashboardPage({
                 <td className="px-4 py-2 text-sky-400">{substituted}</td>
                 <td className="px-4 py-2 text-neutral-400">{planned}</td>
                 <td className="px-4 py-2">
-                  {overQuota && (
-                    <span className="rounded-full bg-red-900/40 px-2 py-0.5 text-xs text-red-300">
-                      Over quota ({assigned}/{quota})
-                    </span>
-                  )}
+                  <div className="flex flex-col items-start gap-1">
+                    {overQuota && (
+                      <span className="rounded-full bg-red-900/40 px-2 py-0.5 text-xs text-red-300">
+                        Over quota ({assigned}/{quota})
+                      </span>
+                    )}
+                    {underQuota && (
+                      <span className="rounded-full bg-amber-900/40 px-2 py-0.5 text-xs text-amber-300">
+                        Under quota ({assigned}/{quota})
+                      </span>
+                    )}
+                    {hasMissed && (
+                      <span className="rounded-full bg-red-900/40 px-2 py-0.5 text-xs text-red-300">
+                        {missed} missed
+                      </span>
+                    )}
+                    {privateOverLimit && (
+                      <span className="rounded-full bg-amber-900/40 px-2 py-0.5 text-xs text-amber-300">
+                        {privateDone} private classes (&gt;{PRIVATE_CLASS_WEEKLY_LIMIT})
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-2 text-neutral-400">{privateDone}</td>
               </tr>
