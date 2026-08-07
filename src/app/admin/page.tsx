@@ -159,8 +159,8 @@ export default async function AdminDashboardPage({
               <th className="px-4 py-2 font-medium">Missed</th>
               <th className="px-4 py-2 font-medium">Substituted</th>
               <th className="px-4 py-2 font-medium">Planned</th>
-              <th className="px-4 py-2 font-medium">Private</th>
               <th className="px-4 py-2 font-medium">Alert</th>
+              <th className="px-4 py-2 font-medium">Private</th>
             </tr>
           </thead>
           <tbody>
@@ -187,12 +187,14 @@ export default async function AdminDashboardPage({
                     </button>
                   </form>
                 </td>
-                <td className="px-4 py-2">{assigned}</td>
+                <td className={`px-4 py-2 ${overQuota ? "text-red-400" : ""}`}>
+                  {assigned}
+                  {quota !== null && <span className="text-neutral-500">/{quota}</span>}
+                </td>
                 <td className="px-4 py-2 text-emerald-400">{done}</td>
                 <td className="px-4 py-2 text-red-400">{missed}</td>
                 <td className="px-4 py-2 text-sky-400">{substituted}</td>
                 <td className="px-4 py-2 text-neutral-400">{planned}</td>
-                <td className="px-4 py-2 text-neutral-400">{privateDone}</td>
                 <td className="px-4 py-2">
                   {overQuota && (
                     <span className="rounded-full bg-red-900/40 px-2 py-0.5 text-xs text-red-300">
@@ -200,6 +202,7 @@ export default async function AdminDashboardPage({
                     </span>
                   )}
                 </td>
+                <td className="px-4 py-2 text-neutral-400">{privateDone}</td>
               </tr>
             ))}
             {rows.length === 0 && (
@@ -223,13 +226,14 @@ export default async function AdminDashboardPage({
                   }`}
                 >
                   {totals.assigned}
+                  {totals.hasQuota && <span className="text-neutral-500">/{totals.quota}</span>}
                 </td>
                 <td className="px-4 py-2 text-emerald-400">{totals.done}</td>
                 <td className="px-4 py-2 text-red-400">{totals.missed}</td>
                 <td className="px-4 py-2 text-sky-400">{totals.substituted}</td>
                 <td className="px-4 py-2 text-neutral-400">{totals.planned}</td>
-                <td className="px-4 py-2 text-neutral-400">{totals.privateDone}</td>
                 <td className="px-4 py-2" />
+                <td className="px-4 py-2 text-neutral-400">{totals.privateDone}</td>
               </tr>
             </tfoot>
           )}
