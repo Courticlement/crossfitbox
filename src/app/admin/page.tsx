@@ -42,13 +42,17 @@ export default async function AdminDashboardPage({
 
   const rows = coaches.map((coach) => {
     const coachInstances = instances.filter((i) => i.coachId === coach.id);
-    const assigned = coachInstances.filter((i) => i.status !== "CANCELLED").length;
-    const done = coachInstances.filter((i) => i.status === "DONE").length;
-    const missed = coachInstances.filter((i) => i.status === "MISSED").length;
-    const planned = coachInstances.filter((i) => i.status === "PLANNED").length;
-    const groupDone = coachInstances.filter(
-      (i) => i.status === "DONE" && !i.isPrivate
+    // Quota is a cap on group classes only — private lessons are booked ad
+    // hoc on top of the regular schedule and never count against it, so
+    // Assigned/Done/Missed/Planned here (and the quota check below) are all
+    // scoped to group classes. Private classes are always created already
+    // DONE (see addPrivateClass), so they get their own total instead.
+    const assigned = coachInstances.filter(
+      (i) => i.status !== "CANCELLED" && !i.isPrivate
     ).length;
+    const done = coachInstances.filter((i) => i.status === "DONE" && !i.isPrivate).length;
+    const missed = coachInstances.filter((i) => i.status === "MISSED" && !i.isPrivate).length;
+    const planned = coachInstances.filter((i) => i.status === "PLANNED" && !i.isPrivate).length;
     const privateDone = coachInstances.filter(
       (i) => i.status === "DONE" && i.isPrivate
     ).length;
@@ -64,13 +68,35 @@ export default async function AdminDashboardPage({
       done,
       missed,
       planned,
-      groupDone,
       privateDone,
       substituted,
       quota,
       overQuota,
     };
   });
+
+  const totals = rows.reduce(
+    (acc, r) => ({
+      quota: acc.quota + (r.quota ?? 0),
+      hasQuota: acc.hasQuota || r.quota !== null,
+      assigned: acc.assigned + r.assigned,
+      done: acc.done + r.done,
+      missed: acc.missed + r.missed,
+      substituted: acc.substituted + r.substituted,
+      planned: acc.planned + r.planned,
+      privateDone: acc.privateDone + r.privateDone,
+    }),
+    {
+      quota: 0,
+      hasQuota: false,
+      assigned: 0,
+      done: 0,
+      missed: 0,
+      substituted: 0,
+      planned: 0,
+      privateDone: 0,
+    }
+  );
 
   return (
     <div className="text-neutral-300">
@@ -126,18 +152,19 @@ export default async function AdminDashboardPage({
             <tr>
               <th className="px-4 py-2 font-medium">Coach</th>
               <th className="px-4 py-2 font-medium">Quota</th>
-              <th className="px-4 py-2 font-medium">Assigned</th>
+              <th className="px-4 py-2 font-medium" title="Group classes assigned — private lessons don't count against quota">
+                Assigned (Group)
+              </th>
               <th className="px-4 py-2 font-medium">Done</th>
               <th className="px-4 py-2 font-medium">Missed</th>
               <th className="px-4 py-2 font-medium">Substituted</th>
               <th className="px-4 py-2 font-medium">Planned</th>
-              <th className="px-4 py-2 font-medium">Group</th>
               <th className="px-4 py-2 font-medium">Private</th>
               <th className="px-4 py-2 font-medium">Alert</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ coach, assigned, done, missed, planned, groupDone, privateDone, substituted, quota, overQuota }) => (
+            {rows.map(({ coach, assigned, done, missed, planned, privateDone, substituted, quota, overQuota }) => (
               <tr key={coach.id} className="border-t border-neutral-800">
                 <td className="px-4 py-2 text-white">{coach.name}</td>
                 <td className="px-4 py-2">
@@ -165,7 +192,6 @@ export default async function AdminDashboardPage({
                 <td className="px-4 py-2 text-red-400">{missed}</td>
                 <td className="px-4 py-2 text-sky-400">{substituted}</td>
                 <td className="px-4 py-2 text-neutral-400">{planned}</td>
-                <td className="px-4 py-2 text-neutral-400">{groupDone}</td>
                 <td className="px-4 py-2 text-neutral-400">{privateDone}</td>
                 <td className="px-4 py-2">
                   {overQuota && (
@@ -178,12 +204,35 @@ export default async function AdminDashboardPage({
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-4 py-6 text-center text-neutral-500">
+                <td colSpan={9} className="px-4 py-6 text-center text-neutral-500">
                   No coaches yet.
                 </td>
               </tr>
             )}
           </tbody>
+          {rows.length > 0 && (
+            <tfoot>
+              <tr className="border-t border-neutral-700 bg-neutral-900 font-medium">
+                <td className="px-4 py-2 text-white">Total</td>
+                <td className="px-4 py-2 text-white">{totals.hasQuota ? totals.quota : "—"}</td>
+                <td
+                  className={`px-4 py-2 ${
+                    totals.hasQuota && totals.assigned > totals.quota
+                      ? "text-red-400"
+                      : "text-white"
+                  }`}
+                >
+                  {totals.assigned}
+                </td>
+                <td className="px-4 py-2 text-emerald-400">{totals.done}</td>
+                <td className="px-4 py-2 text-red-400">{totals.missed}</td>
+                <td className="px-4 py-2 text-sky-400">{totals.substituted}</td>
+                <td className="px-4 py-2 text-neutral-400">{totals.planned}</td>
+                <td className="px-4 py-2 text-neutral-400">{totals.privateDone}</td>
+                <td className="px-4 py-2" />
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
 
