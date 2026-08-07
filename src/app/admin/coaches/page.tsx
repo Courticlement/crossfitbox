@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { createCoach, renameCoach, deleteCoach } from "@/lib/actions/coaches";
 import { computeCoachStats } from "@/lib/coach-stats";
+import { LevelSelect } from "@/components/level-select";
+import { formatDateISO } from "@/lib/dates";
 
 function formatHours(hours: number): string {
   return `${hours.toFixed(1)}h`;
@@ -10,8 +12,16 @@ function formatPercent(rate: number | null): string {
   return rate === null ? "—" : `${Math.round(rate * 100)}%`;
 }
 
+function formatAmount(amount: number): string {
+  return `${amount}€`;
+}
+
+function formatCost(cost: number): string {
+  return cost === 0 ? "0€" : `-${cost}€`;
+}
+
 export default async function CoachesPage() {
-  const [coaches, instances] = await Promise.all([
+  const [coaches, instances, planningWeeks] = await Promise.all([
     prisma.coach.findMany({ orderBy: { name: "asc" } }),
     prisma.classInstance.findMany({
       where: { OR: [{ coachId: { not: null } }, { substituteCoachId: { not: null } }] },
@@ -25,7 +35,10 @@ export default async function CoachesPage() {
         isPrivate: true,
       },
     }),
+    prisma.planningWeek.findMany({ select: { weekStart: true } }),
   ]);
+
+  const validatedWeekStarts = new Set(planningWeeks.map((w) => formatDateISO(w.weekStart)));
 
   const instancesByCoach = new Map<string, typeof instances>();
   for (const inst of instances) {
@@ -43,7 +56,12 @@ export default async function CoachesPage() {
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {coaches.map((coach) => {
-          const stats = computeCoachStats(coach.id, instancesByCoach.get(coach.id) ?? []);
+          const stats = computeCoachStats(
+            coach.id,
+            instancesByCoach.get(coach.id) ?? [],
+            coach.level,
+            validatedWeekStarts
+          );
           return (
             <div
               key={coach.id}
@@ -79,6 +97,14 @@ export default async function CoachesPage() {
                   <dd className="text-white">{formatHours(stats.hoursLastMonth)}</dd>
                 </div>
                 <div>
+                  <dt className="text-xs text-neutral-500">Avg hours/month</dt>
+                  <dd className="text-white">
+                    {stats.averageHoursPerMonth === null
+                      ? "—"
+                      : formatHours(stats.averageHoursPerMonth)}
+                  </dd>
+                </div>
+                <div>
                   <dt className="text-xs text-neutral-500">Reliability rate</dt>
                   <dd className="text-white">{formatPercent(stats.reliabilityRate)}</dd>
                 </div>
@@ -86,11 +112,35 @@ export default async function CoachesPage() {
                   <dt className="text-xs text-neutral-500">Private classes done</dt>
                   <dd className="text-white">{stats.privateClassesDone}</dd>
                 </div>
+                <div>
+                  <dt className="text-xs text-neutral-500" title="Group classes delivered in a week you've validated">
+                    Amount this month
+                  </dt>
+                  <dd className="text-white">{formatAmount(stats.amountThisMonth)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-neutral-500" title="Group classes delivered in a week you've validated">
+                    Amount last month
+                  </dt>
+                  <dd className="text-white">{formatAmount(stats.amountLastMonth)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-neutral-500" title="Owed to the box for private classes delivered this month">
+                    Private cost this month
+                  </dt>
+                  <dd className="text-red-400">{formatCost(stats.privateCostThisMonth)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-neutral-500" title="Owed to the box for private classes delivered last month">
+                    Private cost last month
+                  </dt>
+                  <dd className="text-red-400">{formatCost(stats.privateCostLastMonth)}</dd>
+                </div>
               </dl>
 
               <form
                 action={renameCoach}
-                className="mt-auto flex items-center gap-2 border-t border-neutral-800 pt-3"
+                className="mt-auto flex flex-wrap items-center gap-2 border-t border-neutral-800 pt-3"
               >
                 <input type="hidden" name="id" value={coach.id} />
                 <input
@@ -99,13 +149,7 @@ export default async function CoachesPage() {
                   defaultValue={coach.name}
                   className="w-24 flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-white hover:border-neutral-700 focus:border-neutral-500 focus:outline-none"
                 />
-                <input
-                  type="text"
-                  name="level"
-                  defaultValue={coach.level ?? ""}
-                  placeholder="Level"
-                  className="w-20 rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-white placeholder:text-neutral-600 hover:border-neutral-700 focus:border-neutral-500 focus:outline-none"
-                />
+                <LevelSelect name="level" defaultValue={coach.level ?? ""} />
                 <button
                   type="submit"
                   className="shrink-0 text-xs text-neutral-500 hover:text-white"
@@ -133,12 +177,10 @@ export default async function CoachesPage() {
             placeholder="Name"
             className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
           />
-          <input
-            type="text"
-            name="level"
-            placeholder="CrossFit level (e.g. CF-L1)"
-            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
-          />
+          <div>
+            <span className="mb-1 block text-xs text-neutral-500">CrossFit level</span>
+            <LevelSelect name="level" defaultValue="" />
+          </div>
           <button
             type="submit"
             className="mt-1 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"

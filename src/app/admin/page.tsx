@@ -10,6 +10,7 @@ import {
 } from "@/lib/dates";
 import { setQuota } from "@/lib/actions/quotas";
 import { sendWeeklyDigest } from "@/lib/actions/digest";
+import { groupClassRate, PRIVATE_CLASS_COST_EUR } from "@/lib/coach-levels";
 
 const PRIVATE_CLASS_WEEKLY_LIMIT = 10;
 
@@ -26,7 +27,7 @@ export default async function AdminDashboardPage({
   const weekStartStr = formatDateISO(weekStart);
   const digestStatus = typeof params?.digest === "string" ? params.digest : undefined;
 
-  const [coaches, instances, quotas] = await Promise.all([
+  const [coaches, instances, quotas, planningWeek] = await Promise.all([
     prisma.coach.findMany({ orderBy: { name: "asc" } }),
     // Unfiltered by coach on purpose — the box-wide summary below needs
     // unassigned classes too, not just ones already claimed by someone.
@@ -34,7 +35,9 @@ export default async function AdminDashboardPage({
       where: { date: { gte: weekStart, lt: weekEnd } },
     }),
     prisma.coachWeeklyQuota.findMany({ where: { weekStart } }),
+    prisma.planningWeek.findUnique({ where: { weekStart } }),
   ]);
+  const weekValidated = planningWeek !== null;
 
   const activeInstances = instances.filter((i) => i.status !== "CANCELLED");
   const totalClasses = activeInstances.length;
@@ -67,6 +70,12 @@ export default async function AdminDashboardPage({
     const underQuota = quota !== null && assigned < quota;
     const hasMissed = missed > 0;
     const privateOverLimit = privateDone > PRIVATE_CLASS_WEEKLY_LIMIT;
+    // Group classes only pay out once the admin has validated this week
+    // (see validateWeek) — private classes are always costed, validated or
+    // not, since they're logged ad hoc outside the planning workflow.
+    const groupAmount = weekValidated ? done * groupClassRate(coach.level) : 0;
+    const privateCost = privateDone * PRIVATE_CLASS_COST_EUR;
+    const netAmount = groupAmount - privateCost;
     return {
       coach,
       assigned,
@@ -80,6 +89,7 @@ export default async function AdminDashboardPage({
       underQuota,
       hasMissed,
       privateOverLimit,
+      netAmount,
     };
   });
 
@@ -93,6 +103,7 @@ export default async function AdminDashboardPage({
       substituted: acc.substituted + r.substituted,
       planned: acc.planned + r.planned,
       privateDone: acc.privateDone + r.privateDone,
+      netAmount: acc.netAmount + r.netAmount,
     }),
     {
       quota: 0,
@@ -103,6 +114,7 @@ export default async function AdminDashboardPage({
       substituted: 0,
       planned: 0,
       privateDone: 0,
+      netAmount: 0,
     }
   );
 
@@ -169,6 +181,16 @@ export default async function AdminDashboardPage({
               <th className="px-4 py-2 font-medium">Planned</th>
               <th className="px-4 py-2 font-medium">Alert</th>
               <th className="px-4 py-2 font-medium">Private</th>
+              <th
+                className="px-4 py-2 font-medium"
+                title={
+                  weekValidated
+                    ? "Group amount minus private class cost"
+                    : "Group amount is 0 until this week is validated — showing private cost only"
+                }
+              >
+                Net €
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -185,6 +207,7 @@ export default async function AdminDashboardPage({
               underQuota,
               hasMissed,
               privateOverLimit,
+              netAmount,
             }) => (
               <tr key={coach.id} className="border-t border-neutral-800">
                 <td className="px-4 py-2 text-white">{coach.name}</td>
@@ -241,11 +264,14 @@ export default async function AdminDashboardPage({
                   </div>
                 </td>
                 <td className="px-4 py-2 text-neutral-400">{privateDone}</td>
+                <td className={`px-4 py-2 ${netAmount < 0 ? "text-red-400" : "text-emerald-400"}`}>
+                  {netAmount}€
+                </td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-6 text-center text-neutral-500">
+                <td colSpan={10} className="px-4 py-6 text-center text-neutral-500">
                   No coaches yet.
                 </td>
               </tr>
@@ -272,6 +298,11 @@ export default async function AdminDashboardPage({
                 <td className="px-4 py-2 text-neutral-400">{totals.planned}</td>
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2 text-neutral-400">{totals.privateDone}</td>
+                <td
+                  className={`px-4 py-2 ${totals.netAmount < 0 ? "text-red-400" : "text-emerald-400"}`}
+                >
+                  {totals.netAmount}€
+                </td>
               </tr>
             </tfoot>
           )}
