@@ -4,13 +4,13 @@ import { useFormStatus } from "react-dom";
 import { addPrivateClass, deletePrivateClass } from "@/lib/actions/submissions";
 import { formatDayLabel, formatDateISO, addDays } from "@/lib/dates";
 
-function AddButton() {
+function AddButton({ locked }: { locked: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
-      disabled={pending}
-      className="mt-1 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200 disabled:opacity-50"
+      disabled={pending || locked}
+      className="mt-1 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {pending ? "Adding…" : "Add"}
     </button>
@@ -28,10 +28,12 @@ export function PrivateClassForm({
   coachId,
   weekStart,
   entries,
+  locked = false,
 }: {
   coachId: string;
   weekStart: Date;
   entries: PrivateClassEntry[];
+  locked?: boolean;
 }) {
   const weekStartStr = formatDateISO(weekStart);
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -55,7 +57,8 @@ export function PrivateClassForm({
             name="dayOfWeek"
             required
             defaultValue=""
-            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
+            disabled={locked}
+            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none disabled:opacity-50"
           >
             <option value="" disabled>
               Select day
@@ -73,7 +76,8 @@ export function PrivateClassForm({
             type="time"
             name="startTime"
             required
-            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
+            disabled={locked}
+            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none disabled:opacity-50"
           />
         </div>
         <div>
@@ -82,10 +86,11 @@ export function PrivateClassForm({
             type="time"
             name="endTime"
             required
-            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
+            disabled={locked}
+            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none disabled:opacity-50"
           />
         </div>
-        <AddButton />
+        <AddButton locked={locked} />
       </form>
 
       {entries.length > 0 && (
@@ -105,16 +110,18 @@ export function PrivateClassForm({
                 <span>
                   {formatDayLabel(entry.date)} · {entry.startTime}–{entry.endTime}
                 </span>
-                <form action={deletePrivateClass}>
-                  <input type="hidden" name="id" value={entry.id} />
-                  <input type="hidden" name="coachId" value={coachId} />
-                  <button
-                    type="submit"
-                    className="text-xs text-red-400 hover:text-red-300"
-                  >
-                    Remove
-                  </button>
-                </form>
+                {!locked && (
+                  <form action={deletePrivateClass}>
+                    <input type="hidden" name="id" value={entry.id} />
+                    <input type="hidden" name="coachId" value={coachId} />
+                    <button
+                      type="submit"
+                      className="text-xs text-red-400 hover:text-red-300"
+                    >
+                      Remove
+                    </button>
+                  </form>
+                )}
               </div>
             ))}
         </div>

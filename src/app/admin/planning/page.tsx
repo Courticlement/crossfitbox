@@ -17,7 +17,7 @@ import { SubstituteSelect } from "@/components/substitute-select";
 import { TimeConflictsPanel, type TimeConflictGroup } from "@/components/time-conflicts-panel";
 import { WeekGrid } from "@/components/week-grid";
 import { ROOMS } from "@/lib/rooms";
-import { generateWeek, addAdHocClass } from "@/lib/actions/planning";
+import { generateWeek, addAdHocClass, validateWeek, unlockWeek } from "@/lib/actions/planning";
 
 export default async function PlanningPage({
   searchParams,
@@ -34,7 +34,7 @@ export default async function PlanningPage({
   const coachIdFilter = typeof params?.coachId === "string" ? params.coachId : "";
   const typeFilter = typeof params?.type === "string" ? params.type : "";
 
-  const [instances, coaches, doneSubmissions] = await Promise.all([
+  const [instances, coaches, doneSubmissions, planningWeek] = await Promise.all([
     prisma.classInstance.findMany({
       where: { date: { gte: weekStart, lt: weekEnd } },
       include: { coach: true, template: { include: { coach: true } } },
@@ -46,7 +46,9 @@ export default async function PlanningPage({
       include: { coach: true },
       orderBy: { createdAt: "asc" },
     }),
+    prisma.planningWeek.findUnique({ where: { weekStart } }),
   ]);
+  const validated = planningWeek !== null;
 
   const instancesById = new Map(instances.map((i) => [i.id, i]));
 
@@ -163,7 +165,41 @@ export default async function PlanningPage({
           </button>
         </form>
         <ResetWeekButton weekStart={formatDateISO(weekStart)} />
+        <div className="ml-auto flex items-center gap-2">
+          {validated ? (
+            <>
+              <span className="rounded-full bg-emerald-900/40 px-2.5 py-1 text-xs text-emerald-300">
+                Validated {planningWeek.validatedAt.toLocaleString("en-US", { timeZone: "UTC" })}
+              </span>
+              <form action={unlockWeek}>
+                <input type="hidden" name="weekStart" value={formatDateISO(weekStart)} />
+                <button
+                  type="submit"
+                  className="rounded-md border border-neutral-700 px-3 py-2 text-sm text-neutral-300 hover:border-neutral-500 hover:text-white"
+                >
+                  Unlock
+                </button>
+              </form>
+            </>
+          ) : (
+            <form action={validateWeek}>
+              <input type="hidden" name="weekStart" value={formatDateISO(weekStart)} />
+              <button
+                type="submit"
+                className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+              >
+                Validate planning
+              </button>
+            </form>
+          )}
+        </div>
       </div>
+      {validated && (
+        <p className="mb-4 text-xs text-neutral-500">
+          This week is locked — coaches can&apos;t submit or change self-reports on My Classes
+          until you unlock it.
+        </p>
+      )}
 
       <ConflictsPanel instances={conflicts} />
       <TimeConflictsPanel groups={timeConflictGroups} />
@@ -198,6 +234,7 @@ export default async function PlanningPage({
                 coachId={inst.coachId}
                 substituteCoachId={inst.substituteCoachId}
                 coaches={coaches}
+                adminContext
               />
             )}
           </div>

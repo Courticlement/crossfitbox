@@ -13,6 +13,7 @@ import { PrivateClassForm } from "@/components/private-class-form";
 import { SubmissionEditor } from "@/components/submission-editor";
 import { WeekGrid } from "@/components/week-grid";
 import { submitClassReports } from "@/lib/actions/submissions";
+import { isWeekValidated } from "@/lib/planning-lock";
 
 // Every class's status select on the grid shares this one form (via the
 // `form=` attribute) so "Save all changes" commits every pick in one submit
@@ -35,6 +36,7 @@ export default async function UploadPage({
 
   const coaches = await prisma.coach.findMany({ orderBy: { name: "asc" } });
   const selectedCoach = coaches.find((c) => c.id === coachId);
+  const locked = await isWeekValidated(weekStart);
 
   const instances = selectedCoach
     ? await prisma.classInstance.findMany({
@@ -111,11 +113,19 @@ export default async function UploadPage({
           />
         </div>
 
+        {selectedCoach && locked && (
+          <p className="mb-6 rounded-md border border-amber-900 bg-amber-950 px-3 py-2 text-sm text-amber-300">
+            This week&apos;s planning has been validated by the admin — reporting is
+            closed. Contact the admin if something needs to change.
+          </p>
+        )}
+
         {selectedCoach && (
           <PrivateClassForm
             coachId={selectedCoach.id}
             weekStart={weekStart}
             entries={myPrivateClasses}
+            locked={locked}
           />
         )}
 
@@ -127,7 +137,8 @@ export default async function UploadPage({
               <button
                 type="submit"
                 form={BULK_FORM_ID}
-                className="rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
+                disabled={locked}
+                className="rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Save all changes
               </button>
@@ -151,6 +162,7 @@ export default async function UploadPage({
                   status={inst.status}
                   substituteCoachId={inst.substituteCoachId}
                   coaches={coaches}
+                  locked={locked}
                 />
               )}
             />

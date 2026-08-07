@@ -4,6 +4,7 @@ import { z } from "zod";
 import { refresh, revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { addDays, parseDateOnly } from "@/lib/dates";
+import { isDateInValidatedWeek, isWeekValidated } from "@/lib/planning-lock";
 
 function revalidateAll() {
   revalidatePath("/admin/planning");
@@ -88,6 +89,7 @@ export async function submitClassReports(formData: FormData) {
 
       const instance = await prisma.classInstance.findUnique({ where: { id: classInstanceId } });
       if (!instance) return;
+      if (await isDateInValidatedWeek(instance.date)) return;
 
       await prisma.classSubmission.upsert({
         where: { classInstanceId_coachId: { classInstanceId, coachId } },
@@ -110,6 +112,10 @@ export async function clearMySubmission(formData: FormData) {
   const classInstanceId = String(formData.get("classInstanceId") ?? "");
   const coachId = String(formData.get("coachId") ?? "");
   if (!classInstanceId || !coachId) return;
+
+  const instance = await prisma.classInstance.findUnique({ where: { id: classInstanceId } });
+  if (!instance) return;
+  if (await isDateInValidatedWeek(instance.date)) return;
 
   await prisma.classSubmission.deleteMany({ where: { classInstanceId, coachId } });
 
@@ -201,6 +207,7 @@ export async function addPrivateClass(formData: FormData) {
 
   const weekStartDate = parseDateOnly(weekStart);
   if (!weekStartDate) return;
+  if (await isWeekValidated(weekStartDate)) return;
 
   await prisma.classInstance.create({
     data: {
@@ -224,9 +231,13 @@ export async function deletePrivateClass(formData: FormData) {
   const coachId = String(formData.get("coachId") ?? "");
   if (!id || !coachId) return;
 
-  await prisma.classInstance.deleteMany({
+  const instance = await prisma.classInstance.findFirst({
     where: { id, coachId, isPrivate: true },
   });
+  if (!instance) return;
+  if (await isDateInValidatedWeek(instance.date)) return;
+
+  await prisma.classInstance.delete({ where: { id: instance.id } });
 
   revalidateAll();
 }

@@ -3,6 +3,7 @@
 import { refresh, revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { addDays, formatDateISO, parseDateOnly } from "@/lib/dates";
+import { isDateInValidatedWeek } from "@/lib/planning-lock";
 
 function revalidateAll() {
   revalidatePath("/admin/planning");
@@ -126,6 +127,31 @@ export async function generateWeek(formData: FormData) {
   revalidateAll();
 }
 
+// Locks the week: from this point, coaches can no longer submit or change
+// self-reports for it on My Classes (see lib/planning-lock.ts). The admin's
+// own edits here on the Planning page are never blocked by this.
+export async function validateWeek(formData: FormData) {
+  const weekStartStr = String(formData.get("weekStart") ?? "");
+  const weekStart = parseDateOnly(weekStartStr);
+  if (!weekStart) return;
+
+  await prisma.planningWeek.upsert({
+    where: { weekStart },
+    create: { weekStart },
+    update: {},
+  });
+  revalidateAll();
+}
+
+export async function unlockWeek(formData: FormData) {
+  const weekStartStr = String(formData.get("weekStart") ?? "");
+  const weekStart = parseDateOnly(weekStartStr);
+  if (!weekStart) return;
+
+  await prisma.planningWeek.deleteMany({ where: { weekStart } });
+  revalidateAll();
+}
+
 export type AssignCoachState = { error: string | null };
 
 type ScheduleInstance = { id: string; date: Date; startTime: string; endTime: string };
@@ -184,18 +210,28 @@ export async function assignCoach(
   return { error: null };
 }
 
+// Shared by both the admin's Planning page and a coach's own My Classes page
+// (as part of self-reporting a missed class's cover). The `context` field
+// distinguishes the two: only the coach-facing usage is blocked once the
+// week is validated — the admin's own Planning page stays editable, per
+// validateWeek/unlockWeek above.
 export async function assignSubstitute(
   _prevState: AssignCoachState,
   formData: FormData
 ): Promise<AssignCoachState> {
   const id = String(formData.get("id") ?? "");
   const substituteCoachId = String(formData.get("substituteCoachId") ?? "");
+  const isAdminContext = formData.get("context") === "admin";
   if (!id) return { error: null };
 
-  if (substituteCoachId) {
-    const instance = await prisma.classInstance.findUnique({ where: { id } });
-    if (!instance) return { error: null };
+  const instance = await prisma.classInstance.findUnique({ where: { id } });
+  if (!instance) return { error: null };
 
+  if (!isAdminContext && (await isDateInValidatedWeek(instance.date))) {
+    return { error: "This week is validated — reporting is closed." };
+  }
+
+  if (substituteCoachId) {
     if (substituteCoachId === instance.coachId) {
       return { error: "That's already the planned coach for this class." };
     }

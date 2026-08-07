@@ -10,11 +10,18 @@ export function SubstituteSelect({
   coachId,
   substituteCoachId,
   coaches,
+  adminContext = false,
+  locked = false,
 }: {
   classInstanceId: string;
   coachId: string | null;
   substituteCoachId: string | null;
   coaches: { id: string; name: string }[];
+  // Set on the admin's Planning page usage so this bypasses the
+  // validated-week lock that otherwise applies to the coach-facing My
+  // Classes usage (see assignSubstitute).
+  adminContext?: boolean;
+  locked?: boolean;
 }) {
   const [state, formAction] = useActionState(assignSubstitute, initialState);
   const formRef = useRef<HTMLFormElement>(null);
@@ -34,14 +41,16 @@ export function SubstituteSelect({
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-0.5">
       <input type="hidden" name="id" value={classInstanceId} />
+      {adminContext && <input type="hidden" name="context" value="admin" />}
       <select
         name="substituteCoachId"
         value={value}
+        disabled={locked}
         onChange={(e) => {
           setValue(e.target.value);
           formRef.current?.requestSubmit();
         }}
-        className="w-full truncate rounded border border-amber-800 bg-neutral-950 px-1 py-0.5 text-[10px] text-amber-300 focus:border-amber-500 focus:outline-none"
+        className="w-full truncate rounded border border-amber-800 bg-neutral-950 px-1 py-0.5 text-[10px] text-amber-300 focus:border-amber-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
       >
         <option value="">No substitute</option>
         {options.map((coach) => (

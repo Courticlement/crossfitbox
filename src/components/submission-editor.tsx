@@ -13,6 +13,7 @@ export function SubmissionEditor({
   status: savedStatus,
   substituteCoachId,
   coaches,
+  locked,
 }: {
   classInstanceId: string;
   coachId: string;
@@ -29,6 +30,7 @@ export function SubmissionEditor({
   status: string;
   substituteCoachId: string | null;
   coaches: { id: string; name: string }[];
+  locked?: boolean;
 }) {
   const [status, setStatus] = useState(mySubmission?.status ?? "");
   const dirty = status !== "" && status !== (mySubmission?.status ?? "");
@@ -46,9 +48,10 @@ export function SubmissionEditor({
           name={`status:${classInstanceId}`}
           form={bulkFormId}
           value={status}
+          disabled={locked}
           onChange={(e) => setStatus(e.currentTarget.value)}
-          title={dirty ? "Not saved yet — click \"Save all changes\"" : undefined}
-          className={`w-full truncate rounded border px-1 py-0.5 text-[10px] text-white focus:outline-none ${
+          title={locked ? "This week is validated — reporting is closed" : dirty ? "Not saved yet — click \"Save all changes\"" : undefined}
+          className={`w-full truncate rounded border px-1 py-0.5 text-[10px] text-white focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
             dirty
               ? "border-amber-600 bg-amber-950/20 focus:border-amber-400"
               : "border-neutral-700 bg-neutral-950 focus:border-neutral-500"
@@ -60,7 +63,7 @@ export function SubmissionEditor({
           <option value="DONE">Done</option>
           <option value="MISSED">Missed</option>
         </select>
-        {mySubmission && (
+        {mySubmission && !locked && (
           <form action={clearMySubmission}>
             <input type="hidden" name="classInstanceId" value={classInstanceId} />
             <input type="hidden" name="coachId" value={coachId} />
@@ -79,6 +82,7 @@ export function SubmissionEditor({
           coachId={coachId}
           substituteCoachId={substituteCoachId}
           coaches={coaches}
+          locked={locked}
         />
       )}
     </div>

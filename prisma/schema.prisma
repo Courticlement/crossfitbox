@@ -82,6 +82,17 @@ model CoachWeeklyQuota {
   @@unique([coachId, weekStart])
 }
 
+// Marks a week's planning as validated by the admin. The row's mere
+// existence means "locked" — once present, coaches can no longer submit or
+// change self-reports for that week from My Classes (see
+// src/lib/planning-lock.ts). The admin's own Planning page is unaffected;
+// deleting the row (via the Unlock action) re-opens the week.
+model PlanningWeek {
+  id          String   @id @default(cuid())
+  weekStart   DateTime @unique // Monday 00:00 of the validated week
+  validatedAt DateTime @default(now())
+}
+
 // A coach's self-report that they taught (or missed) a given class. Any
 // coach can submit for any class in the week's planning, not just the one
 // it's assigned to — this is what lets two coaches independently claim the
