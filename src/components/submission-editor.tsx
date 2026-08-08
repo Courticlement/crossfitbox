@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { clearMySubmission } from "@/lib/actions/submissions";
 import { SubstituteSelect } from "@/components/substitute-select";
 
@@ -14,6 +13,8 @@ export function SubmissionEditor({
   substituteCoachId,
   coaches,
   locked,
+  pendingStatus,
+  onPendingStatusChange,
 }: {
   classInstanceId: string;
   coachId: string;
@@ -31,8 +32,13 @@ export function SubmissionEditor({
   substituteCoachId: string | null;
   coaches: { id: string; name: string }[];
   locked?: boolean;
+  // The coach's not-yet-saved pick, lifted up to the parent grid so a
+  // "Mark all as Done" bulk action can fill it in for multiple classes at
+  // once — see MyClassesGrid.
+  pendingStatus: string;
+  onPendingStatusChange: (classInstanceId: string, status: string) => void;
 }) {
-  const [status, setStatus] = useState(mySubmission?.status ?? "");
+  const status = pendingStatus;
   const dirty = status !== "" && status !== (mySubmission?.status ?? "");
 
   return (
@@ -49,7 +55,7 @@ export function SubmissionEditor({
           form={bulkFormId}
           value={status}
           disabled={locked}
-          onChange={(e) => setStatus(e.currentTarget.value)}
+          onChange={(e) => onPendingStatusChange(classInstanceId, e.currentTarget.value)}
           title={locked ? "This week is validated — reporting is closed" : dirty ? "Not saved yet — click \"Save all changes\"" : undefined}
           className={`w-full truncate rounded border px-1 py-0.5 text-[10px] text-white focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
             dirty

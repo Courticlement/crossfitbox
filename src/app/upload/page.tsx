@@ -10,8 +10,7 @@ import {
 } from "@/lib/dates";
 import { CoachWeekPicker } from "@/components/coach-week-picker";
 import { PrivateClassForm } from "@/components/private-class-form";
-import { SubmissionEditor } from "@/components/submission-editor";
-import { WeekGrid } from "@/components/week-grid";
+import { MyClassesGrid } from "@/components/my-classes-grid";
 import { submitClassReports } from "@/lib/actions/submissions";
 import { isWeekValidated } from "@/lib/planning-lock";
 
@@ -148,23 +147,14 @@ export default async function UploadPage({
 
         {selectedCoach && (
           instances.length > 0 ? (
-            <WeekGrid
+            <MyClassesGrid
               weekStart={weekStart}
               instances={instances}
-              highlightCoachId={selectedCoach.id}
-              control={(inst) => (
-                <SubmissionEditor
-                  classInstanceId={inst.id}
-                  coachId={selectedCoach.id}
-                  assignedCoachName={inst.coach?.name ?? null}
-                  mySubmission={mySubmissionByInstance.get(inst.id) ?? null}
-                  bulkFormId={BULK_FORM_ID}
-                  status={inst.status}
-                  substituteCoachId={inst.substituteCoachId}
-                  coaches={coaches}
-                  locked={locked}
-                />
-              )}
+              coachId={selectedCoach.id}
+              coaches={coaches}
+              mySubmissionByInstance={mySubmissionByInstance}
+              bulkFormId={BULK_FORM_ID}
+              locked={locked}
             />
           ) : (
             <p className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-6 text-center text-sm text-neutral-500">
