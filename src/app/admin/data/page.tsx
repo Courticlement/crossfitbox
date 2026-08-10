@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { addDays, formatDateISO, formatDayLabel, parseDateOnly, toDateOnly } from "@/lib/dates";
 import { DataFilters } from "@/components/data-filters";
+import { PrevWeekBanner } from "@/components/prev-week-banner";
 
 const STATUS_COLOR: Record<string, string> = {
   DONE: "text-emerald-400",
@@ -54,6 +55,7 @@ export default async function DataPage({
   return (
     <div className="text-neutral-300">
       <h1 className="mb-1 text-lg font-semibold text-white">Data</h1>
+      <PrevWeekBanner />
       <p className="mb-4 text-sm text-neutral-500">
         Browse every recorded class and self-report, and export the range
         below as an Excel workbook. Defaults to the past month. Coaches and

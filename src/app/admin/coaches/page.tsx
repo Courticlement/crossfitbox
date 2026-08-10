@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { createCoach, renameCoach, deleteCoach } from "@/lib/actions/coaches";
 import { computeCoachStats } from "@/lib/coach-stats";
 import { LevelSelect } from "@/components/level-select";
+import { PrevWeekBanner } from "@/components/prev-week-banner";
 import { formatDateISO } from "@/lib/dates";
 
 function formatHours(hours: number): string {
@@ -53,6 +54,7 @@ export default async function CoachesPage() {
   return (
     <div className="text-neutral-300">
       <h1 className="mb-4 text-lg font-semibold text-white">Coaches</h1>
+      <PrevWeekBanner />
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {coaches.map((coach) => {

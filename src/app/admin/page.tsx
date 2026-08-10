@@ -10,6 +10,8 @@ import {
 } from "@/lib/dates";
 import { setQuota } from "@/lib/actions/quotas";
 import { sendWeeklyDigest } from "@/lib/actions/digest";
+import { validateWeek } from "@/lib/actions/planning";
+import { getPrevWeekAlert } from "@/lib/prev-week-alert";
 import { groupClassRate, PRIVATE_CLASS_COST_EUR } from "@/lib/coach-levels";
 
 const PRIVATE_CLASS_WEEKLY_LIMIT = 10;
@@ -27,7 +29,7 @@ export default async function AdminDashboardPage({
   const weekStartStr = formatDateISO(weekStart);
   const digestStatus = typeof params?.digest === "string" ? params.digest : undefined;
 
-  const [coaches, instances, quotas, planningWeek] = await Promise.all([
+  const [coaches, instances, quotas, planningWeek, prevWeekAlert] = await Promise.all([
     prisma.coach.findMany({ orderBy: { name: "asc" } }),
     // Unfiltered by coach on purpose — the box-wide summary below needs
     // unassigned classes too, not just ones already claimed by someone.
@@ -36,6 +38,7 @@ export default async function AdminDashboardPage({
     }),
     prisma.coachWeeklyQuota.findMany({ where: { weekStart } }),
     prisma.planningWeek.findUnique({ where: { weekStart } }),
+    getPrevWeekAlert(),
   ]);
   const weekValidated = planningWeek !== null;
 
@@ -120,6 +123,49 @@ export default async function AdminDashboardPage({
 
   return (
     <div className="text-neutral-300">
+      {prevWeekAlert.show && (
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border-2 border-amber-500 bg-amber-950/80 p-5 shadow-lg shadow-amber-950/40 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl leading-none">⚠️</span>
+            <div>
+              <h2 className="text-base font-semibold text-amber-100">
+                Last week isn&apos;t validated yet
+              </h2>
+              <p className="mt-1 text-sm text-amber-300">
+                {formatDayLabel(prevWeekAlert.prevWeekStart)} –{" "}
+                {formatDayLabel(addDays(prevWeekAlert.prevWeekStart, 6))}
+                {prevWeekAlert.unreported > 0
+                  ? ` — ${prevWeekAlert.unreported} class${prevWeekAlert.unreported === 1 ? "" : "es"} still not reported by coaches.`
+                  : " — every class is reported and ready to validate."}
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              href={`/admin/planning?week=${formatDateISO(prevWeekAlert.prevWeekStart)}`}
+              className="rounded-md border border-amber-500 px-3 py-2 text-sm font-medium text-amber-100 hover:bg-amber-900"
+            >
+              Review
+            </Link>
+            {prevWeekAlert.unreported === 0 && (
+              <form action={validateWeek}>
+                <input
+                  type="hidden"
+                  name="weekStart"
+                  value={formatDateISO(prevWeekAlert.prevWeekStart)}
+                />
+                <button
+                  type="submit"
+                  className="rounded-md bg-amber-500 px-3 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-400"
+                >
+                  Validate now
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-white">Dashboard</h1>
         <div className="flex items-center gap-3 text-sm">

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { dayName } from "@/lib/dates";
 import { ROOMS } from "@/lib/rooms";
+import { PrevWeekBanner } from "@/components/prev-week-banner";
 import { TemplateFilters } from "@/components/template-filters";
 import {
   createTemplate,
@@ -49,6 +50,7 @@ export default async function ClassTemplatesPage({
       <h1 className="mb-1 text-lg font-semibold text-white">
         Class Templates
       </h1>
+      <PrevWeekBanner />
       <p className="mb-4 text-sm text-neutral-500">
         The box&apos;s recurring weekly timetable. Used to generate each
         week&apos;s classes on the Planning page. Edit as many rows as you

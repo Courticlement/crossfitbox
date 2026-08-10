@@ -11,6 +11,7 @@ import {
 import { CoachWeekPicker } from "@/components/coach-week-picker";
 import { PrivateClassForm } from "@/components/private-class-form";
 import { MyClassesGrid } from "@/components/my-classes-grid";
+import { CoachPrevWeekBanner } from "@/components/coach-prev-week-banner";
 import { submitClassReports } from "@/lib/actions/submissions";
 import { isWeekValidated } from "@/lib/planning-lock";
 
@@ -111,6 +112,8 @@ export default async function UploadPage({
             coaches={coaches}
           />
         </div>
+
+        {selectedCoach && <CoachPrevWeekBanner coachId={selectedCoach.id} />}
 
         {selectedCoach && locked && (
           <p className="mb-6 rounded-md border border-amber-900 bg-amber-950 px-3 py-2 text-sm text-amber-300">

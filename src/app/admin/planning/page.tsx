@@ -12,6 +12,7 @@ import { CoachSelect } from "@/components/coach-select";
 import { ConflictsPanel, type ConflictInstance } from "@/components/conflicts-panel";
 import { DeleteClassButton } from "@/components/delete-class-button";
 import { PlanningFilters } from "@/components/planning-filters";
+import { PrevWeekBanner } from "@/components/prev-week-banner";
 import { ResetWeekButton } from "@/components/reset-week-button";
 import { SubstituteSelect } from "@/components/substitute-select";
 import { TimeConflictsPanel, type TimeConflictGroup } from "@/components/time-conflicts-panel";
@@ -153,6 +154,8 @@ export default async function PlanningPage({
           </Link>
         </div>
       </div>
+
+      <PrevWeekBanner />
 
       <div className="mb-6 flex items-center gap-3">
         <form action={generateWeek}>
