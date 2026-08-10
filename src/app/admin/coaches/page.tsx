@@ -76,6 +76,10 @@ export default async function CoachesPage() {
                   </div>
                   <div className="text-xs text-neutral-500">
                     {coach.level || "Level not set"}
+                    {" · "}
+                    {coach.weeklyQuota === null
+                      ? "No standard quota"
+                      : `${coach.weeklyQuota} classes/week`}
                   </div>
                 </div>
                 <form action={deleteCoach}>
@@ -152,6 +156,15 @@ export default async function CoachesPage() {
                   className="w-24 flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-white hover:border-neutral-700 focus:border-neutral-500 focus:outline-none"
                 />
                 <LevelSelect name="level" defaultValue={coach.level ?? ""} />
+                <input
+                  type="number"
+                  name="weeklyQuota"
+                  min={0}
+                  defaultValue={coach.weeklyQuota ?? ""}
+                  placeholder="Quota"
+                  title="Standard weekly quota — used on the Dashboard for any week without its own override"
+                  className="w-16 rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-white hover:border-neutral-700 focus:border-neutral-500 focus:outline-none"
+                />
                 <button
                   type="submit"
                   className="shrink-0 text-xs text-neutral-500 hover:text-white"
@@ -182,6 +195,18 @@ export default async function CoachesPage() {
           <div>
             <span className="mb-1 block text-xs text-neutral-500">CrossFit level</span>
             <LevelSelect name="level" defaultValue="" />
+          </div>
+          <div>
+            <span className="mb-1 block text-xs text-neutral-500">
+              Standard weekly quota
+            </span>
+            <input
+              type="number"
+              name="weeklyQuota"
+              min={0}
+              placeholder="e.g. 10"
+              className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
+            />
           </div>
           <button
             type="submit"

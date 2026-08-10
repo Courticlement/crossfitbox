@@ -68,7 +68,13 @@ export default async function AdminDashboardPage({
     // counted in `done` above, since that's scoped to this coach's own
     // assigned classes (see the coachInstances filter above).
     const substituted = instances.filter((i) => i.substituteCoachId === coach.id).length;
-    const quota = quotas.find((q) => q.coachId === coach.id)?.maxLessons ?? null;
+    // A week-specific override always wins; otherwise fall back to the
+    // coach's standard weekly quota set on their Id card (see
+    // /admin/coaches) — so a coach's usual quota applies automatically
+    // without the admin having to re-enter it every week.
+    const weeklyOverride = quotas.find((q) => q.coachId === coach.id)?.maxLessons ?? null;
+    const quota = weeklyOverride ?? coach.weeklyQuota ?? null;
+    const isStandardQuota = weeklyOverride === null && coach.weeklyQuota !== null;
     const overQuota = quota !== null && assigned > quota;
     const underQuota = quota !== null && assigned < quota;
     const hasMissed = missed > 0;
@@ -88,6 +94,7 @@ export default async function AdminDashboardPage({
       privateDone,
       substituted,
       quota,
+      isStandardQuota,
       overQuota,
       underQuota,
       hasMissed,
@@ -254,6 +261,7 @@ export default async function AdminDashboardPage({
               privateDone,
               substituted,
               quota,
+              isStandardQuota,
               overQuota,
               underQuota,
               hasMissed,
@@ -272,6 +280,11 @@ export default async function AdminDashboardPage({
                       min={0}
                       defaultValue={quota ?? ""}
                       placeholder="—"
+                      title={
+                        isStandardQuota
+                          ? "Inherited from this coach's standard weekly quota — saving here sets an override just for this week"
+                          : undefined
+                      }
                       className="w-16 rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-white focus:border-neutral-500 focus:outline-none"
                     />
                     <button
@@ -280,6 +293,9 @@ export default async function AdminDashboardPage({
                     >
                       Save
                     </button>
+                    {isStandardQuota && (
+                      <span className="text-xs text-neutral-600">(standard)</span>
+                    )}
                   </form>
                 </td>
                 <td className={`px-4 py-2 ${overQuota ? "text-red-400" : ""}`}>

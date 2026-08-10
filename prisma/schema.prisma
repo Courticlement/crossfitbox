@@ -10,10 +10,15 @@ datasource db {
 // --- App models ---
 
 model Coach {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  level     String? // free-text CrossFit level, e.g. "CF-L1"
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  name        String   @unique
+  level       String? // free-text CrossFit level, e.g. "CF-L1"
+  // Standard weekly quota of group classes, used on the Dashboard whenever
+  // that week has no explicit CoachWeeklyQuota override — lets the admin
+  // set it once instead of every week. A week-specific override in
+  // CoachWeeklyQuota always wins over this.
+  weeklyQuota Int?
+  createdAt   DateTime @default(now())
 
   classInstances    ClassInstance[]    @relation("PrimaryCoach")
   substituteClasses ClassInstance[]    @relation("SubstituteCoach")
