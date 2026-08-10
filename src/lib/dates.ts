@@ -63,3 +63,33 @@ export function formatDayLabel(date: Date): string {
     timeZone: "UTC",
   });
 }
+
+export function startOfMonth(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+}
+
+export function addMonths(date: Date, months: number): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1));
+}
+
+export function formatMonthISO(date: Date): string {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+// Parses a "YYYY-MM" string (e.g. from a URL query param) into the floating
+// UTC-midnight date for the 1st of that month.
+export function parseMonthOnly(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const [, y, m] = match;
+  const date = new Date(Date.UTC(Number(y), Number(m) - 1, 1));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function formatMonthLabel(date: Date): string {
+  return date.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
