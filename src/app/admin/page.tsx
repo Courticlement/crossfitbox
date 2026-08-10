@@ -124,30 +124,35 @@ export default async function AdminDashboardPage({
   return (
     <div className="text-neutral-300">
       {prevWeekAlert.show && (
-        <div className="mb-6 flex flex-col gap-3 rounded-xl border-2 border-amber-500 bg-amber-950/80 p-5 shadow-lg shadow-amber-950/40 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-6 flex flex-col gap-4 rounded-xl border-2 border-red-600 bg-red-950 p-5 shadow-lg shadow-red-950/50 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <span className="text-2xl leading-none">⚠️</span>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-600 text-lg text-white">
+              !
+            </span>
             <div>
-              <h2 className="text-base font-semibold text-amber-100">
-                Last week isn&apos;t validated yet
+              <h2 className="text-base font-semibold text-white">
+                {prevWeekAlert.unreported > 0
+                  ? "Coaches haven't finished reporting last week"
+                  : "Last week is ready to validate"}
               </h2>
-              <p className="mt-1 text-sm text-amber-300">
+              <p className="mt-1 text-sm text-red-200">
                 {formatDayLabel(prevWeekAlert.prevWeekStart)} –{" "}
                 {formatDayLabel(addDays(prevWeekAlert.prevWeekStart, 6))}
                 {prevWeekAlert.unreported > 0
-                  ? ` — ${prevWeekAlert.unreported} class${prevWeekAlert.unreported === 1 ? "" : "es"} still not reported by coaches.`
-                  : " — every class is reported and ready to validate."}
+                  ? ` — ${prevWeekAlert.unreported} class${prevWeekAlert.unreported === 1 ? "" : "es"} still not reported.`
+                  : " — every class is reported. Validate to lock it in."}
               </p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Link
-              href={`/admin/planning?week=${formatDateISO(prevWeekAlert.prevWeekStart)}`}
-              className="rounded-md border border-amber-500 px-3 py-2 text-sm font-medium text-amber-100 hover:bg-amber-900"
-            >
-              Review
-            </Link>
-            {prevWeekAlert.unreported === 0 && (
+          <div className="shrink-0">
+            {prevWeekAlert.unreported > 0 ? (
+              <Link
+                href={`/admin/planning?week=${formatDateISO(prevWeekAlert.prevWeekStart)}`}
+                className="inline-flex items-center gap-1 rounded-md bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-500"
+              >
+                Review →
+              </Link>
+            ) : (
               <form action={validateWeek}>
                 <input
                   type="hidden"
@@ -156,9 +161,9 @@ export default async function AdminDashboardPage({
                 />
                 <button
                   type="submit"
-                  className="rounded-md bg-amber-500 px-3 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-400"
+                  className="inline-flex items-center gap-1 rounded-md bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-500"
                 >
-                  Validate now
+                  Validate →
                 </button>
               </form>
             )}
