@@ -3,6 +3,7 @@ import { createCoach, renameCoach, deleteCoach } from "@/lib/actions/coaches";
 import { computeCoachStats } from "@/lib/coach-stats";
 import { LevelSelect } from "@/components/level-select";
 import { PrevWeekBanner } from "@/components/prev-week-banner";
+import { CoachAccessLink } from "@/components/coach-access-link";
 import { formatDateISO } from "@/lib/dates";
 
 function formatHours(hours: number): string {
@@ -91,6 +92,14 @@ export default async function CoachesPage() {
                     Remove
                   </button>
                 </form>
+              </div>
+
+              <div className="mb-4 border-b border-neutral-800 pb-3">
+                <div className="mb-1 text-xs text-neutral-500">
+                  Private upload link — share this with {coach.name.split(" ")[0]}, not
+                  the general /upload page
+                </div>
+                <CoachAccessLink coachId={coach.id} token={coach.accessToken} />
               </div>
 
               <dl className="mb-4 grid grid-cols-2 gap-3 text-sm">

@@ -1,9 +1,18 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { isCoachLevel } from "@/lib/coach-levels";
+
+function revalidateUploadPaths() {
+  revalidatePath("/admin/coaches");
+  revalidatePath("/admin/planning");
+  revalidatePath("/admin");
+  revalidatePath("/upload");
+  revalidatePath("/upload/[token]", "page");
+}
 
 const CoachSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
@@ -32,10 +41,7 @@ export async function createCoach(formData: FormData) {
     create: { name: parsed.data.name, level, weeklyQuota: parsed.data.weeklyQuota ?? null },
   });
 
-  revalidatePath("/admin/coaches");
-  revalidatePath("/admin/planning");
-  revalidatePath("/admin");
-  revalidatePath("/upload");
+  revalidateUploadPaths();
 }
 
 export async function renameCoach(formData: FormData) {
@@ -51,10 +57,7 @@ export async function renameCoach(formData: FormData) {
     where: { id },
     data: { name, level, weeklyQuota: weeklyQuota ?? null },
   });
-  revalidatePath("/admin/coaches");
-  revalidatePath("/admin/planning");
-  revalidatePath("/admin");
-  revalidatePath("/upload");
+  revalidateUploadPaths();
 }
 
 export async function deleteCoach(formData: FormData) {
@@ -62,8 +65,15 @@ export async function deleteCoach(formData: FormData) {
   if (!id) return;
 
   await prisma.coach.delete({ where: { id } });
-  revalidatePath("/admin/coaches");
-  revalidatePath("/admin/planning");
-  revalidatePath("/admin");
-  revalidatePath("/upload");
+  revalidateUploadPaths();
+}
+
+// Issues a fresh access token, invalidating the coach's current private
+// upload link — use this if a link ever leaks or the wrong person got it.
+export async function regenerateCoachAccessToken(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  await prisma.coach.update({ where: { id }, data: { accessToken: randomUUID() } });
+  revalidateUploadPaths();
 }

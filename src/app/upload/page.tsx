@@ -13,7 +13,7 @@ import { PrivateClassForm } from "@/components/private-class-form";
 import { MyClassesGrid } from "@/components/my-classes-grid";
 import { CoachPrevWeekBanner } from "@/components/coach-prev-week-banner";
 import { submitClassReports } from "@/lib/actions/submissions";
-import { isWeekValidated } from "@/lib/planning-lock";
+import { loadCoachWeekData } from "@/lib/coach-upload-data";
 
 // Every class's status select on the grid shares this one form (via the
 // `form=` attribute) so "Save all changes" commits every pick in one submit
@@ -36,36 +36,10 @@ export default async function UploadPage({
 
   const coaches = await prisma.coach.findMany({ orderBy: { name: "asc" } });
   const selectedCoach = coaches.find((c) => c.id === coachId);
-  const locked = await isWeekValidated(weekStart);
 
-  const instances = selectedCoach
-    ? await prisma.classInstance.findMany({
-        where: { date: { gte: weekStart, lt: weekEnd } },
-        include: { coach: true },
-        orderBy: [{ date: "asc" }, { startTime: "asc" }],
-      })
-    : [];
-
-  const mySubmissions = selectedCoach
-    ? await prisma.classSubmission.findMany({
-        where: {
-          coachId: selectedCoach.id,
-          classInstanceId: { in: instances.map((i) => i.id) },
-        },
-      })
-    : [];
-  const mySubmissionByInstance = new Map(mySubmissions.map((s) => [s.classInstanceId, s]));
-
-  const myPrivateClasses = selectedCoach
-    ? await prisma.classInstance.findMany({
-        where: {
-          coachId: selectedCoach.id,
-          isPrivate: true,
-          date: { gte: weekStart, lt: weekEnd },
-        },
-        select: { id: true, date: true, startTime: true, endTime: true },
-      })
-    : [];
+  const { instances, mySubmissionByInstance, myPrivateClasses, locked } = selectedCoach
+    ? await loadCoachWeekData(selectedCoach.id, weekStart, weekEnd)
+    : { instances: [], mySubmissionByInstance: new Map(), myPrivateClasses: [], locked: false };
 
   return (
     <div className="flex min-h-screen flex-col bg-neutral-950">

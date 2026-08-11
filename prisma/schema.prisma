@@ -18,6 +18,11 @@ model Coach {
   // set it once instead of every week. A week-specific override in
   // CoachWeeklyQuota always wins over this.
   weeklyQuota Int?
+  // Unguessable secret that identifies this coach's private upload link
+  // (/upload/[accessToken]), so the admin can hand out a personal link per
+  // coach instead of everyone sharing the /upload dropdown. Regenerable
+  // (see regenerateCoachAccessToken) if a link ever leaks.
+  accessToken String   @unique @default(uuid())
   createdAt   DateTime @default(now())
 
   classInstances    ClassInstance[]    @relation("PrimaryCoach")
