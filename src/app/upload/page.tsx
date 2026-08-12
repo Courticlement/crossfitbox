@@ -10,6 +10,7 @@ import {
 } from "@/lib/dates";
 import { CoachWeekPicker } from "@/components/coach-week-picker";
 import { PrivateClassForm } from "@/components/private-class-form";
+import { UnavailabilityForm } from "@/components/unavailability-form";
 import { MyClassesGrid } from "@/components/my-classes-grid";
 import { CoachPrevWeekBanner } from "@/components/coach-prev-week-banner";
 import { submitClassReports } from "@/lib/actions/submissions";
@@ -34,12 +35,27 @@ export default async function UploadPage({
   const prevWeek = formatDateISO(addDays(weekStart, -7));
   const nextWeek = formatDateISO(addDays(weekStart, 7));
 
-  const coaches = await prisma.coach.findMany({ orderBy: { name: "asc" } });
+  // Archived coaches don't show up to pick from, and are dropped even if a
+  // stale ?coachId= from before they were archived is still in the URL —
+  // selectedCoach just won't resolve, and the page falls back to "no coach
+  // selected" instead of letting them keep reporting.
+  const coaches = await prisma.coach.findMany({
+    where: { archived: false },
+    orderBy: { name: "asc" },
+  });
   const selectedCoach = coaches.find((c) => c.id === coachId);
 
   const { instances, mySubmissionByInstance, myPrivateClasses, locked } = selectedCoach
     ? await loadCoachWeekData(selectedCoach.id, weekStart, weekEnd)
     : { instances: [], mySubmissionByInstance: new Map(), myPrivateClasses: [], locked: false };
+
+  const myUnavailability = selectedCoach
+    ? await prisma.unavailability.findMany({
+        where: { coachId: selectedCoach.id, endDate: { gte: toDateOnly(new Date()) } },
+        select: { id: true, startDate: true, endDate: true, note: true },
+        orderBy: { startDate: "asc" },
+      })
+    : [];
 
   return (
     <div className="flex min-h-screen flex-col bg-neutral-950">
@@ -88,6 +104,10 @@ export default async function UploadPage({
         </div>
 
         {selectedCoach && <CoachPrevWeekBanner coachId={selectedCoach.id} />}
+
+        {selectedCoach && (
+          <UnavailabilityForm coachId={selectedCoach.id} entries={myUnavailability} />
+        )}
 
         {selectedCoach && locked && (
           <p className="mb-6 rounded-md border border-amber-900 bg-amber-950 px-3 py-2 text-sm text-amber-300">

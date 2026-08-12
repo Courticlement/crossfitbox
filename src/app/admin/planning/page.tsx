@@ -13,6 +13,7 @@ import { ConflictsPanel, type ConflictInstance } from "@/components/conflicts-pa
 import { DeleteClassButton } from "@/components/delete-class-button";
 import { PlanningFilters } from "@/components/planning-filters";
 import { PrevWeekBanner } from "@/components/prev-week-banner";
+import { UnavailabilityAlert } from "@/components/unavailability-alert";
 import { ResetWeekButton } from "@/components/reset-week-button";
 import { SubstituteSelect } from "@/components/substitute-select";
 import { TimeConflictsPanel, type TimeConflictGroup } from "@/components/time-conflicts-panel";
@@ -35,7 +36,7 @@ export default async function PlanningPage({
   const coachIdFilter = typeof params?.coachId === "string" ? params.coachId : "";
   const typeFilter = typeof params?.type === "string" ? params.type : "";
 
-  const [instances, coaches, doneSubmissions, planningWeek] = await Promise.all([
+  const [instances, coaches, doneSubmissions, planningWeek, unavailabilities] = await Promise.all([
     prisma.classInstance.findMany({
       where: { date: { gte: weekStart, lt: weekEnd } },
       include: { coach: true, template: { include: { coach: true } } },
@@ -48,10 +49,29 @@ export default async function PlanningPage({
       orderBy: { createdAt: "asc" },
     }),
     prisma.planningWeek.findUnique({ where: { weekStart } }),
+    prisma.unavailability.findMany({
+      where: { startDate: { lt: weekEnd }, endDate: { gte: weekStart } },
+      select: { coachId: true, startDate: true, endDate: true },
+    }),
   ]);
   const validated = planningWeek !== null;
 
   const instancesById = new Map(instances.map((i) => [i.id, i]));
+
+  // Flags any still-open class (PLANNED, or MISSED with a substitute lined
+  // up) whose currently-assigned coach flagged that exact day as
+  // unavailable — WeekGrid turns these red so the admin knows to find
+  // someone else instead of discovering it after the fact.
+  const unavailableInstanceIds = new Set<string>();
+  for (const inst of instances) {
+    const relevantCoachId =
+      inst.status === "PLANNED" ? inst.coachId : inst.status === "MISSED" ? inst.substituteCoachId : null;
+    if (!relevantCoachId) continue;
+    const isUnavailable = unavailabilities.some(
+      (u) => u.coachId === relevantCoachId && u.startDate <= inst.date && inst.date <= u.endDate
+    );
+    if (isUnavailable) unavailableInstanceIds.add(inst.id);
+  }
 
   // Filters only narrow what's shown in the grid/missed-classes view —
   // conflict detection below still runs against the full unfiltered week so
@@ -156,6 +176,7 @@ export default async function PlanningPage({
       </div>
 
       <PrevWeekBanner />
+      <UnavailabilityAlert />
 
       <div className="mb-6 flex items-center gap-3">
         <form action={generateWeek}>
@@ -217,6 +238,7 @@ export default async function PlanningPage({
       <WeekGrid
         weekStart={weekStart}
         instances={filteredInstances}
+        unavailableInstanceIds={unavailableInstanceIds}
         headerAction={(inst) => (
           <DeleteClassButton
             id={inst.id}

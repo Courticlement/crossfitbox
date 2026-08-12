@@ -10,6 +10,7 @@ import {
   toDateOnly,
 } from "@/lib/dates";
 import { PrivateClassForm } from "@/components/private-class-form";
+import { UnavailabilityForm } from "@/components/unavailability-form";
 import { MyClassesGrid } from "@/components/my-classes-grid";
 import { CoachPrevWeekBanner } from "@/components/coach-prev-week-banner";
 import { submitClassReports } from "@/lib/actions/submissions";
@@ -35,6 +36,17 @@ export default async function CoachUploadPage({
   const coach = await prisma.coach.findUnique({ where: { accessToken: token } });
   if (!coach) notFound();
 
+  if (coach.archived) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-neutral-950 px-4 text-center">
+        <p className="max-w-sm text-sm text-neutral-400">
+          This access has been archived. If you think this is a mistake,
+          contact the admin.
+        </p>
+      </div>
+    );
+  }
+
   const requested = (weekParam && parseDateOnly(weekParam)) || toDateOnly(new Date());
   const weekStart = startOfWeekMonday(requested);
   const weekEnd = addDays(weekStart, 7);
@@ -43,12 +55,21 @@ export default async function CoachUploadPage({
 
   const weekHref = (week: string) => `/upload/${token}?week=${week}`;
 
-  const coaches = await prisma.coach.findMany({ orderBy: { name: "asc" } });
+  const coaches = await prisma.coach.findMany({
+    where: { archived: false },
+    orderBy: { name: "asc" },
+  });
   const { instances, mySubmissionByInstance, myPrivateClasses, locked } = await loadCoachWeekData(
     coach.id,
     weekStart,
     weekEnd
   );
+
+  const myUnavailability = await prisma.unavailability.findMany({
+    where: { coachId: coach.id, endDate: { gte: toDateOnly(new Date()) } },
+    select: { id: true, startDate: true, endDate: true, note: true },
+    orderBy: { startDate: "asc" },
+  });
 
   return (
     <div className="flex min-h-screen flex-col bg-neutral-950">
@@ -86,6 +107,8 @@ export default async function CoachUploadPage({
         </div>
 
         <CoachPrevWeekBanner coachId={coach.id} weekHref={weekHref} />
+
+        <UnavailabilityForm coachId={coach.id} entries={myUnavailability} />
 
         {locked && (
           <p className="mb-6 rounded-md border border-amber-900 bg-amber-950 px-3 py-2 text-sm text-amber-300">

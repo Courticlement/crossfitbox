@@ -23,6 +23,12 @@ model Coach {
   // coach instead of everyone sharing the /upload dropdown. Regenerable
   // (see regenerateCoachAccessToken) if a link ever leaks.
   accessToken String   @unique @default(uuid())
+  // Soft-delete: set once a coach no longer works at the box. Keeps their
+  // history (past classes, submissions, stats) intact while cutting off
+  // their private upload access (see /upload/[token] and the coach-active
+  // guard in lib/actions/submissions.ts) — reversible via unarchiveCoach,
+  // unlike Remove which permanently deletes the row.
+  archived    Boolean  @default(false)
   createdAt   DateTime @default(now())
 
   classInstances    ClassInstance[]    @relation("PrimaryCoach")
@@ -30,6 +36,7 @@ model Coach {
   templates         ClassTemplate[]    @relation("DefaultCoach")
   weeklyQuotas      CoachWeeklyQuota[]
   submissions       ClassSubmission[]
+  unavailabilities  Unavailability[]
 }
 
 model ClassTemplate {
@@ -121,4 +128,23 @@ model ClassSubmission {
 
   @@unique([classInstanceId, coachId])
   @@index([classInstanceId])
+}
+
+// A coach self-flagging that they won't be able to coach during a date
+// range (vacation, injury, etc.) — purely informational, doesn't touch
+// Planning or ClassInstance assignments on its own. Submitting one notifies
+// the admin immediately (onsite banner + email); acknowledgedAt is set once
+// the admin has seen it, which drops it off that banner.
+model Unavailability {
+  id             String    @id @default(cuid())
+  coachId        String
+  coach          Coach     @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  startDate      DateTime // date only, inclusive
+  endDate        DateTime // date only, inclusive
+  note           String?
+  createdAt      DateTime  @default(now())
+  acknowledgedAt DateTime?
+
+  @@index([coachId])
+  @@index([endDate])
 }

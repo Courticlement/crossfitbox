@@ -4,6 +4,7 @@ import { validateWeek } from "@/lib/actions/planning";
 import { getPrevWeekAlert } from "@/lib/prev-week-alert";
 import { WeekDashboard } from "@/components/week-dashboard";
 import { MonthDashboard } from "@/components/month-dashboard";
+import { UnavailabilityAlert } from "@/components/unavailability-alert";
 
 function tabClass(active: boolean): string {
   return `rounded px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -71,6 +72,8 @@ export default async function AdminDashboardPage({
           </div>
         </div>
       )}
+
+      <UnavailabilityAlert />
 
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-white">Dashboard</h1>

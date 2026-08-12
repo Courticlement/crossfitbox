@@ -77,3 +77,24 @@ export async function regenerateCoachAccessToken(formData: FormData) {
   await prisma.coach.update({ where: { id }, data: { accessToken: randomUUID() } });
   revalidateUploadPaths();
 }
+
+// Soft-delete for a coach who no longer works at the box: keeps their id,
+// name and history intact (so past classes and stats still resolve) but
+// cuts off their private upload link — see assertCoachActive in
+// lib/actions/submissions.ts, which every coach self-service action checks.
+// Reversible via unarchiveCoach, unlike deleteCoach.
+export async function archiveCoach(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  await prisma.coach.update({ where: { id }, data: { archived: true } });
+  revalidateUploadPaths();
+}
+
+export async function unarchiveCoach(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  await prisma.coach.update({ where: { id }, data: { archived: false } });
+  revalidateUploadPaths();
+}

@@ -10,7 +10,18 @@ function revalidateAll() {
   revalidatePath("/admin/planning");
   revalidatePath("/admin");
   revalidatePath("/upload");
+  revalidatePath("/upload/[token]", "page");
   refresh();
+}
+
+// Blocks self-service writes (report a class, log a private class, undo a
+// submission) from a coach who's been archived — their private link may
+// still be bookmarked, but they're no longer a coach at the box. Admin-side
+// conflict resolution (useSubmission/dismissSubmission) isn't gated by this,
+// since that's the admin acting on old history, not the coach uploading.
+async function assertCoachActive(coachId: string): Promise<boolean> {
+  const coach = await prisma.coach.findUnique({ where: { id: coachId }, select: { archived: true } });
+  return coach !== null && !coach.archived;
 }
 
 type OfficialSubmission = {
@@ -78,6 +89,7 @@ const StatusValue = z.enum(["DONE", "MISSED"]);
 export async function submitClassReports(formData: FormData) {
   const coachId = String(formData.get("coachId") ?? "");
   if (!coachId) return;
+  if (!(await assertCoachActive(coachId))) return;
 
   const ids = Array.from(new Set(formData.getAll("ids").map(String)));
 
@@ -112,6 +124,7 @@ export async function clearMySubmission(formData: FormData) {
   const classInstanceId = String(formData.get("classInstanceId") ?? "");
   const coachId = String(formData.get("coachId") ?? "");
   if (!classInstanceId || !coachId) return;
+  if (!(await assertCoachActive(coachId))) return;
 
   const instance = await prisma.classInstance.findUnique({ where: { id: classInstanceId } });
   if (!instance) return;
@@ -203,7 +216,7 @@ export async function addPrivateClass(formData: FormData) {
   const { coachId, weekStart, dayOfWeek, startTime, endTime } = parsed.data;
 
   const coach = await prisma.coach.findUnique({ where: { id: coachId } });
-  if (!coach) return;
+  if (!coach || coach.archived) return;
 
   const weekStartDate = parseDateOnly(weekStart);
   if (!weekStartDate) return;
@@ -230,6 +243,7 @@ export async function deletePrivateClass(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const coachId = String(formData.get("coachId") ?? "");
   if (!id || !coachId) return;
+  if (!(await assertCoachActive(coachId))) return;
 
   const instance = await prisma.classInstance.findFirst({
     where: { id, coachId, isPrivate: true },

@@ -52,6 +52,7 @@ export function WeekGrid<T extends WeekGridInstance>({
   headerAction,
   control,
   highlightCoachId,
+  unavailableInstanceIds,
 }: {
   weekStart: Date;
   instances: T[];
@@ -63,6 +64,10 @@ export function WeekGrid<T extends WeekGridInstance>({
   // Private classes aren't dimmed either way (they're already unambiguous —
   // a coach's own private classes only ever show up on their own page).
   highlightCoachId?: string | null;
+  // Instance ids whose currently-assigned coach flagged themselves
+  // unavailable that day (see admin/planning's unavailableInstanceIds) —
+  // turns the block red so the admin spots it needs a different coach.
+  unavailableInstanceIds?: Set<string>;
 }) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
@@ -151,11 +156,15 @@ export function WeekGrid<T extends WeekGridInstance>({
             const isMine = highlightCoachId != null && inst.coachId === highlightCoachId;
             const isMineGroup = isMine && !inst.isPrivate;
             const faded = highlightCoachId != null && !isMine;
+            const coachUnavailable = unavailableInstanceIds?.has(inst.id) ?? false;
+            const bg = coachUnavailable
+              ? "bg-red-950/60"
+              : (STATUS_BG[inst.status] ?? ROOM_BG[inst.room] ?? "bg-neutral-900");
             return (
               <div
                 key={inst.id}
-                title={`${inst.label} · ${inst.room} · ${inst.startTime}–${inst.endTime} · ${inst.status}`}
-                className={`group relative z-10 flex flex-col gap-1 overflow-hidden rounded-md border-l-4 p-1.5 transition-opacity ${STATUS_BORDER[inst.status] ?? "border-l-neutral-600"} ${STATUS_BG[inst.status] ?? ROOM_BG[inst.room] ?? "bg-neutral-900"} ${needsCoach ? "ring-1 ring-inset ring-amber-600/60" : ""} ${isMineGroup ? "ring-2 ring-inset ring-white/80" : ""} ${faded ? "opacity-40" : ""}`}
+                title={`${inst.label} · ${inst.room} · ${inst.startTime}–${inst.endTime} · ${inst.status}${coachUnavailable ? " · assigned coach is unavailable" : ""}`}
+                className={`group relative z-10 flex flex-col gap-1 overflow-hidden rounded-md border-l-4 p-1.5 transition-opacity ${STATUS_BORDER[inst.status] ?? "border-l-neutral-600"} ${bg} ${needsCoach ? "ring-1 ring-inset ring-amber-600/60" : ""} ${coachUnavailable ? "ring-2 ring-inset ring-red-500" : ""} ${isMineGroup ? "ring-2 ring-inset ring-white/80" : ""} ${faded ? "opacity-40" : ""}`}
                 style={{
                   gridColumn: dayIdx + 2,
                   gridRow: `${1 + rowStart} / ${1 + rowEnd}`,
@@ -169,6 +178,11 @@ export function WeekGrid<T extends WeekGridInstance>({
                     {inst.startTime}–{inst.endTime}
                   </span>
                   <div className="flex shrink-0 items-center gap-1">
+                    {coachUnavailable && (
+                      <span className="rounded-full bg-red-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-red-300">
+                        Unavailable
+                      </span>
+                    )}
                     {inst.isPrivate && (
                       <span className="rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-violet-300">
                         Private
