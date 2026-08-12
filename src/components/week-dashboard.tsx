@@ -151,16 +151,22 @@ export async function WeekDashboard({
           <dt className="text-xs text-neutral-500">Classes this week</dt>
           <dd className="text-2xl font-semibold text-white">{totalClasses}</dd>
         </div>
-        <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-          <dt className="text-xs text-neutral-500">Unassigned</dt>
-          <dd
-            className={`text-2xl font-semibold ${
-              unassignedClasses > 0 ? "text-amber-400" : "text-white"
-            }`}
+        {unassignedClasses > 0 ? (
+          <Link
+            href={`/admin/planning?week=${weekStartStr}`}
+            className="rounded-lg border border-neutral-800 bg-neutral-900 p-4 transition-colors hover:border-amber-700"
           >
-            {unassignedClasses}
-          </dd>
-        </div>
+            <dt className="text-xs text-neutral-500">Unassigned</dt>
+            <dd className="text-2xl font-semibold text-amber-400 underline decoration-amber-400/40 underline-offset-4">
+              {unassignedClasses}
+            </dd>
+          </Link>
+        ) : (
+          <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+            <dt className="text-xs text-neutral-500">Unassigned</dt>
+            <dd className="text-2xl font-semibold text-white">{unassignedClasses}</dd>
+          </div>
+        )}
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
           <dt className="text-xs text-neutral-500">Group classes</dt>
           <dd className="text-2xl font-semibold text-white">{groupClasses}</dd>
