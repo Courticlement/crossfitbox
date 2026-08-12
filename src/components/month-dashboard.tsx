@@ -105,7 +105,7 @@ export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
         </Link>
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="mb-6 grid grid-cols-5 gap-4">
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
           <dt className="text-xs text-neutral-500">Classes this month</dt>
           <dd className="text-2xl font-semibold text-white">{totalClasses}</dd>
@@ -127,6 +127,16 @@ export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
           <dt className="text-xs text-neutral-500">Private classes</dt>
           <dd className="text-2xl font-semibold text-white">{privateClasses}</dd>
+        </div>
+        <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+          <dt className="text-xs text-neutral-500">Net €</dt>
+          <dd
+            className={`text-2xl font-semibold ${
+              totals.netAmount < 0 ? "text-red-400" : "text-white"
+            }`}
+          >
+            {totals.netAmount}€
+          </dd>
         </div>
       </div>
 
