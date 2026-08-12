@@ -135,12 +135,18 @@ model ClassSubmission {
 // Planning or ClassInstance assignments on its own. Submitting one notifies
 // the admin immediately (onsite banner + email); acknowledgedAt is set once
 // the admin has seen it, which drops it off that banner.
+//
+// When recurring is true, this instead marks a standing weekly time off
+// (e.g. "every Monday, permanently") — startDate anchors the day-of-week
+// and endDate is set equal to startDate (there's no end), and matching
+// logic elsewhere checks the weekday instead of a date range.
 model Unavailability {
   id             String    @id @default(cuid())
   coachId        String
   coach          Coach     @relation(fields: [coachId], references: [id], onDelete: Cascade)
   startDate      DateTime // date only, inclusive
   endDate        DateTime // date only, inclusive
+  recurring      Boolean   @default(false)
   note           String?
   createdAt      DateTime  @default(now())
   acknowledgedAt DateTime?

@@ -1,8 +1,14 @@
-import { formatDayLabel } from "@/lib/dates";
+import { formatDayLabel, dayName } from "@/lib/dates";
 import { getPendingUnavailability } from "@/lib/unavailability-alerts";
 import { acknowledgeUnavailability } from "@/lib/actions/availability";
 
-function formatRange(startDate: Date, endDate: Date): string {
+function isoWeekday(date: Date): number {
+  const day = date.getUTCDay();
+  return day === 0 ? 7 : day;
+}
+
+function formatRange(startDate: Date, endDate: Date, recurring: boolean): string {
+  if (recurring) return `every ${dayName(isoWeekday(startDate))}, starting ${formatDayLabel(startDate)}`;
   return startDate.getTime() === endDate.getTime()
     ? formatDayLabel(startDate)
     : `${formatDayLabel(startDate)} – ${formatDayLabel(endDate)}`;
@@ -29,7 +35,7 @@ export async function UnavailabilityAlert() {
           >
             <span>
               <strong className="text-amber-100">{entry.coach.name}</strong>{" "}
-              {formatRange(entry.startDate, entry.endDate)}
+              {formatRange(entry.startDate, entry.endDate, entry.recurring)}
               {entry.note && <span className="text-amber-400"> — {entry.note}</span>}
             </span>
             <form action={acknowledgeUnavailability}>

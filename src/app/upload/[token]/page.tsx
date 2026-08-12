@@ -66,8 +66,11 @@ export default async function CoachUploadPage({
   );
 
   const myUnavailability = await prisma.unavailability.findMany({
-    where: { coachId: coach.id, endDate: { gte: toDateOnly(new Date()) } },
-    select: { id: true, startDate: true, endDate: true, note: true },
+    where: {
+      coachId: coach.id,
+      OR: [{ recurring: true }, { endDate: { gte: toDateOnly(new Date()) } }],
+    },
+    select: { id: true, startDate: true, endDate: true, recurring: true, note: true },
     orderBy: { startDate: "asc" },
   });
 

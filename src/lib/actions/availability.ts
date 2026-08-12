@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
-import { parseDateOnly, formatDayLabel } from "@/lib/dates";
+import { parseDateOnly, formatDayLabel, dayName } from "@/lib/dates";
 
 function revalidateAll() {
   revalidatePath("/admin");
@@ -34,6 +34,15 @@ function formatRange(startDate: Date, endDate: Date): string {
     : `${formatDayLabel(startDate)} – ${formatDayLabel(endDate)}`;
 }
 
+function isoWeekday(date: Date): number {
+  const day = date.getUTCDay();
+  return day === 0 ? 7 : day;
+}
+
+function formatRecurring(startDate: Date): string {
+  return `every ${dayName(isoWeekday(startDate))}, starting ${formatDayLabel(startDate)}`;
+}
+
 // Best-effort: a coach's submission is already saved (and shows up on the
 // onsite banner) regardless of whether this succeeds, so a missing/invalid
 // Resend config or a send failure is swallowed rather than surfaced.
@@ -41,13 +50,14 @@ async function emailAdminUnavailability(
   coachName: string,
   startDate: Date,
   endDate: Date,
+  recurring: boolean,
   note: string | null
 ) {
   const to = process.env.DIGEST_EMAIL_TO;
   const apiKey = process.env.RESEND_API_KEY;
   if (!to || !apiKey) return;
 
-  const range = formatRange(startDate, endDate);
+  const range = recurring ? formatRecurring(startDate) : formatRange(startDate, endDate);
 
   try {
     const resend = new Resend(apiKey);
@@ -70,25 +80,37 @@ async function emailAdminUnavailability(
 const UnavailabilitySchema = z.object({
   coachId: z.string().min(1),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   note: z.string().trim().max(280).optional(),
+  recurring: z.literal("on").optional(),
 });
 
-// Coach self-service: flags a date range they can't coach. Fires the admin
-// email immediately and the record itself powers the onsite banner (see
+// Coach self-service: flags either a date range they can't coach, or (when
+// "recurring" is checked) a standing weekly time off with no end — in that
+// case endDate just mirrors startDate, and only its weekday matters (see
+// admin/planning's unavailableInstanceIds). Fires the admin email
+// immediately and the record itself powers the onsite banner (see
 // getPendingUnavailability) until an admin acknowledges it.
 export async function submitUnavailability(formData: FormData) {
   const parsed = UnavailabilitySchema.safeParse({
     coachId: formData.get("coachId"),
     startDate: formData.get("startDate"),
-    endDate: formData.get("endDate"),
+    endDate: formData.get("endDate") || undefined,
     note: formData.get("note") || undefined,
+    recurring: formData.get("recurring") || undefined,
   });
   if (!parsed.success) return;
 
   const startDate = parseDateOnly(parsed.data.startDate);
-  const endDate = parseDateOnly(parsed.data.endDate);
-  if (!startDate || !endDate || endDate < startDate) return;
+  if (!startDate) return;
+
+  const recurring = parsed.data.recurring === "on";
+  const endDate = recurring
+    ? startDate
+    : parsed.data.endDate
+      ? parseDateOnly(parsed.data.endDate)
+      : null;
+  if (!endDate || endDate < startDate) return;
 
   const coach = await prisma.coach.findUnique({ where: { id: parsed.data.coachId } });
   if (!coach || coach.archived) return;
@@ -96,10 +118,10 @@ export async function submitUnavailability(formData: FormData) {
   const note = parsed.data.note || null;
 
   await prisma.unavailability.create({
-    data: { coachId: coach.id, startDate, endDate, note },
+    data: { coachId: coach.id, startDate, endDate, recurring, note },
   });
 
-  await emailAdminUnavailability(coach.name, startDate, endDate, note);
+  await emailAdminUnavailability(coach.name, startDate, endDate, recurring, note);
 
   revalidateAll();
 }

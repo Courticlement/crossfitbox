@@ -50,8 +50,13 @@ export default async function PlanningPage({
     }),
     prisma.planningWeek.findUnique({ where: { weekStart } }),
     prisma.unavailability.findMany({
-      where: { startDate: { lt: weekEnd }, endDate: { gte: weekStart } },
-      select: { coachId: true, startDate: true, endDate: true },
+      where: {
+        OR: [
+          { recurring: true, startDate: { lt: weekEnd } },
+          { recurring: false, startDate: { lt: weekEnd }, endDate: { gte: weekStart } },
+        ],
+      },
+      select: { coachId: true, startDate: true, endDate: true, recurring: true },
     }),
   ]);
   const validated = planningWeek !== null;
@@ -67,9 +72,11 @@ export default async function PlanningPage({
     const relevantCoachId =
       inst.status === "PLANNED" ? inst.coachId : inst.status === "MISSED" ? inst.substituteCoachId : null;
     if (!relevantCoachId) continue;
-    const isUnavailable = unavailabilities.some(
-      (u) => u.coachId === relevantCoachId && u.startDate <= inst.date && inst.date <= u.endDate
-    );
+    const isUnavailable = unavailabilities.some((u) => {
+      if (u.coachId !== relevantCoachId) return false;
+      if (u.recurring) return u.startDate <= inst.date && u.startDate.getUTCDay() === inst.date.getUTCDay();
+      return u.startDate <= inst.date && inst.date <= u.endDate;
+    });
     if (isUnavailable) unavailableInstanceIds.add(inst.id);
   }
 
