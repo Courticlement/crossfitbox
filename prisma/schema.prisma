@@ -130,6 +130,18 @@ model ClassSubmission {
   @@index([classInstanceId])
 }
 
+// A specific calendar day the box is shut (holiday, etc.), set by the admin
+// from Planning. generateWeek skips templates that would land on a closed
+// date, and closeDay cancels any already-scheduled PLANNED classes on it —
+// reopenDay reverses both (see lib/actions/planning.ts). Mirrors resetWeek's
+// "only touch PLANNED, leave resolved records alone" precedent.
+model BoxClosure {
+  id        String   @id @default(cuid())
+  date      DateTime @unique // date only
+  note      String?
+  createdAt DateTime @default(now())
+}
+
 // A coach self-flagging that they won't be able to coach during a date
 // range (vacation, injury, etc.) — purely informational, doesn't touch
 // Planning or ClassInstance assignments on its own. Submitting one notifies

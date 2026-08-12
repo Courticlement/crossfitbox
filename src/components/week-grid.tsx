@@ -27,6 +27,7 @@ const STATUS_BORDER: Record<string, string> = {
 const STATUS_BG: Record<string, string> = {
   DONE: "bg-emerald-950/50",
   MISSED: "bg-red-950/50",
+  CANCELLED: "bg-neutral-900/40",
 };
 
 const ROOM_BG: Record<string, string> = {
@@ -53,6 +54,7 @@ export function WeekGrid<T extends WeekGridInstance>({
   control,
   highlightCoachId,
   unavailableInstanceIds,
+  closedDates,
 }: {
   weekStart: Date;
   instances: T[];
@@ -68,6 +70,10 @@ export function WeekGrid<T extends WeekGridInstance>({
   // unavailable that day (see admin/planning's unavailableInstanceIds) —
   // turns the block red so the admin spots it needs a different coach.
   unavailableInstanceIds?: Set<string>;
+  // ISO date strings ("YYYY-MM-DD") the box is closed that week (see
+  // admin/planning's BoxClosuresCard) — tints the whole day column and
+  // labels its header, independent of whatever classes still sit on it.
+  closedDates?: Set<string>;
 }) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
@@ -105,15 +111,23 @@ export function WeekGrid<T extends WeekGridInstance>({
           className="border-b border-neutral-800 bg-neutral-900"
           style={{ gridColumn: 1, gridRow: 1 }}
         />
-        {days.map((day, dayIdx) => (
-          <div
-            key={formatDateISO(day)}
-            className="border-b border-l border-neutral-800 bg-neutral-900 p-2 text-xs font-medium text-white"
-            style={{ gridColumn: dayIdx + 2, gridRow: 1 }}
-          >
-            {formatDayLabel(day)}
-          </div>
-        ))}
+        {days.map((day, dayIdx) => {
+          const closed = closedDates?.has(formatDateISO(day)) ?? false;
+          return (
+            <div
+              key={formatDateISO(day)}
+              className={`flex items-center justify-between gap-1 border-b border-l border-neutral-800 p-2 text-xs font-medium ${closed ? "bg-red-950/40 text-red-300" : "bg-neutral-900 text-white"}`}
+              style={{ gridColumn: dayIdx + 2, gridRow: 1 }}
+            >
+              <span>{formatDayLabel(day)}</span>
+              {closed && (
+                <span className="rounded-full bg-red-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-red-300">
+                  Closed
+                </span>
+              )}
+            </div>
+          );
+        })}
 
         {/* Hour labels + background hour cells (grid + separators) */}
         {hours.map((hour, hourIdx) => {
@@ -132,7 +146,7 @@ export function WeekGrid<T extends WeekGridInstance>({
               {days.map((day, dayIdx) => (
                 <div
                   key={`${formatDateISO(day)}-${hour}`}
-                  className="border-t border-l border-neutral-800"
+                  className={`border-t border-l border-neutral-800 ${closedDates?.has(formatDateISO(day)) ? "bg-red-950/10" : ""}`}
                   style={{ gridColumn: dayIdx + 2, gridRow: `${rowStart} / ${rowEnd}` }}
                 />
               ))}

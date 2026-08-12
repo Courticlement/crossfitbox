@@ -33,6 +33,50 @@ export async function resetWeek(formData: FormData) {
   revalidateAll();
 }
 
+// Marks a calendar day as box-closed (holiday, etc.) — not tied to any
+// particular displayed week, same as Unavailability. Upserts so re-closing
+// an already-closed day just updates its note. Only PLANNED classes are
+// cancelled, same precedent as resetWeek: Done/Missed/Cancelled are
+// resolved records and left alone.
+export async function closeDay(formData: FormData) {
+  const dateStr = String(formData.get("date") ?? "");
+  const date = parseDateOnly(dateStr);
+  if (!date) return;
+
+  const note = String(formData.get("note") ?? "").trim() || null;
+
+  await prisma.boxClosure.upsert({
+    where: { date },
+    create: { date, note },
+    update: { note },
+  });
+
+  await prisma.classInstance.updateMany({
+    where: { date, status: "PLANNED" },
+    data: { status: "CANCELLED" },
+  });
+
+  revalidateAll();
+}
+
+// Reverses closeDay: removes the closure and restores whatever it cancelled
+// back to PLANNED (safe because closeDay is currently the only thing that
+// ever sets CANCELLED — a coach/admin manually cancelling a specific class
+// isn't a feature that exists yet). Assigning a coach back to these is left
+// to Generate/manual assignment, same as any other unassigned PLANNED slot.
+export async function reopenDay(formData: FormData) {
+  const dateStr = String(formData.get("date") ?? "");
+  const date = parseDateOnly(dateStr);
+  if (!date) return;
+
+  await prisma.boxClosure.deleteMany({ where: { date } });
+  await prisma.classInstance.updateMany({
+    where: { date, status: "CANCELLED" },
+    data: { status: "PLANNED" },
+  });
+  revalidateAll();
+}
+
 export async function generateWeek(formData: FormData) {
   const weekStartStr = String(formData.get("weekStart") ?? "");
   const weekStart = parseDateOnly(weekStartStr);
@@ -41,6 +85,12 @@ export async function generateWeek(formData: FormData) {
   const templates = await prisma.classTemplate.findMany({
     where: { active: true },
   });
+
+  const closures = await prisma.boxClosure.findMany({
+    where: { date: { gte: weekStart, lt: addDays(weekStart, 7) } },
+    select: { date: true },
+  });
+  const closedDates = new Set(closures.map((c) => formatDateISO(c.date)));
 
   const existing = await prisma.classInstance.findMany({
     where: { date: { gte: weekStart, lt: addDays(weekStart, 7) } },
@@ -75,6 +125,7 @@ export async function generateWeek(formData: FormData) {
   for (const tpl of templates) {
     const date = addDays(weekStart, tpl.dayOfWeek - 1);
     const dateStr = formatDateISO(date);
+    if (closedDates.has(dateStr)) continue; // box closed that day — nothing to generate or sync
     const existingInstance = existingByTemplateDate.get(`${tpl.id}-${dateStr}`);
 
     if (!existingInstance) {
