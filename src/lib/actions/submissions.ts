@@ -5,12 +5,12 @@ import { refresh, revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { addDays, parseDateOnly } from "@/lib/dates";
 import { isDateInValidatedWeek, isWeekValidated } from "@/lib/planning-lock";
+import { requireCoachId } from "@/lib/auth-context";
 
 function revalidateAll() {
   revalidatePath("/admin/planning");
   revalidatePath("/admin");
   revalidatePath("/upload");
-  revalidatePath("/upload/[token]", "page");
   refresh();
 }
 
@@ -87,7 +87,7 @@ const StatusValue = z.enum(["DONE", "MISSED"]);
 // be wrong, clearing it falls back to whatever's next most recent instead
 // of losing the history.
 export async function submitClassReports(formData: FormData) {
-  const coachId = String(formData.get("coachId") ?? "");
+  const coachId = await requireCoachId();
   if (!coachId) return;
   if (!(await assertCoachActive(coachId))) return;
 
@@ -122,7 +122,7 @@ export async function submitClassReports(formData: FormData) {
 // PLANNED with nobody credited if none are left.
 export async function clearMySubmission(formData: FormData) {
   const classInstanceId = String(formData.get("classInstanceId") ?? "");
-  const coachId = String(formData.get("coachId") ?? "");
+  const coachId = await requireCoachId();
   if (!classInstanceId || !coachId) return;
   if (!(await assertCoachActive(coachId))) return;
 
@@ -188,7 +188,6 @@ export async function dismissSubmission(formData: FormData) {
 
 const PrivateClassSchema = z
   .object({
-    coachId: z.string().min(1),
     weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     dayOfWeek: z.coerce.number().int().min(1).max(7),
     startTime: z.string().regex(/^\d{2}:\d{2}$/),
@@ -204,8 +203,10 @@ const PrivateClassSchema = z
 // no existing ClassInstance to mark DONE against. This creates one directly,
 // already DONE since the coach is reporting it after the fact.
 export async function addPrivateClass(formData: FormData) {
+  const coachId = await requireCoachId();
+  if (!coachId) return;
+
   const parsed = PrivateClassSchema.safeParse({
-    coachId: formData.get("coachId"),
     weekStart: formData.get("weekStart"),
     dayOfWeek: formData.get("dayOfWeek"),
     startTime: formData.get("startTime"),
@@ -213,7 +214,7 @@ export async function addPrivateClass(formData: FormData) {
   });
   if (!parsed.success) return;
 
-  const { coachId, weekStart, dayOfWeek, startTime, endTime } = parsed.data;
+  const { weekStart, dayOfWeek, startTime, endTime } = parsed.data;
 
   const coach = await prisma.coach.findUnique({ where: { id: coachId } });
   if (!coach || coach.archived) return;
@@ -241,7 +242,7 @@ export async function addPrivateClass(formData: FormData) {
 // just fails the ownership check instead of deleting someone else's record.
 export async function deletePrivateClass(formData: FormData) {
   const id = String(formData.get("id") ?? "");
-  const coachId = String(formData.get("coachId") ?? "");
+  const coachId = await requireCoachId();
   if (!id || !coachId) return;
   if (!(await assertCoachActive(coachId))) return;
 

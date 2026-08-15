@@ -1,17 +1,16 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { isCoachLevel } from "@/lib/coach-levels";
+import { hashPassword } from "@/lib/password";
 
 function revalidateUploadPaths() {
   revalidatePath("/admin/coaches");
   revalidatePath("/admin/planning");
   revalidatePath("/admin");
   revalidatePath("/upload");
-  revalidatePath("/upload/[token]", "page");
 }
 
 const CoachSchema = z.object({
@@ -68,13 +67,14 @@ export async function deleteCoach(formData: FormData) {
   revalidateUploadPaths();
 }
 
-// Issues a fresh access token, invalidating the coach's current private
-// upload link — use this if a link ever leaks or the wrong person got it.
-export async function regenerateCoachAccessToken(formData: FormData) {
+// Sets (or resets) a coach's /upload login password — coaches can't
+// self-register, so this is how the admin hands out or rotates credentials.
+export async function setCoachPassword(formData: FormData) {
   const id = String(formData.get("id") ?? "");
-  if (!id) return;
+  const password = String(formData.get("password") ?? "");
+  if (!id || password.length < 6) return;
 
-  await prisma.coach.update({ where: { id }, data: { accessToken: randomUUID() } });
+  await prisma.coach.update({ where: { id }, data: { passwordHash: hashPassword(password) } });
   revalidateUploadPaths();
 }
 

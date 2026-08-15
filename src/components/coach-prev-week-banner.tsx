@@ -5,16 +5,7 @@ import { getCoachPrevWeekAlert } from "@/lib/prev-week-alert";
 // Nudges a coach to go report last week's classes before the admin
 // validates (and locks) that week — see getCoachPrevWeekAlert for exactly
 // when this fires.
-export async function CoachPrevWeekBanner({
-  coachId,
-  weekHref = (week) => `/upload?week=${week}&coachId=${coachId}`,
-}: {
-  coachId: string;
-  // Lets the private per-coach page (/upload/[token]) point "Report last
-  // week" back at itself instead of the shared /upload?coachId= dropdown
-  // page, so the coach never leaves their private link.
-  weekHref?: (weekISO: string) => string;
-}) {
+export async function CoachPrevWeekBanner({ coachId }: { coachId: string }) {
   const { show, prevWeekStart, unreportedMine } = await getCoachPrevWeekAlert(coachId);
   if (!show) return null;
 
@@ -25,7 +16,7 @@ export async function CoachPrevWeekBanner({
       {formatDayLabel(addDays(prevWeekStart, 6))}) you haven&apos;t reported
       yet. Report them before the admin validates the week.{" "}
       <Link
-        href={weekHref(formatDateISO(prevWeekStart))}
+        href={`/upload?week=${formatDateISO(prevWeekStart)}`}
         className="font-medium text-amber-100 underline hover:text-white"
       >
         Report last week →

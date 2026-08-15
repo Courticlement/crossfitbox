@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 // --- App models ---
@@ -18,11 +18,12 @@ model Coach {
   // set it once instead of every week. A week-specific override in
   // CoachWeeklyQuota always wins over this.
   weeklyQuota Int?
-  // Unguessable secret that identifies this coach's private upload link
-  // (/upload/[accessToken]), so the admin can hand out a personal link per
-  // coach instead of everyone sharing the /upload dropdown. Regenerable
-  // (see regenerateCoachAccessToken) if a link ever leaks.
-  accessToken String   @unique @default(uuid())
+  // Login credential for /upload — the coach's unique `name` doubles as
+  // their username. Null until the admin sets one (see setCoachPassword on
+  // the Coaches page); a coach with no password set can't log in yet.
+  // Replaces the old unguessable-link (accessToken) system now that /upload
+  // is gated by real auth (see middleware.ts).
+  passwordHash String?
   // Soft-delete: set once a coach no longer works at the box. Keeps their
   // history (past classes, submissions, stats) intact while cutting off
   // their private upload access (see /upload/[token] and the coach-active

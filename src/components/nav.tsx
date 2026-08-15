@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { adminLogout } from "@/lib/actions/auth";
 
 export function Nav({ links }: { links: { href: string; label: string }[] }) {
   return (
@@ -7,7 +8,7 @@ export function Nav({ links }: { links: { href: string; label: string }[] }) {
         <span className="mr-6 text-sm font-semibold text-white">
           Crossfit Box
         </span>
-        <nav className="flex gap-4">
+        <nav className="flex flex-1 gap-4">
           {links.map((link) => (
             <Link
               key={link.href}
@@ -18,6 +19,11 @@ export function Nav({ links }: { links: { href: string; label: string }[] }) {
             </Link>
           ))}
         </nav>
+        <form action={adminLogout}>
+          <button type="submit" className="text-sm text-neutral-400 hover:text-white">
+            Log out
+          </button>
+        </form>
       </div>
     </header>
   );

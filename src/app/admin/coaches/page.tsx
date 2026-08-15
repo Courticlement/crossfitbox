@@ -9,7 +9,7 @@ import {
 import { computeCoachStats, type CoachStats } from "@/lib/coach-stats";
 import { LevelSelect } from "@/components/level-select";
 import { PrevWeekBanner } from "@/components/prev-week-banner";
-import { CoachAccessLink } from "@/components/coach-access-link";
+import { CoachPasswordForm } from "@/components/coach-password-form";
 import { formatDateISO } from "@/lib/dates";
 
 function formatHours(hours: number): string {
@@ -32,16 +32,16 @@ function formatCost(cost: number): string {
 // coach keeps their stats and access-link visible (for reference / handing
 // the link back if unarchived) but loses the rename form, since there's
 // nothing to keep editing once they're gone.
-type CoachWithAccess = {
+type CoachCardData = {
   id: string;
   name: string;
   level: string | null;
   weeklyQuota: number | null;
-  accessToken: string;
+  passwordHash: string | null;
   archived: boolean;
 };
 
-function CoachCard({ coach, stats }: { coach: CoachWithAccess; stats: CoachStats }) {
+function CoachCard({ coach, stats }: { coach: CoachCardData; stats: CoachStats }) {
   return (
     <div
       className={`flex flex-col rounded-lg border p-4 ${
@@ -103,10 +103,9 @@ function CoachCard({ coach, stats }: { coach: CoachWithAccess; stats: CoachStats
       </div>
 
       <div className="mb-4 border-b border-neutral-800 pb-3">
-        <CoachAccessLink
+        <CoachPasswordForm
           coachId={coach.id}
-          coachFirstName={coach.name.split(" ")[0]}
-          token={coach.accessToken}
+          hasPassword={coach.passwordHash !== null}
           disabled={coach.archived}
         />
       </div>

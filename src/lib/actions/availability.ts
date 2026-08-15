@@ -5,12 +5,12 @@ import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
 import { parseDateOnly, formatDayLabel, dayName } from "@/lib/dates";
+import { requireCoachId } from "@/lib/auth-context";
 
 function revalidateAll() {
   revalidatePath("/admin");
   revalidatePath("/admin/planning");
   revalidatePath("/upload");
-  revalidatePath("/upload/[token]", "page");
 }
 
 // Mirrors the guard in lib/actions/submissions.ts — an archived coach's
@@ -78,7 +78,6 @@ async function emailAdminUnavailability(
 }
 
 const UnavailabilitySchema = z.object({
-  coachId: z.string().min(1),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   note: z.string().trim().max(280).optional(),
@@ -92,8 +91,10 @@ const UnavailabilitySchema = z.object({
 // immediately and the record itself powers the onsite banner (see
 // getPendingUnavailability) until an admin acknowledges it.
 export async function submitUnavailability(formData: FormData) {
+  const coachId = await requireCoachId();
+  if (!coachId) return;
+
   const parsed = UnavailabilitySchema.safeParse({
-    coachId: formData.get("coachId"),
     startDate: formData.get("startDate"),
     endDate: formData.get("endDate") || undefined,
     note: formData.get("note") || undefined,
@@ -112,7 +113,7 @@ export async function submitUnavailability(formData: FormData) {
       : null;
   if (!endDate || endDate < startDate) return;
 
-  const coach = await prisma.coach.findUnique({ where: { id: parsed.data.coachId } });
+  const coach = await prisma.coach.findUnique({ where: { id: coachId } });
   if (!coach || coach.archived) return;
 
   const note = parsed.data.note || null;
@@ -130,7 +131,7 @@ export async function submitUnavailability(formData: FormData) {
 // deletePrivateClass — a forged coachId just fails to match any row.
 export async function deleteUnavailability(formData: FormData) {
   const id = String(formData.get("id") ?? "");
-  const coachId = String(formData.get("coachId") ?? "");
+  const coachId = await requireCoachId();
   if (!id || !coachId) return;
   if (!(await assertCoachActive(coachId))) return;
 

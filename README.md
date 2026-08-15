@@ -4,9 +4,9 @@ Tracks the box's weekly coach planning: assign coaches to classes, verify they
 gave all the lessons planned for them, get alerted when someone is scheduled
 over their weekly quota, and send yourself a weekly digest email.
 
-No login. This runs on your local network only, and anyone who can reach it
-has full access — that's an intentional tradeoff for simplicity, not an
-oversight.
+Deployed publicly, so it's gated by login: a single shared admin password for
+you, and a per-coach username (their name) + password for each coach — see
+**Auth** below.
 
 ## Setup
 
@@ -49,23 +49,27 @@ oversight.
 
 ## How coaches report their lessons
 
-There's no coach login or dashboard — coaches use the **Coach Upload** page
-(`/upload`), shared as a link on the box WiFi:
+Coaches log in at `/login` with their name and password (set/reset by you
+from the **Coaches** page — see Auth below), landing on **My Classes**
+(`/upload`): the whole week's planning as a live grid. They mark any class
+DONE or MISSED (not just ones assigned to them), save, and it's reflected
+immediately — no file upload involved.
 
-1. Pick their name and the week (defaults to the week that just ended).
-2. Download their template — an Excel file pre-filled with their assigned
-   classes for that week.
-3. Fill in the **Status** column for each row (PLANNED / DONE / MISSED —
-   there's a dropdown in the cell) and save.
-4. Upload the file back on the same page.
+## Auth
 
-The upload only updates classes that were actually assigned to the selected
-coach for that week — rows that don't match are silently skipped, so
-coaches can't edit each other's records even without a login.
+- **Admin** (`/admin-login`): one shared password, set via the `ADMIN_PASSWORD`
+  env var. Change it any time by editing that value — no code change needed.
+- **Coaches** (`/login`): each coach's unique `name` doubles as their
+  username. They have no password until you set one for them from a coach's
+  card on the **Coaches** page — that's also how you reset a forgotten one.
+- Sessions are signed cookies (`AUTH_SECRET` env var signs them) valid for 30
+  days. Changing `AUTH_SECRET` instantly logs everyone out.
+- Both `ADMIN_PASSWORD` and `AUTH_SECRET` are required env vars — the app
+  won't authenticate anyone without them set.
 
 ## Database
 
-SQLite, stored at `dev.db`. After changing `prisma/schema.prisma`:
+Prisma Postgres. After changing `prisma/schema.prisma`:
 ```bash
 npx prisma migrate dev --name <description>
 ```

@@ -1,9 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { isWeekValidated } from "@/lib/planning-lock";
 
-// Shared data fetch backing both the shared /upload dropdown page and each
-// coach's private /upload/[token] page — same week's planning, the coach's
-// own submissions against it, and their private classes that week.
+// Backs the logged-in coach's /upload page — that week's planning, the
+// coach's own submissions against it, and their private classes that week.
 export async function loadCoachWeekData(coachId: string, weekStart: Date, weekEnd: Date) {
   const instances = await prisma.classInstance.findMany({
     where: { date: { gte: weekStart, lt: weekEnd } },
