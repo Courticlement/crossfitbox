@@ -9,6 +9,7 @@ import {
   formatDayLabel,
   parseDateOnly,
   toDateOnly,
+  isoWeekday,
 } from "@/lib/dates";
 import { PrivateClassForm } from "@/components/private-class-form";
 import { UnavailabilityForm } from "@/components/unavailability-form";
@@ -40,9 +41,22 @@ export default async function UploadPage({
   const coach = await prisma.coach.findUnique({ where: { id: coachId } });
   if (!coach || coach.archived) redirect("/login");
 
-  const requested = (weekParam && parseDateOnly(weekParam)) || toDateOnly(new Date());
-  const weekStart = startOfWeekMonday(requested);
+  // A coach's own view is deliberately narrow — last week, this week, and
+  // (from Friday of this week onward, once the admin has typically finished
+  // planning it) next week. Keeps them focused on what's actionable instead
+  // of wandering arbitrarily far into the past or future.
+  const today = toDateOnly(new Date());
+  const thisWeekStart = startOfWeekMonday(today);
+  const minWeekStart = addDays(thisWeekStart, -7);
+  const maxWeekStart = isoWeekday(today) >= 5 ? addDays(thisWeekStart, 7) : thisWeekStart;
+
+  const requested = (weekParam && parseDateOnly(weekParam)) || today;
+  let weekStart = startOfWeekMonday(requested);
+  if (weekStart < minWeekStart) weekStart = minWeekStart;
+  if (weekStart > maxWeekStart) weekStart = maxWeekStart;
   const weekEnd = addDays(weekStart, 7);
+  const hasPrev = weekStart > minWeekStart;
+  const hasNext = weekStart < maxWeekStart;
   const prevWeek = formatDateISO(addDays(weekStart, -7));
   const nextWeek = formatDateISO(addDays(weekStart, 7));
 
@@ -91,22 +105,31 @@ export default async function UploadPage({
           what counts.
         </p>
 
-        <div className="mb-6 flex items-center gap-3 text-sm">
-          <Link
-            href={`/upload?week=${prevWeek}`}
-            className="text-neutral-400 hover:text-white"
-          >
-            ← Prev
-          </Link>
-          <span className="text-neutral-500">
-            Week of {formatDayLabel(weekStart)} – {formatDayLabel(addDays(weekStart, 6))}
-          </span>
-          <Link
-            href={`/upload?week=${nextWeek}`}
-            className="text-neutral-400 hover:text-white"
-          >
-            Next →
-          </Link>
+        <div className="mb-6">
+          <div className="flex items-center gap-3 text-sm">
+            {hasPrev ? (
+              <Link href={`/upload?week=${prevWeek}`} className="text-neutral-400 hover:text-white">
+                ← Prev
+              </Link>
+            ) : (
+              <span className="text-neutral-700">← Prev</span>
+            )}
+            <span className="text-neutral-500">
+              Week of {formatDayLabel(weekStart)} – {formatDayLabel(addDays(weekStart, 6))}
+            </span>
+            {hasNext ? (
+              <Link href={`/upload?week=${nextWeek}`} className="text-neutral-400 hover:text-white">
+                Next →
+              </Link>
+            ) : (
+              <span className="text-neutral-700">Next →</span>
+            )}
+          </div>
+          {!hasNext && (
+            <p className="mt-1 text-xs text-neutral-600">
+              Next week&apos;s planning opens up from Friday.
+            </p>
+          )}
         </div>
 
         <CoachPrevWeekBanner coachId={coach.id} />

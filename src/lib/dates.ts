@@ -38,10 +38,15 @@ export function parseDateOnly(value: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+// 1 = Monday ... 7 = Sunday
+export function isoWeekday(date: Date): number {
+  const day = date.getUTCDay();
+  return day === 0 ? 7 : day;
+}
+
 export function startOfWeekMonday(date: Date): Date {
   const d = new Date(date);
-  const isoDay = d.getUTCDay() === 0 ? 7 : d.getUTCDay(); // 1..7, Mon..Sun
-  d.setUTCDate(d.getUTCDate() - (isoDay - 1));
+  d.setUTCDate(d.getUTCDate() - (isoWeekday(d) - 1));
   return d;
 }
 
