@@ -18,6 +18,14 @@ model Coach {
   // set it once instead of every week. A week-specific override in
   // CoachWeeklyQuota always wins over this.
   weeklyQuota Int?
+  // Hex color (e.g. "#3b82f6") tinting this coach's classes on the admin
+  // Planning grid, so the head coach can see who's teaching what at a
+  // glance — see WeekGrid. Null falls back to the room-based tint. Unique
+  // (Postgres allows unlimited NULLs alongside a unique constraint, so this
+  // only actually restricts non-null values) so two coaches never end up
+  // sharing a color — see renameCoach's takenColors check, which is the
+  // primary guard; this is the backstop against a race between two saves.
+  color       String?  @unique
   // Login credential for /upload — the coach's unique `name` doubles as
   // their username. Null until the admin sets one (see setCoachPassword on
   // the Coaches page); a coach with no password set can't log in yet.

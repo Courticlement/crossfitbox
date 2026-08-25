@@ -8,6 +8,7 @@ import {
 } from "@/lib/actions/coaches";
 import { computeCoachStats, type CoachStats } from "@/lib/coach-stats";
 import { LevelSelect } from "@/components/level-select";
+import { ColorSelect } from "@/components/color-select";
 import { PrevWeekBanner } from "@/components/prev-week-banner";
 import { CoachPasswordForm } from "@/components/coach-password-form";
 import { formatDateISO } from "@/lib/dates";
@@ -36,12 +37,21 @@ type CoachCardData = {
   id: string;
   name: string;
   level: string | null;
+  color: string | null;
   weeklyQuota: number | null;
   passwordHash: string | null;
   archived: boolean;
 };
 
-function CoachCard({ coach, stats }: { coach: CoachCardData; stats: CoachStats }) {
+function CoachCard({
+  coach,
+  stats,
+  takenColors,
+}: {
+  coach: CoachCardData;
+  stats: CoachStats;
+  takenColors: Set<string>;
+}) {
   return (
     <div
       className={`flex flex-col rounded-lg border p-4 ${
@@ -53,6 +63,13 @@ function CoachCard({ coach, stats }: { coach: CoachCardData; stats: CoachStats }
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
           <div className="flex items-center gap-2 text-base font-semibold text-white">
+            {coach.color && (
+              <span
+                style={{ backgroundColor: coach.color }}
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                title="Planning color"
+              />
+            )}
             {coach.name}
             {coach.archived && (
               <span className="rounded border border-neutral-700 px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-neutral-500">
@@ -183,6 +200,7 @@ function CoachCard({ coach, stats }: { coach: CoachCardData; stats: CoachStats }
             title="Standard weekly quota — used on the Dashboard for any week without its own override"
             className="w-16 rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-white hover:border-neutral-700 focus:border-neutral-500 focus:outline-none"
           />
+          <ColorSelect name="color" defaultValue={coach.color ?? ""} takenColors={takenColors} />
           <button
             type="submit"
             className="shrink-0 text-xs text-neutral-500 hover:text-white"
@@ -227,6 +245,8 @@ export default async function CoachesPage() {
 
   const activeCoaches = coaches.filter((c) => !c.archived);
   const archivedCoaches = coaches.filter((c) => c.archived);
+  const takenColorsExcept = (coachId: string) =>
+    new Set(coaches.filter((c) => c.id !== coachId && c.color).map((c) => c.color!));
 
   return (
     <div className="text-neutral-300">
@@ -244,6 +264,7 @@ export default async function CoachesPage() {
               coach.level,
               validatedWeekStarts
             )}
+            takenColors={takenColorsExcept(coach.id)}
           />
         ))}
         {activeCoaches.length === 0 && (
@@ -269,6 +290,7 @@ export default async function CoachesPage() {
                   coach.level,
                   validatedWeekStarts
                 )}
+                takenColors={takenColorsExcept(coach.id)}
               />
             ))}
           </div>

@@ -94,12 +94,14 @@ export default async function PlanningPage({
   // Filters only narrow what's shown in the grid/missed-classes view —
   // conflict detection below still runs against the full unfiltered week so
   // a hidden coach's double-booking doesn't silently disappear.
-  const filteredInstances = instances.filter((inst) => {
-    if (coachIdFilter && inst.coachId !== coachIdFilter) return false;
-    if (typeFilter === "private" && !inst.isPrivate) return false;
-    if (typeFilter === "group" && inst.isPrivate) return false;
-    return true;
-  });
+  const filteredInstances = instances
+    .filter((inst) => {
+      if (coachIdFilter && inst.coachId !== coachIdFilter) return false;
+      if (typeFilter === "private" && !inst.isPrivate) return false;
+      if (typeFilter === "group" && inst.isPrivate) return false;
+      return true;
+    })
+    .map((inst) => ({ ...inst, coachColor: inst.coach?.color ?? null }));
 
   const submissionsByInstance = new Map<string, typeof doneSubmissions>();
   for (const sub of doneSubmissions) {
@@ -252,6 +254,22 @@ export default async function PlanningPage({
         type={typeFilter}
         coaches={coaches}
       />
+
+      {coaches.some((c) => c.color) && (
+        <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-400">
+          {coaches
+            .filter((c) => c.color)
+            .map((c) => (
+              <span key={c.id} className="flex items-center gap-1.5">
+                <span
+                  style={{ backgroundColor: c.color! }}
+                  className="h-2.5 w-2.5 rounded-full"
+                />
+                {c.name}
+              </span>
+            ))}
+        </div>
+      )}
 
       <WeekGrid
         weekStart={weekStart}

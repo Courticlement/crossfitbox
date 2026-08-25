@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { addDays, formatDateISO, formatDayLabel } from "@/lib/dates";
 import { timeToMinutes, formatHourLabel, layoutDayEventsToGrid } from "@/lib/calendar-layout";
+import { hexToRgba } from "@/lib/coach-colors";
 
 const SLOT_MINUTES = 5;
 const SLOTS_PER_HOUR = 60 / SLOT_MINUTES;
@@ -21,9 +22,10 @@ const STATUS_BORDER: Record<string, string> = {
 };
 
 // DONE/MISSED get a strong status-colored background so the outcome reads
-// at a glance — that matters more once a class is resolved than which room
-// it was in. Still-PLANNED (and CANCELLED) classes keep the room tint
-// instead, since the room is the more useful signal before it's resolved.
+// at a glance — that matters more once a class is resolved than who's
+// teaching it. Still-PLANNED (and CANCELLED) classes are tinted by the
+// assigned coach's color instead (see coachColor below), falling back to
+// the room's color when the coach has none set or none is assigned yet.
 const STATUS_BG: Record<string, string> = {
   DONE: "bg-emerald-950/50",
   MISSED: "bg-red-950/50",
@@ -45,6 +47,12 @@ export type WeekGridInstance = {
   status: string;
   isPrivate: boolean;
   coachId: string | null;
+  // The assigned coach's Coach.color, if they have one set — tints
+  // still-PLANNED/CANCELLED classes on the admin Planning grid so the head
+  // coach can see who's teaching what at a glance. Undefined (not just
+  // null) on grids that don't fetch it (e.g. a coach's own My Classes page),
+  // which falls back to the existing room tint exactly as before.
+  coachColor?: string | null;
 };
 
 export function WeekGrid<T extends WeekGridInstance>({
@@ -171,9 +179,16 @@ export function WeekGrid<T extends WeekGridInstance>({
             const isMineGroup = isMine && !inst.isPrivate;
             const faded = highlightCoachId != null && !isMine;
             const coachUnavailable = unavailableInstanceIds?.has(inst.id) ?? false;
+            const statusBg = STATUS_BG[inst.status];
+            // Falls back to the room tint (as a class) whenever there's no
+            // per-coach color to use — no coach assigned, the coach hasn't
+            // set one, or this grid doesn't fetch coachColor at all.
+            const coachBg = !coachUnavailable && !statusBg && inst.coachColor
+              ? hexToRgba(inst.coachColor, 0.35)
+              : null;
             const bg = coachUnavailable
               ? "bg-red-950/60"
-              : (STATUS_BG[inst.status] ?? ROOM_BG[inst.room] ?? "bg-neutral-900");
+              : (statusBg ?? (coachBg ? "" : (ROOM_BG[inst.room] ?? "bg-neutral-900")));
             return (
               <div
                 key={inst.id}
@@ -185,6 +200,7 @@ export function WeekGrid<T extends WeekGridInstance>({
                   justifySelf: "start",
                   marginLeft: `${left}%`,
                   width: `calc(${width}% - 2px)`,
+                  ...(coachBg ? { backgroundColor: coachBg } : {}),
                 }}
               >
                 <div className="flex items-center justify-between gap-1">

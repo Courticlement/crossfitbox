@@ -3,8 +3,10 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { isCoachLevel } from "@/lib/coach-levels";
 import { hashPassword } from "@/lib/password";
+import { isCoachColor } from "@/lib/coach-colors";
 
 function revalidateUploadPaths() {
   revalidatePath("/admin/coaches");
@@ -48,14 +50,31 @@ export async function renameCoach(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const levelRaw = String(formData.get("level") ?? "").trim();
   const level = isCoachLevel(levelRaw) ? levelRaw : null;
+  const colorRaw = String(formData.get("color") ?? "").trim();
+  const color = isCoachColor(colorRaw) ? colorRaw : null;
   const weeklyQuota = parseWeeklyQuota(formData);
   if (!id || !name) return;
   if (weeklyQuota !== undefined && (!Number.isInteger(weeklyQuota) || weeklyQuota < 0)) return;
 
-  await prisma.coach.update({
-    where: { id },
-    data: { name, level, weeklyQuota: weeklyQuota ?? null },
-  });
+  try {
+    await prisma.coach.update({
+      where: { id },
+      data: { name, level, color, weeklyQuota: weeklyQuota ?? null },
+    });
+  } catch (err) {
+    // The dropdown already excludes colors taken by other coaches, so this
+    // only fires on a genuine race — two saves picking the same
+    // just-freed/new color at the same moment. Rather than failing the
+    // whole save, keep every other edit and just drop the color change.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      await prisma.coach.update({
+        where: { id },
+        data: { name, level, weeklyQuota: weeklyQuota ?? null },
+      });
+    } else {
+      throw err;
+    }
+  }
   revalidateUploadPaths();
 }
 
