@@ -84,11 +84,11 @@ export default async function UploadPage({
           {coach.name}&apos;s classes
         </h1>
         <p className="mb-4 text-sm text-neutral-500">
-          You&apos;ll see the whole week&apos;s planning below. Mark any class
-          you did (or missed); it doesn&apos;t have to be one assigned to
-          you. Once a class is saved as Missed, you can note who covered it
-          right there. If more than one coach reports doing the same class,
-          whoever reports most recently is what counts.
+          You&apos;ll see your classes for the week below, plus any that are
+          still unassigned — mark one you did (or missed). Once a class is
+          saved as Missed, you can note who covered it right there. If you
+          report a class more than once, whoever reports most recently is
+          what counts.
         </p>
 
         <div className="mb-6 flex items-center gap-3 text-sm">
