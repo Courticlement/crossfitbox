@@ -33,8 +33,38 @@ export type CoachStats = {
   privateCostLastMonth: number;
 };
 
-function classDurationHours(startTime: string, endTime: string): number {
+export function classDurationHours(startTime: string, endTime: string): number {
   return (timeToMinutes(endTime) - timeToMinutes(startTime)) / 60;
+}
+
+// Hours actually delivered by each coach, bucketed by calendar month, for a
+// given year — same "who delivered it" rule as computeCoachStats (a DONE
+// report credits its coachId, a MISSED report credits whoever substituted),
+// just summed per month instead of this/last-month only. Used by the
+// dashboard's yearly hours-per-coach chart.
+export function computeMonthlyHoursByCoach(
+  instances: Pick<
+    ClassInstanceForStats,
+    "date" | "startTime" | "endTime" | "status" | "coachId" | "substituteCoachId"
+  >[],
+  year: number
+): Map<string, number[]> {
+  const result = new Map<string, number[]>();
+  for (const inst of instances) {
+    if (inst.date.getUTCFullYear() !== year) continue;
+    const deliveredBy =
+      inst.status === "DONE"
+        ? inst.coachId
+        : inst.status === "MISSED"
+          ? inst.substituteCoachId
+          : null;
+    if (!deliveredBy) continue;
+
+    const months = result.get(deliveredBy) ?? new Array(12).fill(0);
+    months[inst.date.getUTCMonth()] += classDurationHours(inst.startTime, inst.endTime);
+    result.set(deliveredBy, months);
+  }
+  return result;
 }
 
 export function computeCoachStats(

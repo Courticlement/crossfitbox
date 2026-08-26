@@ -181,15 +181,19 @@ export function WeekGrid<T extends WeekGridInstance>({
             const faded = highlightCoachId != null && !isMine;
             const coachUnavailable = unavailableInstanceIds?.has(inst.id) ?? false;
             const statusBg = STATUS_BG[inst.status];
-            // Falls back to the room tint (as a class) whenever there's no
-            // per-coach color to use — no coach assigned, the coach hasn't
-            // set one, or this grid doesn't fetch coachColor at all.
-            const coachBg = !coachUnavailable && !statusBg && inst.coachColor
+            // The coach's color now always wins the background, DONE/MISSED
+            // included, so a class visually stays "theirs" no matter its
+            // outcome — the outcome itself still reads from the border-left
+            // color (STATUS_BORDER) and the status-labeled title tooltip.
+            // Falls back to the status tint, then the room tint, whenever
+            // there's no per-coach color to use — no coach assigned, the
+            // coach hasn't set one, or this grid doesn't fetch coachColor.
+            const coachBg = !coachUnavailable && inst.coachColor
               ? hexToRgba(inst.coachColor, 0.35)
               : null;
             const bg = coachUnavailable
               ? "bg-red-950/60"
-              : (statusBg ?? (coachBg ? "" : (ROOM_BG[inst.room] ?? "bg-neutral-900")));
+              : (coachBg ? "" : (statusBg ?? (ROOM_BG[inst.room] ?? "bg-neutral-900")));
             return (
               <div
                 key={inst.id}

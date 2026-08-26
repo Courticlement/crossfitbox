@@ -4,6 +4,7 @@ import { validateWeek } from "@/lib/actions/planning";
 import { getPrevWeekAlert } from "@/lib/prev-week-alert";
 import { WeekDashboard } from "@/components/week-dashboard";
 import { MonthDashboard } from "@/components/month-dashboard";
+import { YearDashboard } from "@/components/year-dashboard";
 import { UnavailabilityAlert } from "@/components/unavailability-alert";
 
 function tabClass(active: boolean): string {
@@ -16,9 +17,11 @@ export default async function AdminDashboardPage({
   searchParams,
 }: PageProps<"/admin">) {
   const params = await searchParams;
-  const view = typeof params?.view === "string" && params.view === "month" ? "month" : "week";
+  const rawView = typeof params?.view === "string" ? params.view : undefined;
+  const view = rawView === "month" ? "month" : rawView === "year" ? "year" : "week";
   const weekParam = typeof params?.week === "string" ? params.week : undefined;
   const monthParam = typeof params?.month === "string" ? params.month : undefined;
+  const yearParam = typeof params?.year === "string" ? params.year : undefined;
   const digestStatus = typeof params?.digest === "string" ? params.digest : undefined;
 
   const prevWeekAlert = await getPrevWeekAlert();
@@ -84,13 +87,18 @@ export default async function AdminDashboardPage({
           <Link href="/admin?view=month" className={tabClass(view === "month")}>
             Mois
           </Link>
+          <Link href="/admin?view=year" className={tabClass(view === "year")}>
+            Année
+          </Link>
         </div>
       </div>
 
       {view === "week" ? (
         <WeekDashboard weekParam={weekParam} digestStatus={digestStatus} />
-      ) : (
+      ) : view === "month" ? (
         <MonthDashboard monthParam={monthParam} />
+      ) : (
+        <YearDashboard yearParam={yearParam} />
       )}
     </div>
   );
