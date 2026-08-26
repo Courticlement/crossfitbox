@@ -1,0 +1,10 @@
+{
+  "app": {
+    "name": "crossfit-box",
+    "framework": "nextjs",
+    "httpPort": 3000,
+    "build": {
+      "command": "npm run build"
+    }
+  }
+}
