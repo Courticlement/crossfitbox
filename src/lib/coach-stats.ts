@@ -1,6 +1,6 @@
 import { timeToMinutes } from "@/lib/calendar-layout";
 import { formatDateISO, startOfWeekMonday } from "@/lib/dates";
-import { groupClassRate, PRIVATE_CLASS_COST_EUR } from "@/lib/coach-levels";
+import { PRIVATE_CLASS_COST_EUR } from "@/lib/coach-levels";
 
 export type ClassInstanceForStats = {
   date: Date;
@@ -40,14 +40,16 @@ function classDurationHours(startTime: string, endTime: string): number {
 export function computeCoachStats(
   coachId: string,
   instances: ClassInstanceForStats[],
-  level: string | null,
+  // € per validated group class — the caller resolves this (coach.rate, or
+  // the CrossFit-level default when unset; see groupClassRate) rather than
+  // this function looking it up itself.
+  rate: number,
   validatedWeekStarts: ReadonlySet<string>,
   now: Date = new Date()
 ): CoachStats {
   const currentMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
   const lastMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
-  const rate = groupClassRate(level);
 
   let hoursThisMonth = 0;
   let hoursLastMonth = 0;

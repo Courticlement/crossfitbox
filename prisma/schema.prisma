@@ -18,6 +18,12 @@ model Coach {
   // set it once instead of every week. A week-specific override in
   // CoachWeeklyQuota always wins over this.
   weeklyQuota Int?
+  // € paid per validated group class this coach delivers (see
+  // computeCoachStats). Null falls back to the CrossFit-level default (see
+  // groupClassRate) — set once the admin edits it on the Coaches page, at
+  // which point it's a plain per-coach number and no longer follows level
+  // changes automatically.
+  rate        Int?
   // Hex color (e.g. "#3b82f6") tinting this coach's classes on the admin
   // Planning grid, so the head coach can see who's teaching what at a
   // glance — see WeekGrid. Null falls back to the room-based tint. Unique

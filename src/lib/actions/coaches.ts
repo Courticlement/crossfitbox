@@ -26,6 +26,11 @@ function parseWeeklyQuota(formData: FormData): number | undefined {
   return raw === null || raw === "" ? undefined : Number(raw);
 }
 
+function parseRate(formData: FormData): number | undefined {
+  const raw = formData.get("rate");
+  return raw === null || raw === "" ? undefined : Number(raw);
+}
+
 export async function createCoach(formData: FormData) {
   const parsed = CoachSchema.safeParse({
     name: formData.get("name"),
@@ -53,13 +58,15 @@ export async function renameCoach(formData: FormData) {
   const colorRaw = String(formData.get("color") ?? "").trim();
   const color = isCoachColor(colorRaw) ? colorRaw : null;
   const weeklyQuota = parseWeeklyQuota(formData);
+  const rate = parseRate(formData);
   if (!id || !name) return;
   if (weeklyQuota !== undefined && (!Number.isInteger(weeklyQuota) || weeklyQuota < 0)) return;
+  if (rate !== undefined && (!Number.isInteger(rate) || rate < 0)) return;
 
   try {
     await prisma.coach.update({
       where: { id },
-      data: { name, level, color, weeklyQuota: weeklyQuota ?? null },
+      data: { name, level, color, weeklyQuota: weeklyQuota ?? null, rate: rate ?? null },
     });
   } catch (err) {
     // The dropdown already excludes colors taken by other coaches, so this
@@ -69,7 +76,7 @@ export async function renameCoach(formData: FormData) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
       await prisma.coach.update({
         where: { id },
-        data: { name, level, weeklyQuota: weeklyQuota ?? null },
+        data: { name, level, weeklyQuota: weeklyQuota ?? null, rate: rate ?? null },
       });
     } else {
       throw err;

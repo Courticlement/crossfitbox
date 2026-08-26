@@ -18,10 +18,6 @@ function formatHours(hours: number): string {
   return `${hours.toFixed(1)}h`;
 }
 
-function formatRate(level: string | null): string {
-  return level ? `${groupClassRate(level)}€/h` : "—";
-}
-
 function formatAmount(amount: number): string {
   return `${amount}€`;
 }
@@ -40,6 +36,7 @@ type CoachCardData = {
   level: string | null;
   color: string | null;
   weeklyQuota: number | null;
+  rate: number | null;
   passwordHash: string | null;
   archived: boolean;
 };
@@ -146,12 +143,6 @@ function CoachCard({
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-neutral-500" title="Based on this coach's CrossFit level">
-            Rate
-          </dt>
-          <dd className="text-white">{formatRate(coach.level)}</dd>
-        </div>
-        <div>
           <dt className="text-xs text-neutral-500">Private classes done</dt>
           <dd className="text-white">{stats.privateClassesDone}</dd>
         </div>
@@ -203,10 +194,19 @@ function CoachCard({
             title="Standard weekly quota — used on the Dashboard for any week without its own override"
             className="w-16 rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-white hover:border-neutral-700 focus:border-neutral-500 focus:outline-none"
           />
+          <input
+            type="number"
+            name="rate"
+            min={0}
+            defaultValue={coach.rate ?? groupClassRate(coach.level)}
+            placeholder="Rate"
+            title="€ per validated group class — defaults to the CrossFit level's rate until changed"
+            className="w-16 rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-white hover:border-neutral-700 focus:border-neutral-500 focus:outline-none"
+          />
           <ColorSelect name="color" defaultValue={coach.color ?? ""} takenColors={takenColors} />
           <button
             type="submit"
-            className="shrink-0 text-xs text-neutral-500 hover:text-white"
+            className="shrink-0 rounded-md bg-white px-3 py-1.5 text-xs font-medium text-neutral-950 hover:bg-neutral-200"
           >
             Save
           </button>
@@ -264,7 +264,7 @@ export default async function CoachesPage() {
             stats={computeCoachStats(
               coach.id,
               instancesByCoach.get(coach.id) ?? [],
-              coach.level,
+              coach.rate ?? groupClassRate(coach.level),
               validatedWeekStarts
             )}
             takenColors={takenColorsExcept(coach.id)}
@@ -290,7 +290,7 @@ export default async function CoachesPage() {
                 stats={computeCoachStats(
                   coach.id,
                   instancesByCoach.get(coach.id) ?? [],
-                  coach.level,
+                  coach.rate ?? groupClassRate(coach.level),
                   validatedWeekStarts
                 )}
                 takenColors={takenColorsExcept(coach.id)}
