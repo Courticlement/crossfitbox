@@ -21,14 +21,14 @@ export function TemplateFilters({
   return (
     <form method="get" className="mb-4 flex flex-wrap items-end gap-3">
       <div>
-        <label className="mb-1 block text-xs text-neutral-500">Day</label>
+        <label className="mb-1 block text-xs text-neutral-500">Jour</label>
         <select
           name="dayOfWeek"
           defaultValue={dayOfWeek}
           onChange={(e) => e.currentTarget.form?.requestSubmit()}
           className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
         >
-          <option value="">All days</option>
+          <option value="">Tous les jours</option>
           {[1, 2, 3, 4, 5, 6, 7].map((d) => (
             <option key={d} value={d}>
               {dayName(d)}
@@ -37,14 +37,14 @@ export function TemplateFilters({
         </select>
       </div>
       <div>
-        <label className="mb-1 block text-xs text-neutral-500">Room</label>
+        <label className="mb-1 block text-xs text-neutral-500">Salle</label>
         <select
           name="room"
           defaultValue={room}
           onChange={(e) => e.currentTarget.form?.requestSubmit()}
           className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
         >
-          <option value="">All rooms</option>
+          <option value="">Toutes les salles</option>
           {ROOMS.map((r) => (
             <option key={r} value={r}>
               {r}
@@ -60,8 +60,8 @@ export function TemplateFilters({
           onChange={(e) => e.currentTarget.form?.requestSubmit()}
           className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
         >
-          <option value="">All coaches</option>
-          <option value="none">Unassigned</option>
+          <option value="">Tous les coachs</option>
+          <option value="none">Non assigné</option>
           {coaches.map((coach) => (
             <option key={coach.id} value={coach.id}>
               {coach.name}
@@ -70,16 +70,16 @@ export function TemplateFilters({
         </select>
       </div>
       <div>
-        <label className="mb-1 block text-xs text-neutral-500">Status</label>
+        <label className="mb-1 block text-xs text-neutral-500">Statut</label>
         <select
           name="status"
           defaultValue={status}
           onChange={(e) => e.currentTarget.form?.requestSubmit()}
           className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
         >
-          <option value="">All statuses</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+          <option value="">Tous les statuts</option>
+          <option value="active">Actif</option>
+          <option value="inactive">Inactif</option>
         </select>
       </div>
       {hasFilters && (
@@ -87,7 +87,7 @@ export function TemplateFilters({
           href="/admin/templates"
           className="pb-2 text-xs text-neutral-500 hover:text-white"
         >
-          Clear filters
+          Effacer les filtres
         </a>
       )}
     </form>

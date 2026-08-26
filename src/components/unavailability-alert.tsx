@@ -8,7 +8,7 @@ function isoWeekday(date: Date): number {
 }
 
 function formatRange(startDate: Date, endDate: Date, recurring: boolean): string {
-  if (recurring) return `every ${dayName(isoWeekday(startDate))}, starting ${formatDayLabel(startDate)}`;
+  if (recurring) return `chaque ${dayName(isoWeekday(startDate)).toLowerCase()}, à partir du ${formatDayLabel(startDate)}`;
   return startDate.getTime() === endDate.getTime()
     ? formatDayLabel(startDate)
     : `${formatDayLabel(startDate)} – ${formatDayLabel(endDate)}`;
@@ -25,7 +25,7 @@ export async function UnavailabilityAlert() {
   return (
     <div className="mb-6 rounded-md border border-amber-900 bg-amber-950 px-3 py-2 text-sm text-amber-300">
       <p className="mb-2 font-medium text-amber-200">
-        {entries.length} coach{entries.length === 1 ? "" : "es"} flagged time off
+        {entries.length} coach{entries.length === 1 ? "" : "s"} {entries.length === 1 ? "a signalé une" : "ont signalé des"} indisponibilité{entries.length === 1 ? "" : "s"}
       </p>
       <ul className="flex flex-col gap-1.5">
         {entries.map((entry) => (
@@ -44,7 +44,7 @@ export async function UnavailabilityAlert() {
                 type="submit"
                 className="shrink-0 text-xs text-amber-200 underline hover:text-white"
               >
-                Got it
+                Compris
               </button>
             </form>
           </li>

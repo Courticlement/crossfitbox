@@ -22,12 +22,12 @@ export function ConflictsPanel({ instances }: { instances: ConflictInstance[] })
   return (
     <div className="mb-8 rounded-lg border border-red-900 bg-red-950/20 p-4">
       <h2 className="mb-1 text-sm font-medium text-red-200">
-        Conflicting submissions
+        Déclarations en conflit
       </h2>
       <p className="mb-3 text-xs text-red-300/70">
-        More than one coach reported having done the same class — whichever
-        reported most recently is currently marked &quot;Current&quot;. Force
-        a different one to be current, or dismiss a mistaken claim.
+        Plusieurs coachs ont déclaré avoir fait le même cours — celui déclaré
+        le plus récemment est actuellement marqué « Actuel ». Forcez-en un
+        autre à être actuel, ou rejetez une déclaration erronée.
       </p>
       <div className="flex flex-col gap-3">
         {instances.map((inst) => (
@@ -54,7 +54,7 @@ export function ConflictsPanel({ instances }: { instances: ConflictInstance[] })
                       {sub.coachName}
                       {isOfficial && (
                         <span className="ml-2 rounded-full bg-emerald-900/40 px-2 py-0.5 text-[10px] text-emerald-300">
-                          Current
+                          Actuel
                         </span>
                       )}
                     </span>
@@ -67,7 +67,7 @@ export function ConflictsPanel({ instances }: { instances: ConflictInstance[] })
                             type="submit"
                             className="text-xs text-emerald-400 hover:text-emerald-300"
                           >
-                            Use this
+                            Utiliser
                           </button>
                         </form>
                       )}
@@ -77,7 +77,7 @@ export function ConflictsPanel({ instances }: { instances: ConflictInstance[] })
                           type="submit"
                           className="text-xs text-red-400 hover:text-red-300"
                         >
-                          Dismiss
+                          Rejeter
                         </button>
                       </form>
                     </div>

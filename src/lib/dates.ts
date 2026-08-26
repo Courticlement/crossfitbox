@@ -6,18 +6,18 @@
 // day bugs for any timezone that isn't UTC+0.
 
 export const DAY_NAMES = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
+  "Lundi",
+  "Mardi",
+  "Mercredi",
+  "Jeudi",
+  "Vendredi",
+  "Samedi",
+  "Dimanche",
 ] as const;
 
 // dayOfWeek: 1 = Monday ... 7 = Sunday
 export function dayName(dayOfWeek: number): string {
-  return DAY_NAMES[dayOfWeek - 1] ?? "Unknown";
+  return DAY_NAMES[dayOfWeek - 1] ?? "Inconnu";
 }
 
 // Converts "now" (or any instant) into a floating UTC-midnight date
@@ -61,7 +61,7 @@ export function formatDateISO(date: Date): string {
 }
 
 export function formatDayLabel(date: Date): string {
-  return date.toLocaleDateString("en-US", {
+  return date.toLocaleDateString("fr-FR", {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -92,7 +92,7 @@ export function parseMonthOnly(value: string): Date | null {
 }
 
 export function formatMonthLabel(date: Date): string {
-  return date.toLocaleDateString("en-US", {
+  return date.toLocaleDateString("fr-FR", {
     month: "long",
     year: "numeric",
     timeZone: "UTC",

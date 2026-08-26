@@ -133,7 +133,7 @@ export async function WeekDashboard({
           href={`/admin?view=week&week=${prevWeek}`}
           className="text-neutral-400 hover:text-white"
         >
-          ← Prev
+          ← Préc.
         </Link>
         <span className="text-neutral-500">
           {formatDayLabel(weekStart)} – {formatDayLabel(addDays(weekStart, 6))}
@@ -142,13 +142,13 @@ export async function WeekDashboard({
           href={`/admin?view=week&week=${nextWeek}`}
           className="text-neutral-400 hover:text-white"
         >
-          Next →
+          Suivant →
         </Link>
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-          <dt className="text-xs text-neutral-500">Classes this week</dt>
+          <dt className="text-xs text-neutral-500">Cours cette semaine</dt>
           <dd className="text-2xl font-semibold text-white">{totalClasses}</dd>
         </div>
         {unassignedClasses > 0 ? (
@@ -156,23 +156,23 @@ export async function WeekDashboard({
             href={`/admin/planning?week=${weekStartStr}`}
             className="rounded-lg border border-neutral-800 bg-neutral-900 p-4 transition-colors hover:border-amber-700"
           >
-            <dt className="text-xs text-neutral-500">Unassigned</dt>
+            <dt className="text-xs text-neutral-500">Non assignés</dt>
             <dd className="text-2xl font-semibold text-amber-400 underline decoration-amber-400/40 underline-offset-4">
               {unassignedClasses}
             </dd>
           </Link>
         ) : (
           <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-            <dt className="text-xs text-neutral-500">Unassigned</dt>
+            <dt className="text-xs text-neutral-500">Non assignés</dt>
             <dd className="text-2xl font-semibold text-white">{unassignedClasses}</dd>
           </div>
         )}
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-          <dt className="text-xs text-neutral-500">Group classes</dt>
+          <dt className="text-xs text-neutral-500">Cours collectifs</dt>
           <dd className="text-2xl font-semibold text-white">{groupClasses}</dd>
         </div>
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-          <dt className="text-xs text-neutral-500">Private classes</dt>
+          <dt className="text-xs text-neutral-500">Cours privés</dt>
           <dd className="text-2xl font-semibold text-white">{privateClasses}</dd>
         </div>
       </div>
@@ -183,21 +183,21 @@ export async function WeekDashboard({
             <tr>
               <th className="px-4 py-2 font-medium">Coach</th>
               <th className="px-4 py-2 font-medium">Quota</th>
-              <th className="px-4 py-2 font-medium" title="Group classes assigned — private lessons don't count against quota">
-                Assigned (Group)
+              <th className="px-4 py-2 font-medium" title="Cours collectifs assignés — les cours privés ne comptent pas dans le quota">
+                Assignés (collectif)
               </th>
-              <th className="px-4 py-2 font-medium">Done</th>
-              <th className="px-4 py-2 font-medium">Missed</th>
-              <th className="px-4 py-2 font-medium">Substituted</th>
-              <th className="px-4 py-2 font-medium">Planned</th>
-              <th className="px-4 py-2 font-medium">Alert</th>
-              <th className="px-4 py-2 font-medium">Private</th>
+              <th className="px-4 py-2 font-medium">Faits</th>
+              <th className="px-4 py-2 font-medium">Manqués</th>
+              <th className="px-4 py-2 font-medium">Remplacés</th>
+              <th className="px-4 py-2 font-medium">Prévus</th>
+              <th className="px-4 py-2 font-medium">Alerte</th>
+              <th className="px-4 py-2 font-medium">Privés</th>
               <th
                 className="px-4 py-2 font-medium"
                 title={
                   weekValidated
-                    ? "Group amount minus private class cost"
-                    : "Group amount is 0 until this week is validated — showing private cost only"
+                    ? "Montant collectif moins le coût des cours privés"
+                    : "Le montant collectif est à 0 tant que la semaine n'est pas validée — coût des cours privés uniquement"
                 }
               >
                 Net €
@@ -235,7 +235,7 @@ export async function WeekDashboard({
                       placeholder="—"
                       title={
                         isStandardQuota
-                          ? "Inherited from this coach's standard weekly quota — saving here sets an override just for this week"
+                          ? "Hérité du quota hebdomadaire standard de ce coach — enregistrer ici crée une exception pour cette semaine uniquement"
                           : undefined
                       }
                       className="w-16 rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-white focus:border-neutral-500 focus:outline-none"
@@ -244,7 +244,7 @@ export async function WeekDashboard({
                       type="submit"
                       className="text-xs text-neutral-500 hover:text-white"
                     >
-                      Save
+                      Enregistrer
                     </button>
                     {isStandardQuota && (
                       <span className="text-xs text-neutral-600">(standard)</span>
@@ -263,22 +263,22 @@ export async function WeekDashboard({
                   <div className="flex flex-col items-start gap-1">
                     {overQuota && (
                       <span className="rounded-full bg-red-900/40 px-2 py-0.5 text-xs text-red-300">
-                        Over quota ({assigned}/{quota})
+                        Quota dépassé ({assigned}/{quota})
                       </span>
                     )}
                     {underQuota && (
                       <span className="rounded-full bg-amber-900/40 px-2 py-0.5 text-xs text-amber-300">
-                        Under quota ({assigned}/{quota})
+                        Quota non atteint ({assigned}/{quota})
                       </span>
                     )}
                     {hasMissed && (
                       <span className="rounded-full bg-red-900/40 px-2 py-0.5 text-xs text-red-300">
-                        {missed} missed
+                        {missed} manqué{missed === 1 ? "" : "s"}
                       </span>
                     )}
                     {privateOverLimit && (
                       <span className="rounded-full bg-amber-900/40 px-2 py-0.5 text-xs text-amber-300">
-                        {privateDone} private classes (&gt;{PRIVATE_CLASS_WEEKLY_LIMIT})
+                        {privateDone} cours privés (&gt;{PRIVATE_CLASS_WEEKLY_LIMIT})
                       </span>
                     )}
                   </div>
@@ -292,7 +292,7 @@ export async function WeekDashboard({
             {rows.length === 0 && (
               <tr>
                 <td colSpan={10} className="px-4 py-6 text-center text-neutral-500">
-                  No coaches yet.
+                  Aucun coach pour l&apos;instant.
                 </td>
               </tr>
             )}
@@ -331,13 +331,13 @@ export async function WeekDashboard({
 
       {digestStatus === "sent" && (
         <p className="mb-3 rounded-md border border-emerald-900 bg-emerald-950 px-3 py-2 text-sm text-emerald-300">
-          Digest email sent.
+          E-mail récapitulatif envoyé.
         </p>
       )}
       {digestStatus === "error" && (
         <p className="mb-3 rounded-md border border-red-900 bg-red-950 px-3 py-2 text-sm text-red-300">
-          Could not send the digest. Check RESEND_API_KEY and DIGEST_EMAIL_TO
-          in .env.
+          Impossible d&apos;envoyer le récapitulatif. Vérifiez RESEND_API_KEY
+          et DIGEST_EMAIL_TO dans .env.
         </p>
       )}
       <form action={sendWeeklyDigest}>
@@ -346,7 +346,7 @@ export async function WeekDashboard({
           type="submit"
           className="rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
         >
-          Send weekly digest email
+          Envoyer le récapitulatif hebdomadaire par e-mail
         </button>
       </form>
     </>

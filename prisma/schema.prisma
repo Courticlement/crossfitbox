@@ -60,7 +60,7 @@ model ClassTemplate {
   startTime String // "HH:mm"
   endTime   String // "HH:mm"
   label     String
-  room      String   @default("Room 1")
+  room      String   @default("Salle 1")
   isPrivate Boolean  @default(false)
   active    Boolean  @default(true)
   coachId   String? // default coach applied when a week is generated from this slot
@@ -78,7 +78,7 @@ model ClassInstance {
   startTime         String // "HH:mm"
   endTime           String // "HH:mm"
   label             String
-  room              String         @default("Room 1")
+  room              String         @default("Salle 1")
   isPrivate         Boolean        @default(false)
   // Who's credited with this class. For a still-PLANNED class this is the
   // planning assignment (set by the admin). Once any coach self-reports a

@@ -11,7 +11,7 @@ export function AdminLoginForm() {
   return (
     <form action={formAction} className="flex w-full max-w-xs flex-col gap-3">
       <div>
-        <label className="mb-1 block text-xs text-neutral-500">Admin password</label>
+        <label className="mb-1 block text-xs text-neutral-500">Mot de passe admin</label>
         <input
           type="password"
           name="password"
@@ -26,7 +26,7 @@ export function AdminLoginForm() {
         disabled={pending}
         className="rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {pending ? "Logging in…" : "Log in"}
+        {pending ? "Connexion…" : "Se connecter"}
       </button>
     </form>
   );

@@ -1,1 +1,1 @@
-export const ROOMS = ["Room 1", "Room 2"] as const;
+export const ROOMS = ["Salle 1", "Salle 2"] as const;

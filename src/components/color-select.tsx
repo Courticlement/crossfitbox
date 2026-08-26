@@ -19,7 +19,7 @@ export function ColorSelect({
       defaultValue={defaultValue}
       className="rounded-md border border-neutral-700 bg-neutral-950 px-2 py-1 text-xs text-white focus:border-neutral-500 focus:outline-none"
     >
-      <option value="">No color</option>
+      <option value="">Aucune couleur</option>
       {COACH_COLORS.filter((c) => c.value === defaultValue || !takenColors.has(c.value)).map((c) => (
         <option key={c.value} value={c.value}>
           {c.name}

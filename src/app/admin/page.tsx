@@ -34,15 +34,15 @@ export default async function AdminDashboardPage({
             <div>
               <h2 className="text-base font-semibold text-white">
                 {prevWeekAlert.unreported > 0
-                  ? "Coaches haven't finished reporting last week"
-                  : "Last week is ready to validate"}
+                  ? "Les coachs n'ont pas fini de déclarer la semaine dernière"
+                  : "La semaine dernière est prête à être validée"}
               </h2>
               <p className="mt-1 text-sm text-red-200">
                 {formatDayLabel(prevWeekAlert.prevWeekStart)} –{" "}
                 {formatDayLabel(addDays(prevWeekAlert.prevWeekStart, 6))}
                 {prevWeekAlert.unreported > 0
-                  ? ` — ${prevWeekAlert.unreported} class${prevWeekAlert.unreported === 1 ? "" : "es"} still not reported.`
-                  : " — every class is reported. Validate to lock it in."}
+                  ? ` — ${prevWeekAlert.unreported} cours encore non déclaré${prevWeekAlert.unreported === 1 ? "" : "s"}.`
+                  : " — tous les cours sont déclarés. Validez pour la verrouiller."}
               </p>
             </div>
           </div>
@@ -52,7 +52,7 @@ export default async function AdminDashboardPage({
                 href={`/admin/planning?week=${formatDateISO(prevWeekAlert.prevWeekStart)}`}
                 className="inline-flex items-center gap-1 rounded-md bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-500"
               >
-                Review →
+                Vérifier →
               </Link>
             ) : (
               <form action={validateWeek}>
@@ -65,7 +65,7 @@ export default async function AdminDashboardPage({
                   type="submit"
                   className="inline-flex items-center gap-1 rounded-md bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-500"
                 >
-                  Validate →
+                  Valider →
                 </button>
               </form>
             )}
@@ -76,13 +76,13 @@ export default async function AdminDashboardPage({
       <UnavailabilityAlert />
 
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-white">Dashboard</h1>
+        <h1 className="text-lg font-semibold text-white">Tableau de bord</h1>
         <div className="flex items-center gap-1 rounded-lg border border-neutral-800 bg-neutral-900 p-1">
           <Link href="/admin?view=week" className={tabClass(view === "week")}>
-            Week
+            Semaine
           </Link>
           <Link href="/admin?view=month" className={tabClass(view === "month")}>
-            Month
+            Mois
           </Link>
         </div>
       </div>

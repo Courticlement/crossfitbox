@@ -19,11 +19,12 @@ export function TimeConflictsPanel({ groups }: { groups: TimeConflictGroup[] }) 
   return (
     <div className="mb-8 rounded-lg border border-red-900 bg-red-950/20 p-4">
       <h2 className="mb-1 text-sm font-medium text-red-200">
-        Same coach, overlapping classes
+        Même coach, cours qui se chevauchent
       </h2>
       <p className="mb-3 text-xs text-red-300/70">
-        A coach reported doing two or more classes that overlap in time —
-        that can&apos;t be right. Dismiss whichever claim is wrong.
+        Un coach a déclaré avoir fait deux cours ou plus qui se chevauchent
+        dans le temps — c&apos;est forcément une erreur. Rejetez la déclaration
+        incorrecte.
       </p>
       <div className="flex flex-col gap-3">
         {groups.map((group, i) => (
@@ -51,7 +52,7 @@ export function TimeConflictsPanel({ groups }: { groups: TimeConflictGroup[] }) 
                       type="submit"
                       className="text-xs text-red-400 hover:text-red-300"
                     >
-                      Dismiss
+                      Rejeter
                     </button>
                   </form>
                 </div>

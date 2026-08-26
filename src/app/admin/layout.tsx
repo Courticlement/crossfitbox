@@ -1,12 +1,12 @@
 import { Nav } from "@/components/nav";
 
 const links = [
-  { href: "/admin", label: "Dashboard" },
+  { href: "/admin", label: "Tableau de bord" },
   { href: "/admin/planning", label: "Planning" },
-  { href: "/admin/coaches", label: "Coaches" },
-  { href: "/admin/templates", label: "Class Templates" },
-  { href: "/admin/data", label: "Data" },
-  { href: "/upload", label: "My Classes" },
+  { href: "/admin/coaches", label: "Coachs" },
+  { href: "/admin/templates", label: "Modèles de cours" },
+  { href: "/admin/data", label: "Données" },
+  { href: "/upload", label: "Mes cours" },
 ];
 
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {

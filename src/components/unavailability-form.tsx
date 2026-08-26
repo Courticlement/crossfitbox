@@ -18,7 +18,7 @@ function SubmitButton() {
       disabled={pending}
       className="mt-1 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
     >
-      {pending ? "Sending…" : "Let the admin know"}
+      {pending ? "Envoi…" : "Prévenir l'admin"}
     </button>
   );
 }
@@ -45,17 +45,17 @@ export function UnavailabilityForm({
 
   return (
     <div className="mb-6 rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-      <h2 className="mb-1 text-sm font-medium text-white">Time off / unavailable</h2>
+      <h2 className="mb-1 text-sm font-medium text-white">Absence / indisponibilité</h2>
       <p className="mb-3 text-xs text-neutral-500">
-        Flag any upcoming dates you won&apos;t be able to coach — the admin is
-        notified right away.
+        Signalez toute date à venir où vous ne pourrez pas coacher —
+        l&apos;admin en est notifié immédiatement.
       </p>
 
       <form action={submitUnavailability} className="mb-3 flex flex-wrap items-end gap-2">
         <input type="hidden" name="coachId" value={coachId} />
         <div>
           <label className="mb-1 block text-xs text-neutral-500">
-            {recurring ? "Every week, starting" : "From"}
+            {recurring ? "Chaque semaine, à partir du" : "Du"}
           </label>
           <input
             type="date"
@@ -66,7 +66,7 @@ export function UnavailabilityForm({
         </div>
         {!recurring && (
           <div>
-            <label className="mb-1 block text-xs text-neutral-500">To</label>
+            <label className="mb-1 block text-xs text-neutral-500">Au</label>
             <input
               type="date"
               name="endDate"
@@ -76,12 +76,12 @@ export function UnavailabilityForm({
           </div>
         )}
         <div className="min-w-40 flex-1">
-          <label className="mb-1 block text-xs text-neutral-500">Note (optional)</label>
+          <label className="mb-1 block text-xs text-neutral-500">Note (optionnel)</label>
           <input
             type="text"
             name="note"
             maxLength={280}
-            placeholder="e.g. vacation"
+            placeholder="ex. vacances"
             className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
           />
         </div>
@@ -94,7 +94,7 @@ export function UnavailabilityForm({
             onChange={(e) => setRecurring(e.target.checked)}
             className="rounded border-neutral-700 bg-neutral-950"
           />
-          Repeats weekly (permanent time off, until cancelled)
+          Se répète chaque semaine (absence permanente, jusqu&apos;à annulation)
         </label>
       </form>
 
@@ -108,7 +108,7 @@ export function UnavailabilityForm({
               <span>
                 {entry.recurring ? (
                   <>
-                    Every {dayName(isoWeekday(entry.startDate))} · starting{" "}
+                    Chaque {dayName(isoWeekday(entry.startDate)).toLowerCase()} · à partir du{" "}
                     {formatDayLabel(entry.startDate)}
                   </>
                 ) : (
@@ -124,7 +124,7 @@ export function UnavailabilityForm({
                 <input type="hidden" name="id" value={entry.id} />
                 <input type="hidden" name="coachId" value={coachId} />
                 <button type="submit" className="text-xs text-red-400 hover:text-red-300">
-                  Cancel
+                  Annuler
                 </button>
               </form>
             </div>

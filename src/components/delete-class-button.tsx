@@ -17,8 +17,8 @@ export function DeleteClassButton({
       action={deleteClassInstance}
       onSubmit={(e) => {
         const message = reported
-          ? "This class has already been reported (Done/Missed) — deleting it permanently erases that coach's logged hours for it. Delete anyway?"
-          : "Delete this class?";
+          ? "Ce cours a déjà été déclaré (Fait/Manqué) — le supprimer efface définitivement les heures enregistrées pour ce coach. Supprimer quand même ?"
+          : "Supprimer ce cours ?";
         if (!window.confirm(message)) {
           e.preventDefault();
         }

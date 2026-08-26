@@ -33,24 +33,24 @@ function renderDigestHtml(rows: DigestRow[], weekStart: Date): string {
       <td style="padding:6px 10px;border-bottom:1px solid #eee;color:#c0392b;">${r.missed}</td>
       <td style="padding:6px 10px;border-bottom:1px solid #eee;">${r.planned}</td>
       <td style="padding:6px 10px;border-bottom:1px solid #eee;">${r.quota ?? "—"}</td>
-      <td style="padding:6px 10px;border-bottom:1px solid #eee;">${r.overQuota ? '<strong style="color:#c0392b;">Over quota</strong>' : ""}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid #eee;">${r.overQuota ? '<strong style="color:#c0392b;">Quota dépassé</strong>' : ""}</td>
     </tr>`
     )
     .join("");
 
   return `
     <div style="font-family:sans-serif;color:#111;">
-      <h2>Weekly coach digest — ${escapeHtml(formatDayLabel(weekStart))} to ${escapeHtml(formatDayLabel(addDays(weekStart, 6)))}</h2>
+      <h2>Récapitulatif hebdomadaire des coachs — ${escapeHtml(formatDayLabel(weekStart))} au ${escapeHtml(formatDayLabel(addDays(weekStart, 6)))}</h2>
       <table style="border-collapse:collapse;width:100%;max-width:640px;">
         <thead>
           <tr style="text-align:left;background:#f5f5f5;">
             <th style="padding:6px 10px;">Coach</th>
-            <th style="padding:6px 10px;">Assigned</th>
-            <th style="padding:6px 10px;">Done</th>
-            <th style="padding:6px 10px;">Missed</th>
-            <th style="padding:6px 10px;">Planned</th>
+            <th style="padding:6px 10px;">Assignés</th>
+            <th style="padding:6px 10px;">Faits</th>
+            <th style="padding:6px 10px;">Manqués</th>
+            <th style="padding:6px 10px;">Prévus</th>
             <th style="padding:6px 10px;">Quota</th>
-            <th style="padding:6px 10px;">Alert</th>
+            <th style="padding:6px 10px;">Alerte</th>
           </tr>
         </thead>
         <tbody>${rowsHtml}</tbody>
@@ -104,7 +104,7 @@ export async function sendWeeklyDigest(formData: FormData) {
     const { error } = await resend.emails.send({
       from: process.env.RESEND_FROM ?? "Crossfit Box <onboarding@resend.dev>",
       to,
-      subject: `Coach planning digest — ${formatDayLabel(weekStart)} to ${formatDayLabel(addDays(weekStart, 6))}`,
+      subject: `Récapitulatif du planning coachs — ${formatDayLabel(weekStart)} au ${formatDayLabel(addDays(weekStart, 6))}`,
       html: renderDigestHtml(rows, weekStart),
     });
     if (error) throw new Error(error.message);

@@ -20,7 +20,7 @@ export function LevelSelect({
       defaultValue={defaultValue}
       className="rounded-md border border-neutral-700 bg-neutral-950 px-2 py-1 text-xs text-white focus:border-neutral-500 focus:outline-none"
     >
-      <option value="">No level</option>
+      <option value="">Aucun niveau</option>
       {COACH_LEVELS.map((level) => (
         <option key={level} value={level}>
           {level}

@@ -40,7 +40,7 @@ function isoWeekday(date: Date): number {
 }
 
 function formatRecurring(startDate: Date): string {
-  return `every ${dayName(isoWeekday(startDate))}, starting ${formatDayLabel(startDate)}`;
+  return `chaque ${dayName(isoWeekday(startDate)).toLowerCase()}, à partir du ${formatDayLabel(startDate)}`;
 }
 
 // Best-effort: a coach's submission is already saved (and shows up on the
@@ -64,11 +64,11 @@ async function emailAdminUnavailability(
     await resend.emails.send({
       from: process.env.RESEND_FROM ?? "Crossfit Box <onboarding@resend.dev>",
       to,
-      subject: `${coachName} flagged time off — ${range}`,
+      subject: `${coachName} a signalé une absence — ${range}`,
       html: `
         <div style="font-family:sans-serif;color:#111;">
-          <p><strong>${escapeHtml(coachName)}</strong> won't be able to coach ${escapeHtml(range)}.</p>
-          ${note ? `<p>Note: ${escapeHtml(note)}</p>` : ""}
+          <p><strong>${escapeHtml(coachName)}</strong> ne pourra pas coacher ${escapeHtml(range)}.</p>
+          ${note ? `<p>Note : ${escapeHtml(note)}</p>` : ""}
         </div>
       `,
     });

@@ -12,7 +12,7 @@ function AddButton({ locked }: { locked: boolean }) {
       disabled={pending || locked}
       className="mt-1 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
     >
-      {pending ? "Adding…" : "Add"}
+      {pending ? "Ajout…" : "Ajouter"}
     </button>
   );
 }
@@ -41,18 +41,18 @@ export function PrivateClassForm({
   return (
     <div className="mb-6 rounded-lg border border-neutral-800 bg-neutral-900 p-4">
       <h2 className="mb-1 text-sm font-medium text-white">
-        Private classes you gave this week
+        Cours privés donnés cette semaine
       </h2>
       <p className="mb-3 text-xs text-neutral-500">
-        Log a private lesson that isn&apos;t on the regular schedule — pick
-        the day and time, it&apos;s recorded as done.
+        Enregistrez un cours privé hors planning habituel — choisissez le
+        jour et l&apos;heure, il est marqué comme fait.
       </p>
 
       <form action={addPrivateClass} className="mb-3 flex flex-wrap items-end gap-2">
         <input type="hidden" name="coachId" value={coachId} />
         <input type="hidden" name="weekStart" value={weekStartStr} />
         <div>
-          <label className="mb-1 block text-xs text-neutral-500">Day</label>
+          <label className="mb-1 block text-xs text-neutral-500">Jour</label>
           <select
             name="dayOfWeek"
             required
@@ -61,7 +61,7 @@ export function PrivateClassForm({
             className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none disabled:opacity-50"
           >
             <option value="" disabled>
-              Select day
+              Choisir le jour
             </option>
             {days.map((day, idx) => (
               <option key={formatDateISO(day)} value={idx + 1}>
@@ -71,7 +71,7 @@ export function PrivateClassForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs text-neutral-500">Start</label>
+          <label className="mb-1 block text-xs text-neutral-500">Début</label>
           <input
             type="time"
             name="startTime"
@@ -81,7 +81,7 @@ export function PrivateClassForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-neutral-500">End</label>
+          <label className="mb-1 block text-xs text-neutral-500">Fin</label>
           <input
             type="time"
             name="endTime"
@@ -118,7 +118,7 @@ export function PrivateClassForm({
                       type="submit"
                       className="text-xs text-red-400 hover:text-red-300"
                     >
-                      Remove
+                      Supprimer
                     </button>
                   </form>
                 )}

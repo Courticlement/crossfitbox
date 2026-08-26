@@ -94,24 +94,24 @@ export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
           href={`/admin?view=month&month=${prevMonth}`}
           className="text-neutral-400 hover:text-white"
         >
-          ← Prev
+          ← Préc.
         </Link>
         <span className="text-neutral-500">{formatMonthLabel(monthStart)}</span>
         <Link
           href={`/admin?view=month&month=${nextMonth}`}
           className="text-neutral-400 hover:text-white"
         >
-          Next →
+          Suivant →
         </Link>
       </div>
 
       <div className="mb-6 grid grid-cols-5 gap-4">
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-          <dt className="text-xs text-neutral-500">Classes this month</dt>
+          <dt className="text-xs text-neutral-500">Cours ce mois-ci</dt>
           <dd className="text-2xl font-semibold text-white">{totalClasses}</dd>
         </div>
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-          <dt className="text-xs text-neutral-500">Unassigned</dt>
+          <dt className="text-xs text-neutral-500">Non assignés</dt>
           <dd
             className={`text-2xl font-semibold ${
               unassignedClasses > 0 ? "text-amber-400" : "text-white"
@@ -121,11 +121,11 @@ export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
           </dd>
         </div>
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-          <dt className="text-xs text-neutral-500">Group classes</dt>
+          <dt className="text-xs text-neutral-500">Cours collectifs</dt>
           <dd className="text-2xl font-semibold text-white">{groupClasses}</dd>
         </div>
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-          <dt className="text-xs text-neutral-500">Private classes</dt>
+          <dt className="text-xs text-neutral-500">Cours privés</dt>
           <dd className="text-2xl font-semibold text-white">{privateClasses}</dd>
         </div>
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
@@ -145,18 +145,18 @@ export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
           <thead className="bg-neutral-900 text-left text-neutral-400">
             <tr>
               <th className="px-4 py-2 font-medium">Coach</th>
-              <th className="px-4 py-2 font-medium" title="Group classes assigned this month">
-                Assigned (Group)
+              <th className="px-4 py-2 font-medium" title="Cours collectifs assignés ce mois-ci">
+                Assignés (collectif)
               </th>
-              <th className="px-4 py-2 font-medium">Done</th>
-              <th className="px-4 py-2 font-medium">Missed</th>
-              <th className="px-4 py-2 font-medium">Substituted</th>
-              <th className="px-4 py-2 font-medium">Planned</th>
-              <th className="px-4 py-2 font-medium">Alert</th>
-              <th className="px-4 py-2 font-medium">Private</th>
+              <th className="px-4 py-2 font-medium">Faits</th>
+              <th className="px-4 py-2 font-medium">Manqués</th>
+              <th className="px-4 py-2 font-medium">Remplacés</th>
+              <th className="px-4 py-2 font-medium">Prévus</th>
+              <th className="px-4 py-2 font-medium">Alerte</th>
+              <th className="px-4 py-2 font-medium">Privés</th>
               <th
                 className="px-4 py-2 font-medium"
-                title="Group amount only counts classes in a week the admin has validated, minus private class cost"
+                title="Le montant collectif ne compte que les cours d'une semaine validée par l'admin, moins le coût des cours privés"
               >
                 Net €
               </th>
@@ -184,7 +184,7 @@ export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
                 <td className="px-4 py-2">
                   {hasMissed && (
                     <span className="rounded-full bg-red-900/40 px-2 py-0.5 text-xs text-red-300">
-                      {missed} missed
+                      {missed} manqué{missed === 1 ? "" : "s"}
                     </span>
                   )}
                 </td>
@@ -197,7 +197,7 @@ export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
             {rows.length === 0 && (
               <tr>
                 <td colSpan={9} className="px-4 py-6 text-center text-neutral-500">
-                  No coaches yet.
+                  Aucun coach pour l&apos;instant.
                 </td>
               </tr>
             )}

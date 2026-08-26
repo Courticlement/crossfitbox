@@ -40,7 +40,7 @@ export async function adminLogin(
   const password = String(formData.get("password") ?? "");
   const expected = process.env.ADMIN_PASSWORD;
   if (!expected || !password || !safeEqual(password, expected)) {
-    return { error: "Incorrect password" };
+    return { error: "Mot de passe incorrect" };
   }
 
   (await cookies()).set(ADMIN_COOKIE, await createAdminSessionToken(), SESSION_COOKIE_OPTIONS);
@@ -58,7 +58,7 @@ export async function coachLogin(
 ): Promise<AuthActionState> {
   const name = String(formData.get("name") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  if (!name || !password) return { error: "Enter your name and password" };
+  if (!name || !password) return { error: "Entrez votre nom et votre mot de passe" };
 
   const coach = await prisma.coach.findFirst({
     where: { name: { equals: name, mode: "insensitive" } },
@@ -71,7 +71,7 @@ export async function coachLogin(
     !coach.passwordHash ||
     !verifyPassword(password, coach.passwordHash)
   ) {
-    return { error: "Incorrect name or password" };
+    return { error: "Nom ou mot de passe incorrect" };
   }
 
   (await cookies()).set(

@@ -177,13 +177,13 @@ export default async function PlanningPage({
   return (
     <div className="text-neutral-300">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-white">Weekly Planning</h1>
+        <h1 className="text-lg font-semibold text-white">Planning hebdomadaire</h1>
         <div className="flex items-center gap-3 text-sm">
           <Link
             href={`/admin/planning?week=${prevWeek}`}
             className="text-neutral-400 hover:text-white"
           >
-            ← Prev
+            ← Préc.
           </Link>
           <span className="text-neutral-500">
             {formatDayLabel(weekStart)} – {formatDayLabel(addDays(weekStart, 6))}
@@ -192,7 +192,7 @@ export default async function PlanningPage({
             href={`/admin/planning?week=${nextWeek}`}
             className="text-neutral-400 hover:text-white"
           >
-            Next →
+            Suivant →
           </Link>
         </div>
       </div>
@@ -207,7 +207,7 @@ export default async function PlanningPage({
             type="submit"
             className="rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
           >
-            Generate this week from templates
+            Générer cette semaine depuis les modèles
           </button>
         </form>
         <ResetWeekButton weekStart={formatDateISO(weekStart)} />
@@ -215,7 +215,7 @@ export default async function PlanningPage({
           {validated ? (
             <>
               <span className="rounded-full bg-emerald-900/40 px-2.5 py-1 text-xs text-emerald-300">
-                Validated {planningWeek.validatedAt.toLocaleString("en-US", { timeZone: "UTC" })}
+                Validée le {planningWeek.validatedAt.toLocaleString("fr-FR", { timeZone: "UTC" })}
               </span>
               <form action={unlockWeek}>
                 <input type="hidden" name="weekStart" value={formatDateISO(weekStart)} />
@@ -223,7 +223,7 @@ export default async function PlanningPage({
                   type="submit"
                   className="rounded-md border border-neutral-700 px-3 py-2 text-sm text-neutral-300 hover:border-neutral-500 hover:text-white"
                 >
-                  Unlock
+                  Déverrouiller
                 </button>
               </form>
             </>
@@ -234,7 +234,7 @@ export default async function PlanningPage({
                 type="submit"
                 className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-500"
               >
-                Validate planning
+                Valider le planning
               </button>
             </form>
           )}
@@ -242,8 +242,8 @@ export default async function PlanningPage({
       </div>
       {validated && (
         <p className="mb-4 text-xs text-neutral-500">
-          This week is locked — coaches can&apos;t submit or change self-reports on My Classes
-          until you unlock it.
+          Cette semaine est verrouillée — les coachs ne peuvent pas soumettre ni modifier leurs
+          déclarations sur Mes cours tant que vous ne la déverrouillez pas.
         </p>
       )}
 
@@ -310,7 +310,7 @@ export default async function PlanningPage({
         <BoxClosuresCard entries={upcomingClosures} />
         <div className="max-w-sm rounded-lg border border-neutral-800 bg-neutral-900 p-4">
           <h2 className="mb-3 text-sm font-medium text-white">
-            Add a one-off class
+            Ajouter un cours ponctuel
           </h2>
           <form action={addAdHocClass} className="flex flex-col gap-2">
             <input
@@ -343,7 +343,7 @@ export default async function PlanningPage({
               className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
             >
               <option value="" disabled>
-                Room
+                Salle
               </option>
               {ROOMS.map((room) => (
                 <option key={room} value={room}>
@@ -355,18 +355,18 @@ export default async function PlanningPage({
               type="text"
               name="label"
               required
-              placeholder="Label"
+              placeholder="Intitulé"
               className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
             />
             <label className="flex items-center gap-1.5 text-sm text-neutral-300">
               <input type="checkbox" name="isPrivate" className="accent-white" />
-              Private class
+              Cours privé
             </label>
             <button
               type="submit"
               className="mt-1 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
             >
-              Add class
+              Ajouter le cours
             </button>
           </form>
         </div>

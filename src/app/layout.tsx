@@ -13,14 +13,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Crossfit Box Planning",
-  description: "Coach planning, quotas and weekly digest for the box.",
+  title: "Planning CrossFit Box",
+  description: "Planning des coachs, quotas et récapitulatif hebdomadaire de la box.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="en"
+      lang="fr"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>

@@ -51,7 +51,7 @@ export function CoachSelect({
             : "border border-amber-700/70 bg-amber-950/30 text-amber-300 focus:border-amber-500"
         }`}
       >
-        <option value="">Unassigned</option>
+        <option value="">Non assigné</option>
         {coaches.map((coach) => (
           <option key={coach.id} value={coach.id}>
             {coach.name}
@@ -66,7 +66,7 @@ export function CoachSelect({
               : "text-amber-400"
           }`}
         >
-          Template: {templateCoachName}
+          Modèle : {templateCoachName}
         </p>
       )}
       {state.error && (
@@ -74,7 +74,7 @@ export function CoachSelect({
           title={state.error}
           className="truncate text-[9px] leading-tight text-red-400"
         >
-          ⚠ Coach busy at this time
+          ⚠ Coach occupé à cette heure
         </p>
       )}
     </form>

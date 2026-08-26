@@ -21,7 +21,7 @@ export function Nav({ links }: { links: { href: string; label: string }[] }) {
         </nav>
         <form action={adminLogout}>
           <button type="submit" className="text-sm text-neutral-400 hover:text-white">
-            Log out
+            Se déconnecter
           </button>
         </form>
       </div>

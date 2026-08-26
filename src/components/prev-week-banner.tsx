@@ -11,17 +11,17 @@ export async function PrevWeekBanner() {
 
   return (
     <p className="mb-6 rounded-md border border-amber-900 bg-amber-950 px-3 py-2 text-sm text-amber-300">
-      ⚠ Last week ({formatDayLabel(prevWeekStart)} –{" "}
-      {formatDayLabel(addDays(prevWeekStart, 6))}) hasn&apos;t been validated
-      yet
+      ⚠ La semaine dernière ({formatDayLabel(prevWeekStart)} –{" "}
+      {formatDayLabel(addDays(prevWeekStart, 6))}) n&apos;a pas encore été
+      validée
       {unreported > 0 &&
-        ` — ${unreported} class${unreported === 1 ? "" : "es"} not reported by coaches`}
+        ` — ${unreported} cours non déclaré${unreported === 1 ? "" : "s"} par les coachs`}
       .{" "}
       <Link
         href={`/admin/planning?week=${formatDateISO(prevWeekStart)}`}
         className="font-medium text-amber-100 underline hover:text-white"
       >
-        Review &amp; validate →
+        Vérifier et valider →
       </Link>
     </p>
   );

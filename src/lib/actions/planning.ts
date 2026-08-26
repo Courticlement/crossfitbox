@@ -238,7 +238,7 @@ export async function assignCoach(
     const conflict = await findSchedulingConflict(coachId, instance);
     if (conflict) {
       return {
-        error: `Already assigned to "${conflict.label}" in ${conflict.room} at ${conflict.startTime}–${conflict.endTime}.`,
+        error: `Déjà assigné à « ${conflict.label} » en ${conflict.room} de ${conflict.startTime} à ${conflict.endTime}.`,
       };
     }
   }
@@ -279,18 +279,18 @@ export async function assignSubstitute(
   if (!instance) return { error: null };
 
   if (!isAdminContext && (await isDateInValidatedWeek(instance.date))) {
-    return { error: "This week is validated — reporting is closed." };
+    return { error: "Cette semaine est validée — les déclarations sont fermées." };
   }
 
   if (substituteCoachId) {
     if (substituteCoachId === instance.coachId) {
-      return { error: "That's already the planned coach for this class." };
+      return { error: "C'est déjà le coach prévu pour ce cours." };
     }
 
     const conflict = await findSchedulingConflict(substituteCoachId, instance);
     if (conflict) {
       return {
-        error: `Already assigned to "${conflict.label}" in ${conflict.room} at ${conflict.startTime}–${conflict.endTime}.`,
+        error: `Déjà assigné à « ${conflict.label} » en ${conflict.room} de ${conflict.startTime} à ${conflict.endTime}.`,
       };
     }
   }

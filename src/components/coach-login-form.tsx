@@ -11,7 +11,7 @@ export function CoachLoginForm() {
   return (
     <form action={formAction} className="flex w-full max-w-xs flex-col gap-3">
       <div>
-        <label className="mb-1 block text-xs text-neutral-500">Name</label>
+        <label className="mb-1 block text-xs text-neutral-500">Nom</label>
         <input
           type="text"
           name="name"
@@ -21,7 +21,7 @@ export function CoachLoginForm() {
         />
       </div>
       <div>
-        <label className="mb-1 block text-xs text-neutral-500">Password</label>
+        <label className="mb-1 block text-xs text-neutral-500">Mot de passe</label>
         <input
           type="password"
           name="password"
@@ -35,7 +35,7 @@ export function CoachLoginForm() {
         disabled={pending}
         className="rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {pending ? "Logging in…" : "Log in"}
+        {pending ? "Connexion…" : "Se connecter"}
       </button>
     </form>
   );

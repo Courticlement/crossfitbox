@@ -4,9 +4,7 @@ export function timeToMinutes(hhmm: string): number {
 }
 
 export function formatHourLabel(hour: number): string {
-  const h = ((hour + 11) % 12) + 1;
-  const suffix = hour < 12 || hour === 24 ? "AM" : "PM";
-  return `${h} ${suffix}`;
+  return `${hour % 24}h`;
 }
 
 export type GridPlacedEvent<T> = {

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { addDays, formatDateISO, formatDayLabel, parseDateOnly, toDateOnly } from "@/lib/dates";
 import { DataFilters } from "@/components/data-filters";
 import { PrevWeekBanner } from "@/components/prev-week-banner";
+import { statusLabel } from "@/lib/status-labels";
 
 const STATUS_COLOR: Record<string, string> = {
   DONE: "text-emerald-400",
@@ -54,12 +55,13 @@ export default async function DataPage({
 
   return (
     <div className="text-neutral-300">
-      <h1 className="mb-1 text-lg font-semibold text-white">Data</h1>
+      <h1 className="mb-1 text-lg font-semibold text-white">Données</h1>
       <PrevWeekBanner />
       <p className="mb-4 text-sm text-neutral-500">
-        Browse every recorded class and self-report, and export the range
-        below as an Excel workbook. Defaults to the past month. Coaches and
-        Class Templates have their own tabs for managing that reference data.
+        Parcourez tous les cours enregistrés et les déclarations, et exportez
+        la période ci-dessous en fichier Excel. Le mois dernier est
+        sélectionné par défaut. Les onglets Coachs et Modèles de cours
+        permettent de gérer ces données de référence.
       </p>
 
       <DataFilters
@@ -71,20 +73,20 @@ export default async function DataPage({
       />
 
       <h2 className="mb-2 text-sm font-medium text-white">
-        Classes ({formatDayLabel(from)} – {formatDayLabel(to)})
+        Cours ({formatDayLabel(from)} – {formatDayLabel(to)})
       </h2>
       <div className="mb-8 overflow-hidden rounded-lg border border-neutral-800">
         <table className="w-full text-sm">
           <thead className="bg-neutral-900 text-left text-neutral-400">
             <tr>
               <th className="px-4 py-2 font-medium">Date</th>
-              <th className="px-4 py-2 font-medium">Time</th>
-              <th className="px-4 py-2 font-medium">Room</th>
-              <th className="px-4 py-2 font-medium">Label</th>
+              <th className="px-4 py-2 font-medium">Heure</th>
+              <th className="px-4 py-2 font-medium">Salle</th>
+              <th className="px-4 py-2 font-medium">Intitulé</th>
               <th className="px-4 py-2 font-medium">Type</th>
               <th className="px-4 py-2 font-medium">Coach</th>
-              <th className="px-4 py-2 font-medium">Substitute</th>
-              <th className="px-4 py-2 font-medium">Status</th>
+              <th className="px-4 py-2 font-medium">Remplaçant</th>
+              <th className="px-4 py-2 font-medium">Statut</th>
             </tr>
           </thead>
           <tbody>
@@ -96,18 +98,18 @@ export default async function DataPage({
                 </td>
                 <td className="px-4 py-2">{inst.room}</td>
                 <td className="px-4 py-2 text-white">{inst.label}</td>
-                <td className="px-4 py-2">{inst.isPrivate ? "Private" : "Group"}</td>
+                <td className="px-4 py-2">{inst.isPrivate ? "Privé" : "Collectif"}</td>
                 <td className="px-4 py-2">{inst.coach?.name ?? "—"}</td>
                 <td className="px-4 py-2">{inst.substituteCoach?.name ?? "—"}</td>
                 <td className={`px-4 py-2 ${STATUS_COLOR[inst.status] ?? ""}`}>
-                  {inst.status}
+                  {statusLabel(inst.status)}
                 </td>
               </tr>
             ))}
             {instances.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-4 py-6 text-center text-neutral-500">
-                  No classes in this range.
+                  Aucun cours sur cette période.
                 </td>
               </tr>
             )}
@@ -115,16 +117,16 @@ export default async function DataPage({
         </table>
       </div>
 
-      <h2 className="mb-2 text-sm font-medium text-white">Self-reports</h2>
+      <h2 className="mb-2 text-sm font-medium text-white">Déclarations</h2>
       <div className="mb-8 overflow-hidden rounded-lg border border-neutral-800">
         <table className="w-full text-sm">
           <thead className="bg-neutral-900 text-left text-neutral-400">
             <tr>
-              <th className="px-4 py-2 font-medium">Class date</th>
-              <th className="px-4 py-2 font-medium">Class</th>
+              <th className="px-4 py-2 font-medium">Date du cours</th>
+              <th className="px-4 py-2 font-medium">Cours</th>
               <th className="px-4 py-2 font-medium">Coach</th>
-              <th className="px-4 py-2 font-medium">Reported</th>
-              <th className="px-4 py-2 font-medium">Last updated</th>
+              <th className="px-4 py-2 font-medium">Déclaré</th>
+              <th className="px-4 py-2 font-medium">Dernière mise à jour</th>
             </tr>
           </thead>
           <tbody>
@@ -136,17 +138,17 @@ export default async function DataPage({
                 <td className="px-4 py-2 text-white">{sub.classInstance.label}</td>
                 <td className="px-4 py-2">{sub.coach.name}</td>
                 <td className={`px-4 py-2 ${STATUS_COLOR[sub.status] ?? ""}`}>
-                  {sub.status}
+                  {statusLabel(sub.status)}
                 </td>
                 <td className="px-4 py-2 text-neutral-500">
-                  {sub.updatedAt.toLocaleString("en-US", { timeZone: "UTC" })}
+                  {sub.updatedAt.toLocaleString("fr-FR", { timeZone: "UTC" })}
                 </td>
               </tr>
             ))}
             {submissions.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-neutral-500">
-                  No self-reports in this range.
+                  Aucune déclaration sur cette période.
                 </td>
               </tr>
             )}
@@ -155,13 +157,14 @@ export default async function DataPage({
       </div>
 
       <p className="text-xs text-neutral-600">
-        Looking for coach profiles or the weekly timetable? See{" "}
+        Vous cherchez les profils des coachs ou l&apos;emploi du temps
+        hebdomadaire ? Voir{" "}
         <Link href="/admin/coaches" className="text-neutral-400 hover:text-white">
-          Coaches
+          Coachs
         </Link>{" "}
-        and{" "}
+        et{" "}
         <Link href="/admin/templates" className="text-neutral-400 hover:text-white">
-          Class Templates
+          Modèles de cours
         </Link>
         .
       </p>

@@ -52,10 +52,10 @@ export function SubstituteSelect({
         }}
         className="w-full truncate rounded border border-amber-800 bg-neutral-950 px-1 py-0.5 text-[10px] text-amber-300 focus:border-amber-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <option value="">No substitute</option>
+        <option value="">Aucun remplaçant</option>
         {options.map((coach) => (
           <option key={coach.id} value={coach.id}>
-            Covered by {coach.name}
+            Remplacé par {coach.name}
           </option>
         ))}
       </select>
@@ -64,7 +64,7 @@ export function SubstituteSelect({
           title={state.error}
           className="truncate text-[9px] leading-tight text-red-400"
         >
-          ⚠ Coach busy at this time
+          ⚠ Coach occupé à cette heure
         </p>
       )}
     </form>

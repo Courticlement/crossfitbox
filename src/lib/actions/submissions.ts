@@ -228,7 +228,7 @@ export async function addPrivateClass(formData: FormData) {
       date: addDays(weekStartDate, dayOfWeek - 1),
       startTime,
       endTime,
-      label: "Private class",
+      label: "Cours privé",
       isPrivate: true,
       status: "DONE",
       coachId,

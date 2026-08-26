@@ -3,15 +3,15 @@
 // Planning grid (MISSED, DONE, unassigned/warning respectively). Picking one
 // of these for a coach would visually collide with those status signals.
 export const COACH_COLORS = [
-  { name: "Blue", value: "#3b82f6" },
-  { name: "Sky", value: "#0ea5e9" },
+  { name: "Bleu", value: "#3b82f6" },
+  { name: "Azur", value: "#0ea5e9" },
   { name: "Cyan", value: "#06b6d4" },
-  { name: "Teal", value: "#14b8a6" },
+  { name: "Turquoise", value: "#14b8a6" },
   { name: "Indigo", value: "#6366f1" },
   { name: "Violet", value: "#8b5cf6" },
-  { name: "Purple", value: "#a855f7" },
+  { name: "Pourpre", value: "#a855f7" },
   { name: "Fuchsia", value: "#d946ef" },
-  { name: "Pink", value: "#ec4899" },
+  { name: "Rose", value: "#ec4899" },
   { name: "Orange", value: "#f97316" },
 ] as const;
 

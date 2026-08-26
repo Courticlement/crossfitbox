@@ -26,7 +26,7 @@ export function PlanningFilters({
           onChange={(e) => e.currentTarget.form?.requestSubmit()}
           className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
         >
-          <option value="">All coaches</option>
+          <option value="">Tous les coachs</option>
           {coaches.map((coach) => (
             <option key={coach.id} value={coach.id}>
               {coach.name}
@@ -42,20 +42,20 @@ export function PlanningFilters({
           onChange={(e) => e.currentTarget.form?.requestSubmit()}
           className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
         >
-          <option value="">All classes</option>
-          <option value="private">Private only</option>
-          <option value="group">Group only</option>
+          <option value="">Tous les cours</option>
+          <option value="private">Privés uniquement</option>
+          <option value="group">Collectifs uniquement</option>
         </select>
       </div>
       <div>
-        <label className="mb-1 block text-xs text-neutral-500">Room</label>
+        <label className="mb-1 block text-xs text-neutral-500">Salle</label>
         <select
           name="room"
           defaultValue={room}
           onChange={(e) => e.currentTarget.form?.requestSubmit()}
           className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
         >
-          <option value="">All rooms</option>
+          <option value="">Toutes les salles</option>
           {ROOMS.map((r) => (
             <option key={r} value={r}>
               {r}
@@ -68,7 +68,7 @@ export function PlanningFilters({
           href={`/admin/planning?week=${week}`}
           className="pb-2 text-xs text-neutral-500 hover:text-white"
         >
-          Clear filters
+          Effacer les filtres
         </a>
       )}
     </form>

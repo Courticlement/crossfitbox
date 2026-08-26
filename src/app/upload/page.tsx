@@ -83,11 +83,11 @@ export default async function UploadPage({
       <header className="border-b border-neutral-800 bg-neutral-950">
         <div className="mx-auto flex max-w-5xl items-center px-4 py-3">
           <span className="text-sm font-semibold text-white">
-            Crossfit Box — My Classes
+            Crossfit Box — Mes cours
           </span>
           <form action={coachLogout} className="ml-auto">
             <button type="submit" className="text-sm text-neutral-400 hover:text-white">
-              Log out
+              Se déconnecter
             </button>
           </form>
         </div>
@@ -95,39 +95,39 @@ export default async function UploadPage({
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 text-neutral-300">
         <h1 className="mb-1 text-lg font-semibold text-white">
-          {coach.name}&apos;s classes
+          Cours de {coach.name}
         </h1>
         <p className="mb-4 text-sm text-neutral-500">
-          You&apos;ll see your classes for the week below, plus any that are
-          still unassigned — mark one you did (or missed). Once a class is
-          saved as Missed, you can note who covered it right there. If you
-          report a class more than once, whoever reports most recently is
-          what counts.
+          Vous verrez ci-dessous vos cours de la semaine, ainsi que ceux
+          encore non assignés — marquez-en un que vous avez fait (ou manqué).
+          Une fois un cours marqué Manqué, vous pouvez indiquer directement
+          qui l&apos;a couvert. Si vous déclarez un cours plusieurs fois,
+          c&apos;est la déclaration la plus récente qui compte.
         </p>
 
         <div className="mb-6">
           <div className="flex items-center gap-3 text-sm">
             {hasPrev ? (
               <Link href={`/upload?week=${prevWeek}`} className="text-neutral-400 hover:text-white">
-                ← Prev
+                ← Préc.
               </Link>
             ) : (
-              <span className="text-neutral-700">← Prev</span>
+              <span className="text-neutral-700">← Préc.</span>
             )}
             <span className="text-neutral-500">
-              Week of {formatDayLabel(weekStart)} – {formatDayLabel(addDays(weekStart, 6))}
+              Semaine du {formatDayLabel(weekStart)} – {formatDayLabel(addDays(weekStart, 6))}
             </span>
             {hasNext ? (
               <Link href={`/upload?week=${nextWeek}`} className="text-neutral-400 hover:text-white">
-                Next →
+                Suivant →
               </Link>
             ) : (
-              <span className="text-neutral-700">Next →</span>
+              <span className="text-neutral-700">Suivant →</span>
             )}
           </div>
           {!hasNext && (
             <p className="mt-1 text-xs text-neutral-600">
-              Next week&apos;s planning opens up from Friday.
+              Le planning de la semaine prochaine s&apos;ouvre à partir de vendredi.
             </p>
           )}
         </div>
@@ -138,8 +138,9 @@ export default async function UploadPage({
 
         {locked && (
           <p className="mb-6 rounded-md border border-amber-900 bg-amber-950 px-3 py-2 text-sm text-amber-300">
-            This week&apos;s planning has been validated by the admin — reporting is
-            closed. Contact the admin if something needs to change.
+            Le planning de cette semaine a été validé par l&apos;admin — les
+            déclarations sont fermées. Contactez l&apos;admin si quelque chose
+            doit changer.
           </p>
         )}
 
@@ -160,7 +161,7 @@ export default async function UploadPage({
                 disabled={locked}
                 className="rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Save all changes
+                Enregistrer les modifications
               </button>
             </div>
           </>
@@ -178,7 +179,7 @@ export default async function UploadPage({
           />
         ) : (
           <p className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-6 text-center text-sm text-neutral-500">
-            No classes this week.
+            Aucun cours cette semaine.
           </p>
         )}
       </main>

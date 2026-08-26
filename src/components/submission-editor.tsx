@@ -45,7 +45,7 @@ export function SubmissionEditor({
     <div className="flex flex-col gap-0.5">
       {assignedCoachName && (
         <div className="truncate text-[9px] text-neutral-500">
-          Assigned: {assignedCoachName}
+          Assigné : {assignedCoachName}
         </div>
       )}
       <div className="flex items-center gap-1">
@@ -56,7 +56,7 @@ export function SubmissionEditor({
           value={status}
           disabled={locked}
           onChange={(e) => onPendingStatusChange(classInstanceId, e.currentTarget.value)}
-          title={locked ? "This week is validated — reporting is closed" : dirty ? "Not saved yet — click \"Save all changes\"" : undefined}
+          title={locked ? "Cette semaine est validée — les déclarations sont fermées" : dirty ? "Pas encore enregistré — cliquez sur « Enregistrer les modifications »" : undefined}
           className={`w-full truncate rounded border px-1 py-0.5 text-[10px] text-white focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
             dirty
               ? "border-amber-600 bg-amber-950/20 focus:border-amber-400"
@@ -64,10 +64,10 @@ export function SubmissionEditor({
           }`}
         >
           <option value="" disabled>
-            I did...
+            J&apos;ai...
           </option>
-          <option value="DONE">Done</option>
-          <option value="MISSED">Missed</option>
+          <option value="DONE">Fait</option>
+          <option value="MISSED">Manqué</option>
         </select>
         {mySubmission && !locked && (
           <form action={clearMySubmission}>
@@ -77,7 +77,7 @@ export function SubmissionEditor({
               type="submit"
               className="shrink-0 text-[9px] text-neutral-500 hover:text-red-300"
             >
-              Clear
+              Effacer
             </button>
           </form>
         )}

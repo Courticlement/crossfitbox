@@ -21,13 +21,13 @@ export function CoachPasswordForm({
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs font-medium text-neutral-400">Login password</span>
+      <span className="text-xs font-medium text-neutral-400">Mot de passe de connexion</span>
       <span
         className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
           hasPassword ? "bg-emerald-900/40 text-emerald-300" : "bg-amber-900/40 text-amber-300"
         }`}
       >
-        {hasPassword ? "Set" : "Not set"}
+        {hasPassword ? "Défini" : "Non défini"}
       </span>
       <form
         action={setCoachPassword}
@@ -38,7 +38,7 @@ export function CoachPasswordForm({
         <input
           type="password"
           name="password"
-          placeholder="New password"
+          placeholder="Nouveau mot de passe"
           minLength={6}
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -50,7 +50,7 @@ export function CoachPasswordForm({
           disabled={disabled || value.length < 6}
           className="rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-400 hover:border-neutral-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Save
+          Enregistrer
         </button>
       </form>
     </div>

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { addDays, formatDateISO, formatDayLabel } from "@/lib/dates";
 import { timeToMinutes, formatHourLabel, layoutDayEventsToGrid } from "@/lib/calendar-layout";
 import { hexToRgba } from "@/lib/coach-colors";
+import { statusLabel } from "@/lib/status-labels";
 
 const SLOT_MINUTES = 5;
 const SLOTS_PER_HOUR = 60 / SLOT_MINUTES;
@@ -33,8 +34,8 @@ const STATUS_BG: Record<string, string> = {
 };
 
 const ROOM_BG: Record<string, string> = {
-  "Room 1": "bg-sky-950/60",
-  "Room 2": "bg-violet-950/60",
+  "Salle 1": "bg-sky-950/60",
+  "Salle 2": "bg-violet-950/60",
 };
 
 export type WeekGridInstance = {
@@ -130,7 +131,7 @@ export function WeekGrid<T extends WeekGridInstance>({
               <span>{formatDayLabel(day)}</span>
               {closed && (
                 <span className="rounded-full bg-red-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-red-300">
-                  Closed
+                  Fermé
                 </span>
               )}
             </div>
@@ -192,7 +193,7 @@ export function WeekGrid<T extends WeekGridInstance>({
             return (
               <div
                 key={inst.id}
-                title={`${inst.label} · ${inst.room} · ${inst.startTime}–${inst.endTime} · ${inst.status}${coachUnavailable ? " · assigned coach is unavailable" : ""}`}
+                title={`${inst.label} · ${inst.room} · ${inst.startTime}–${inst.endTime} · ${statusLabel(inst.status)}${coachUnavailable ? " · le coach assigné est indisponible" : ""}`}
                 className={`group relative z-10 flex flex-col gap-1 overflow-hidden rounded-md border-l-4 p-1.5 transition-opacity ${STATUS_BORDER[inst.status] ?? "border-l-neutral-600"} ${bg} ${needsCoach ? "ring-1 ring-inset ring-amber-600/60" : ""} ${coachUnavailable ? "ring-2 ring-inset ring-red-500" : ""} ${isMineGroup ? "ring-2 ring-inset ring-white/80" : ""} ${faded ? "opacity-40" : ""}`}
                 style={{
                   gridColumn: dayIdx + 2,
@@ -210,12 +211,12 @@ export function WeekGrid<T extends WeekGridInstance>({
                   <div className="flex shrink-0 items-center gap-1">
                     {coachUnavailable && (
                       <span className="rounded-full bg-red-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-red-300">
-                        Unavailable
+                        Indisponible
                       </span>
                     )}
                     {inst.isPrivate && (
                       <span className="rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-violet-300">
-                        Private
+                        Privé
                       </span>
                     )}
                     {headerAction?.(inst)}

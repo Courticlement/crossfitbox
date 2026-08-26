@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
 import { addDays, formatDateISO, parseDateOnly, toDateOnly } from "@/lib/dates";
+import { statusLabel } from "@/lib/status-labels";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -39,17 +40,17 @@ export async function GET(request: Request) {
   workbook.creator = "Crossfit Box";
   workbook.created = new Date();
 
-  const classesSheet = workbook.addWorksheet("Classes");
+  const classesSheet = workbook.addWorksheet("Cours");
   classesSheet.columns = [
     { header: "Date", key: "date", width: 12 },
-    { header: "Start", key: "start", width: 8 },
-    { header: "End", key: "end", width: 8 },
-    { header: "Room", key: "room", width: 10 },
-    { header: "Label", key: "label", width: 24 },
+    { header: "Début", key: "start", width: 8 },
+    { header: "Fin", key: "end", width: 8 },
+    { header: "Salle", key: "room", width: 10 },
+    { header: "Intitulé", key: "label", width: 24 },
     { header: "Type", key: "type", width: 10 },
     { header: "Coach", key: "coach", width: 18 },
-    { header: "Substitute", key: "substitute", width: 18 },
-    { header: "Status", key: "status", width: 12 },
+    { header: "Remplaçant", key: "substitute", width: 18 },
+    { header: "Statut", key: "status", width: 12 },
   ];
   for (const inst of instances) {
     classesSheet.addRow({
@@ -58,29 +59,29 @@ export async function GET(request: Request) {
       end: inst.endTime,
       room: inst.room,
       label: inst.label,
-      type: inst.isPrivate ? "Private" : "Group",
+      type: inst.isPrivate ? "Privé" : "Collectif",
       coach: inst.coach?.name ?? "",
       substitute: inst.substituteCoach?.name ?? "",
-      status: inst.status,
+      status: statusLabel(inst.status),
     });
   }
   classesSheet.getColumn("date").numFmt = "yyyy-mm-dd";
   classesSheet.getRow(1).font = { bold: true };
 
-  const submissionsSheet = workbook.addWorksheet("Self-reports");
+  const submissionsSheet = workbook.addWorksheet("Déclarations");
   submissionsSheet.columns = [
-    { header: "Class date", key: "classDate", width: 12 },
-    { header: "Class", key: "label", width: 24 },
+    { header: "Date du cours", key: "classDate", width: 12 },
+    { header: "Cours", key: "label", width: 24 },
     { header: "Coach", key: "coach", width: 18 },
-    { header: "Reported status", key: "status", width: 14 },
-    { header: "Last updated (UTC)", key: "updatedAt", width: 20 },
+    { header: "Statut déclaré", key: "status", width: 14 },
+    { header: "Dernière mise à jour (UTC)", key: "updatedAt", width: 20 },
   ];
   for (const sub of submissions) {
     submissionsSheet.addRow({
       classDate: sub.classInstance.date,
       label: sub.classInstance.label,
       coach: sub.coach.name,
-      status: sub.status,
+      status: statusLabel(sub.status),
       updatedAt: sub.updatedAt,
     });
   }
