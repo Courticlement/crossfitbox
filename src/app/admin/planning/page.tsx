@@ -36,6 +36,7 @@ export default async function PlanningPage({
 
   const coachIdFilter = typeof params?.coachId === "string" ? params.coachId : "";
   const typeFilter = typeof params?.type === "string" ? params.type : "";
+  const roomFilter = typeof params?.room === "string" ? params.room : "";
 
   const [instances, coaches, doneSubmissions, planningWeek, unavailabilities, weekClosures, upcomingClosures] =
     await Promise.all([
@@ -99,6 +100,7 @@ export default async function PlanningPage({
       if (coachIdFilter && inst.coachId !== coachIdFilter) return false;
       if (typeFilter === "private" && !inst.isPrivate) return false;
       if (typeFilter === "group" && inst.isPrivate) return false;
+      if (roomFilter && inst.room !== roomFilter) return false;
       return true;
     })
     .map((inst) => ({ ...inst, coachColor: inst.coach?.color ?? null }));
@@ -252,6 +254,7 @@ export default async function PlanningPage({
         week={weekStartStr}
         coachId={coachIdFilter}
         type={typeFilter}
+        room={roomFilter}
         coaches={coaches}
       />
 

@@ -5,10 +5,10 @@ import { hexToRgba } from "@/lib/coach-colors";
 
 const SLOT_MINUTES = 5;
 const SLOTS_PER_HOUR = 60 / SLOT_MINUTES;
-const ROW_PX = 11; // SLOTS_PER_HOUR * ROW_PX = 132px per hour — a MISSED
-// class can grow a 4th row (the substitute picker) on top of time/label/
-// coach, so this needs more headroom than a plain class does; see the
-// overflow-hidden event block below.
+const ROW_PX = 8; // SLOTS_PER_HOUR * ROW_PX = 96px per hour — kept as
+// compact as still comfortably fits a MISSED class's 4th row (the
+// substitute picker) on top of time/label/coach; see the overflow-hidden
+// event block below. Shrinking further starts clipping that case.
 const DEFAULT_START_HOUR = 7;
 const DEFAULT_END_HOUR = 21;
 const GUTTER_COL = "64px";
