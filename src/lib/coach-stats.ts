@@ -19,12 +19,6 @@ export type CoachStats = {
   // months with any activity — the current (still in-progress) month is
   // excluded so a month that's only just started doesn't drag this down.
   averageHoursPerMonth: number | null;
-  // Share of assigned classes the coach personally delivered (DONE, and not
-  // covered by a substitute) out of all assigned classes with a reported
-  // outcome (DONE + MISSED + CANCELLED). A class handed off to a substitute
-  // counts against the planned coach's rate even if it ended up DONE, since
-  // they didn't show up for it. PLANNED classes are excluded — not reported yet.
-  reliabilityRate: number | null;
   privateClassesDone: number;
   // € owed for group classes this coach delivered in a week the admin has
   // explicitly validated (see PlanningWeek / validateWeek) — private classes
@@ -43,8 +37,6 @@ function classDurationHours(startTime: string, endTime: string): number {
   return (timeToMinutes(endTime) - timeToMinutes(startTime)) / 60;
 }
 
-const REPORTED_STATUSES = new Set(["DONE", "MISSED", "CANCELLED"]);
-
 export function computeCoachStats(
   coachId: string,
   instances: ClassInstanceForStats[],
@@ -59,8 +51,6 @@ export function computeCoachStats(
 
   let hoursThisMonth = 0;
   let hoursLastMonth = 0;
-  let doneCount = 0;
-  let reportedCount = 0;
   let privateClassesDone = 0;
   let amountThisMonth = 0;
   let amountLastMonth = 0;
@@ -84,15 +74,6 @@ export function computeCoachStats(
     const deliveredByThisCoach = deliveredBy === coachId;
 
     if (!isAccountable && !deliveredByThisCoach) continue;
-
-    // Reliability is scored against whoever was accountable for the class,
-    // not whoever ended up covering it — a substitute picking up someone
-    // else's missed class doesn't get an extra "expected" class on their
-    // own record, good or bad.
-    if (isAccountable && REPORTED_STATUSES.has(inst.status)) {
-      reportedCount++;
-      if (deliveredByThisCoach) doneCount++;
-    }
 
     if (deliveredByThisCoach) {
       const duration = classDurationHours(inst.startTime, inst.endTime);
@@ -138,7 +119,6 @@ export function computeCoachStats(
     hoursThisMonth,
     hoursLastMonth,
     averageHoursPerMonth,
-    reliabilityRate: reportedCount > 0 ? doneCount / reportedCount : null,
     privateClassesDone,
     amountThisMonth,
     amountLastMonth,

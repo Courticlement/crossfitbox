@@ -7,6 +7,7 @@ import {
   unarchiveCoach,
 } from "@/lib/actions/coaches";
 import { computeCoachStats, type CoachStats } from "@/lib/coach-stats";
+import { groupClassRate } from "@/lib/coach-levels";
 import { LevelSelect } from "@/components/level-select";
 import { ColorSelect } from "@/components/color-select";
 import { PrevWeekBanner } from "@/components/prev-week-banner";
@@ -17,8 +18,8 @@ function formatHours(hours: number): string {
   return `${hours.toFixed(1)}h`;
 }
 
-function formatPercent(rate: number | null): string {
-  return rate === null ? "—" : `${Math.round(rate * 100)}%`;
+function formatRate(level: string | null): string {
+  return level ? `${groupClassRate(level)}€/h` : "—";
 }
 
 function formatAmount(amount: number): string {
@@ -145,8 +146,10 @@ function CoachCard({
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-neutral-500">Reliability rate</dt>
-          <dd className="text-white">{formatPercent(stats.reliabilityRate)}</dd>
+          <dt className="text-xs text-neutral-500" title="Based on this coach's CrossFit level">
+            Rate
+          </dt>
+          <dd className="text-white">{formatRate(coach.level)}</dd>
         </div>
         <div>
           <dt className="text-xs text-neutral-500">Private classes done</dt>
