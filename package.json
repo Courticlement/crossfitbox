@@ -38,7 +38,15 @@
     "typescript": "^5"
   },
   "overrides": {
-    "effect": "4.0.0-rc.111"
+    "alchemy": {
+      "effect": "4.0.0-rc.111"
+    },
+    "@prisma/composer": {
+      "effect": "4.0.0-rc.111"
+    },
+    "@prisma/composer-prisma-cloud": {
+      "effect": "4.0.0-rc.111"
+    }
   },
   "allowScripts": {
     "@prisma/engines@7.9.1": true,
