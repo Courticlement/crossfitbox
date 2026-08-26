@@ -47,3 +47,7 @@ next-env.d.ts
 /dev.db-journal
 /dev.db.bak-*
 .prisma/
+
+# Prisma Compute — local build/deploy state, never committed
+.prisma-composer/
+.alchemy/
