@@ -14,6 +14,11 @@ import { PrevWeekBanner } from "@/components/prev-week-banner";
 import { CoachPasswordForm } from "@/components/coach-password-form";
 import { formatDateISO } from "@/lib/dates";
 
+// No searchParams/cookies() here to otherwise force dynamic rendering — left
+// to itself, Next statically prerenders this page at build time, freezing
+// coach edits (rate, color, quota, stats) until the next deploy.
+export const dynamic = "force-dynamic";
+
 function formatHours(hours: number): string {
   return `${hours.toFixed(1)}h`;
 }

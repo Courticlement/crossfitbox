@@ -12,9 +12,6 @@ function localLanAddress(): string | undefined {
 }
 
 const nextConfig: NextConfig = {
-  // Required for Prisma Compute deploys — it expects the standalone
-  // server.js build output, not `next start`.
-  output: "standalone",
   allowedDevOrigins: (() => {
     const address = localLanAddress();
     return address ? [address] : undefined;
