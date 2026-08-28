@@ -58,6 +58,25 @@ model Coach {
   weeklyQuotas      CoachWeeklyQuota[]
   submissions       ClassSubmission[]
   unavailabilities  Unavailability[]
+  privatePayments   PrivatePayment[]
+}
+
+// A record of a coach's private-class debt being settled — created by
+// markPrivateBalancePaid alongside stamping Coach.privateBalancePaidAt, so
+// the running balance can reset to zero while still keeping proof of what
+// was paid and when (see the Data page's "Historique des paiements" table).
+model PrivatePayment {
+  id      String   @id @default(cuid())
+  coachId String
+  coach   Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  // € settled by this payment — a snapshot of the balance at the moment it
+  // was marked paid, not a live computation, so past history stays accurate
+  // even as PRIVATE_CLASS_COST_EUR or a coach's classes change later.
+  amount  Int
+  paidAt  DateTime @default(now())
+
+  @@index([coachId])
+  @@index([paidAt])
 }
 
 model ClassTemplate {

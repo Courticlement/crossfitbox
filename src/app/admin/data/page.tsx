@@ -36,7 +36,7 @@ export default async function DataPage({
     ...(statusFilter ? { status: statusFilter } : {}),
   };
 
-  const [coaches, instances, submissions] = await Promise.all([
+  const [coaches, instances, submissions, privatePayments] = await Promise.all([
     prisma.coach.findMany({ orderBy: { name: "asc" } }),
     prisma.classInstance.findMany({
       where: instanceWhere,
@@ -47,6 +47,14 @@ export default async function DataPage({
       where: { classInstance: { date: { gte: from, lt: toExclusive } } },
       include: { coach: true, classInstance: true },
       orderBy: { updatedAt: "desc" },
+    }),
+    prisma.privatePayment.findMany({
+      where: {
+        paidAt: { gte: from, lt: toExclusive },
+        ...(coachIdFilter && coachIdFilter !== "none" ? { coachId: coachIdFilter } : {}),
+      },
+      include: { coach: true },
+      orderBy: { paidAt: "desc" },
     }),
   ]);
 
@@ -149,6 +157,39 @@ export default async function DataPage({
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-neutral-500">
                   Aucune déclaration sur cette période.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <h2 className="mb-2 text-sm font-medium text-white">
+        Historique des paiements (cours privés)
+      </h2>
+      <div className="mb-8 overflow-hidden rounded-lg border border-neutral-800">
+        <table className="w-full text-sm">
+          <thead className="bg-neutral-900 text-left text-neutral-400">
+            <tr>
+              <th className="px-4 py-2 font-medium">Date</th>
+              <th className="px-4 py-2 font-medium">Coach</th>
+              <th className="px-4 py-2 font-medium text-right">Montant réglé</th>
+            </tr>
+          </thead>
+          <tbody>
+            {privatePayments.map((payment) => (
+              <tr key={payment.id} className="border-t border-neutral-800">
+                <td className="px-4 py-2 whitespace-nowrap">
+                  {payment.paidAt.toLocaleString("fr-FR", { timeZone: "UTC" })}
+                </td>
+                <td className="px-4 py-2 text-white">{payment.coach.name}</td>
+                <td className="px-4 py-2 text-right text-white">{payment.amount}€</td>
+              </tr>
+            ))}
+            {privatePayments.length === 0 && (
+              <tr>
+                <td colSpan={3} className="px-4 py-6 text-center text-neutral-500">
+                  Aucun paiement sur cette période.
                 </td>
               </tr>
             )}

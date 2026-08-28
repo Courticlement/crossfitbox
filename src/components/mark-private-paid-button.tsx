@@ -19,6 +19,7 @@ export function MarkPrivatePaidButton({
       }}
     >
       <input type="hidden" name="id" value={coachId} />
+      <input type="hidden" name="amount" value={balance} />
       <button
         type="submit"
         disabled={balance === 0}

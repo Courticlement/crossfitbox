@@ -12,6 +12,7 @@ function revalidateUploadPaths() {
   revalidatePath("/admin/coaches");
   revalidatePath("/admin/planning");
   revalidatePath("/admin");
+  revalidatePath("/admin/data");
   revalidatePath("/upload");
 }
 
@@ -128,11 +129,18 @@ export async function unarchiveCoach(formData: FormData) {
 // Settles the coach's outstanding private-class balance: stamps "now" so
 // computeCoachStats stops counting any private class delivered before this
 // point (see privateBalancePaidAt on Coach) — the balance shown on the
-// Coaches page drops to 0€ and starts accruing again from here.
+// Coaches page drops to 0€ and starts accruing again from here. Also logs a
+// PrivatePayment row with the settled amount, so the Data page can show
+// proof of what was paid and when even after the running balance resets.
 export async function markPrivateBalancePaid(formData: FormData) {
   const id = String(formData.get("id") ?? "");
-  if (!id) return;
+  const amount = Number(formData.get("amount") ?? "");
+  if (!id || !Number.isInteger(amount) || amount <= 0) return;
 
-  await prisma.coach.update({ where: { id }, data: { privateBalancePaidAt: new Date() } });
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.coach.update({ where: { id }, data: { privateBalancePaidAt: now } }),
+    prisma.privatePayment.create({ data: { coachId: id, amount, paidAt: now } }),
+  ]);
   revalidateUploadPaths();
 }

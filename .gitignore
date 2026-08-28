@@ -50,4 +50,7 @@ next-env.d.ts
 
 # Prisma Compute — local build/deploy state, never committed
 .prisma-composer/
+
+# Personal Claude Code permission overrides — not for the team
+.claude/settings.local.json
 .alchemy/
