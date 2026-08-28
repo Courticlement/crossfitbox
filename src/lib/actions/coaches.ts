@@ -130,7 +130,7 @@ export async function unarchiveCoach(formData: FormData) {
 // computeCoachStats stops counting any private class delivered before this
 // point (see privateBalancePaidAt on Coach) — the balance shown on the
 // Coaches page drops to 0€ and starts accruing again from here. Also logs a
-// PrivatePayment row with the settled amount, so the Data page can show
+// PrivatePayment row with the settled amount, so the Paiements page can show
 // proof of what was paid and when even after the running balance resets.
 export async function markPrivateBalancePaid(formData: FormData) {
   const id = String(formData.get("id") ?? "");
@@ -142,5 +142,29 @@ export async function markPrivateBalancePaid(formData: FormData) {
     prisma.coach.update({ where: { id }, data: { privateBalancePaidAt: now } }),
     prisma.privatePayment.create({ data: { coachId: id, amount, paidAt: now } }),
   ]);
+  revalidateUploadPaths();
+}
+
+// Removes a payment record — for correcting a mistaken entry (wrong coach,
+// wrong amount, double-click). Coach.privateBalancePaidAt is meant to always
+// equal the coach's most recent PrivatePayment.paidAt, so this recomputes it
+// from what's left rather than just leaving it stale: deleting the coach's
+// latest payment reopens their balance from that point, while deleting an
+// older one only removes the historical row.
+export async function deletePrivatePayment(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  await prisma.$transaction(async (tx) => {
+    const payment = await tx.privatePayment.delete({ where: { id } });
+    const latest = await tx.privatePayment.findFirst({
+      where: { coachId: payment.coachId },
+      orderBy: { paidAt: "desc" },
+    });
+    await tx.coach.update({
+      where: { id: payment.coachId },
+      data: { privateBalancePaidAt: latest?.paidAt ?? null },
+    });
+  });
   revalidateUploadPaths();
 }

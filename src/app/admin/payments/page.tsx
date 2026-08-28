@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { addDays, parseDateOnly } from "@/lib/dates";
 import { PaymentsFilters } from "@/components/payments-filters";
+import { DeletePaymentButton } from "@/components/delete-payment-button";
 import { PrevWeekBanner } from "@/components/prev-week-banner";
+import { PrivatePaymentAlert } from "@/components/private-payment-alert";
 
 // See DataPage (admin/data) for why this is forced dynamic rather than
 // statically prerendered — same reasoning: payment history changes whenever
@@ -42,6 +44,7 @@ export default async function PaymentsPage({
     <div className="text-neutral-300">
       <h1 className="mb-1 text-lg font-semibold text-white">Paiements</h1>
       <PrevWeekBanner />
+      <PrivatePaymentAlert />
       <p className="mb-4 text-sm text-neutral-500">
         Historique des règlements de cours privés — chaque ligne est créée
         automatiquement quand un coach est marqué payé depuis la page{" "}
@@ -72,6 +75,7 @@ export default async function PaymentsPage({
               <th className="px-4 py-2 font-medium">Date</th>
               <th className="px-4 py-2 font-medium">Coach</th>
               <th className="px-4 py-2 text-right font-medium">Montant réglé</th>
+              <th className="px-4 py-2 font-medium"> </th>
             </tr>
           </thead>
           <tbody>
@@ -82,11 +86,18 @@ export default async function PaymentsPage({
                 </td>
                 <td className="px-4 py-2 text-white">{payment.coach.name}</td>
                 <td className="px-4 py-2 text-right text-white">{payment.amount}€</td>
+                <td className="px-4 py-2 text-right">
+                  <DeletePaymentButton
+                    paymentId={payment.id}
+                    coachName={payment.coach.name}
+                    amount={payment.amount}
+                  />
+                </td>
               </tr>
             ))}
             {payments.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-4 py-6 text-center text-neutral-500">
+                <td colSpan={4} className="px-4 py-6 text-center text-neutral-500">
                   Aucun paiement enregistré{fromParam || toParam || coachIdFilter ? " sur cette période" : ""}.
                 </td>
               </tr>

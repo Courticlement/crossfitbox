@@ -36,6 +36,12 @@ export type CoachStats = {
   // reset every month like privateCostThisMonth — this is what the "Marquer
   // payé" button on the Coaches page settles to zero.
   privateBalance: number;
+  // The slice of privateBalance specifically owed for private classes
+  // delivered last calendar month — drives the Paiements page's "still owes
+  // for last month" alert. A coach can owe money without this being > 0 (a
+  // debt from two+ months ago that's just never been settled), and this
+  // stays > 0 even after this month starts, until actually paid.
+  privateBalanceLastMonth: number;
 };
 
 export function classDurationHours(startTime: string, endTime: string): number {
@@ -97,6 +103,7 @@ export function computeCoachStats(
   let privateThisMonth = 0;
   let privateLastMonth = 0;
   let privateUnpaid = 0;
+  let privateUnpaidLastMonth = 0;
   const pastMonthHours = new Map<string, number>(); // "YYYY-M" -> hours, excludes current month
 
   for (const inst of instances) {
@@ -137,8 +144,12 @@ export function computeCoachStats(
         if (inst.date >= lastMonthStart && inst.date < currentMonthStart) {
           privateLastMonth++;
         }
-        if (privateBalancePaidAt === null || inst.date > privateBalancePaidAt) {
+        const unpaid = privateBalancePaidAt === null || inst.date > privateBalancePaidAt;
+        if (unpaid) {
           privateUnpaid++;
+          if (inst.date >= lastMonthStart && inst.date < currentMonthStart) {
+            privateUnpaidLastMonth++;
+          }
         }
       } else {
         const weekStartStr = formatDateISO(startOfWeekMonday(inst.date));
@@ -169,5 +180,6 @@ export function computeCoachStats(
     privateCostThisMonth: privateThisMonth * PRIVATE_CLASS_COST_EUR,
     privateCostLastMonth: privateLastMonth * PRIVATE_CLASS_COST_EUR,
     privateBalance: privateUnpaid * PRIVATE_CLASS_COST_EUR,
+    privateBalanceLastMonth: privateUnpaidLastMonth * PRIVATE_CLASS_COST_EUR,
   };
 }
