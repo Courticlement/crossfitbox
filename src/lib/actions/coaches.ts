@@ -124,3 +124,15 @@ export async function unarchiveCoach(formData: FormData) {
   await prisma.coach.update({ where: { id }, data: { archived: false } });
   revalidateUploadPaths();
 }
+
+// Settles the coach's outstanding private-class balance: stamps "now" so
+// computeCoachStats stops counting any private class delivered before this
+// point (see privateBalancePaidAt on Coach) — the balance shown on the
+// Coaches page drops to 0€ and starts accruing again from here.
+export async function markPrivateBalancePaid(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  await prisma.coach.update({ where: { id }, data: { privateBalancePaidAt: new Date() } });
+  revalidateUploadPaths();
+}

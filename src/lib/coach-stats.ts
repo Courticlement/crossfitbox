@@ -31,6 +31,11 @@ export type CoachStats = {
   // doesn't depend on the week being validated.
   privateCostThisMonth: number;
   privateCostLastMonth: number;
+  // € the coach currently owes the box for private classes, running since
+  // Coach.privateBalancePaidAt (or all-time if never paid) rather than
+  // reset every month like privateCostThisMonth — this is what the "Marquer
+  // payé" button on the Coaches page settles to zero.
+  privateBalance: number;
 };
 
 export function classDurationHours(startTime: string, endTime: string): number {
@@ -75,6 +80,9 @@ export function computeCoachStats(
   // this function looking it up itself.
   rate: number,
   validatedWeekStarts: ReadonlySet<string>,
+  // Only private classes delivered after this date count toward
+  // privateBalance — null (never paid) counts the whole history.
+  privateBalancePaidAt: Date | null,
   now: Date = new Date()
 ): CoachStats {
   const currentMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
@@ -88,6 +96,7 @@ export function computeCoachStats(
   let amountLastMonth = 0;
   let privateThisMonth = 0;
   let privateLastMonth = 0;
+  let privateUnpaid = 0;
   const pastMonthHours = new Map<string, number>(); // "YYYY-M" -> hours, excludes current month
 
   for (const inst of instances) {
@@ -128,6 +137,9 @@ export function computeCoachStats(
         if (inst.date >= lastMonthStart && inst.date < currentMonthStart) {
           privateLastMonth++;
         }
+        if (privateBalancePaidAt === null || inst.date > privateBalancePaidAt) {
+          privateUnpaid++;
+        }
       } else {
         const weekStartStr = formatDateISO(startOfWeekMonday(inst.date));
         if (validatedWeekStarts.has(weekStartStr)) {
@@ -156,5 +168,6 @@ export function computeCoachStats(
     amountLastMonth,
     privateCostThisMonth: privateThisMonth * PRIVATE_CLASS_COST_EUR,
     privateCostLastMonth: privateLastMonth * PRIVATE_CLASS_COST_EUR,
+    privateBalance: privateUnpaid * PRIVATE_CLASS_COST_EUR,
   };
 }

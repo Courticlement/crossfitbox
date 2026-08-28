@@ -38,6 +38,12 @@ model Coach {
   // Replaces the old unguessable-link (accessToken) system now that /upload
   // is gated by real auth (see middleware.ts).
   passwordHash String?
+  // Set when the admin marks this coach's private-class debt as settled
+  // (see markPrivateBalancePaid) — only private classes delivered after
+  // this date count toward the outstanding balance shown on the Coaches
+  // page (see computePrivateBalance). Null means nothing has ever been
+  // paid, so the whole history counts.
+  privateBalancePaidAt DateTime?
   // Soft-delete: set once a coach no longer works at the box. Keeps their
   // history (past classes, submissions, stats) intact while cutting off
   // their private upload access (see /upload/[token] and the coach-active

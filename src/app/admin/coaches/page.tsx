@@ -12,6 +12,7 @@ import { LevelSelect } from "@/components/level-select";
 import { ColorSelect } from "@/components/color-select";
 import { PrevWeekBanner } from "@/components/prev-week-banner";
 import { CoachPasswordForm } from "@/components/coach-password-form";
+import { MarkPrivatePaidButton } from "@/components/mark-private-paid-button";
 import { formatDateISO } from "@/lib/dates";
 
 // No searchParams/cookies() here to otherwise force dynamic rendering — left
@@ -44,6 +45,7 @@ type CoachCardData = {
   rate: number | null;
   passwordHash: string | null;
   archived: boolean;
+  privateBalancePaidAt: Date | null;
 };
 
 function CoachCard({
@@ -181,6 +183,28 @@ function CoachCard({
           </span>
           <span>{stats.privateClassesDone} cours privés faits</span>
         </div>
+
+        <div className="mt-3 flex items-center justify-between gap-2 rounded-md border border-neutral-800 bg-neutral-950/40 p-2.5">
+          <div>
+            <div
+              className="text-xs text-neutral-500"
+              title="Total dû à la box pour les cours privés depuis le dernier paiement — remis à 0 par le bouton Marquer payé"
+            >
+              Solde privé dû
+            </div>
+            <div
+              className={`text-sm font-medium ${stats.privateBalance === 0 ? "text-neutral-400" : "text-red-400"}`}
+            >
+              {formatCost(stats.privateBalance)}
+            </div>
+            {coach.privateBalancePaidAt && (
+              <div className="text-[10px] text-neutral-600">
+                Payé le {formatDateISO(coach.privateBalancePaidAt)}
+              </div>
+            )}
+          </div>
+          <MarkPrivatePaidButton coachId={coach.id} balance={stats.privateBalance} />
+        </div>
       </div>
 
       {!coach.archived && (
@@ -292,7 +316,8 @@ export default async function CoachesPage() {
               coach.id,
               instancesByCoach.get(coach.id) ?? [],
               coach.rate ?? groupClassRate(coach.level),
-              validatedWeekStarts
+              validatedWeekStarts,
+              coach.privateBalancePaidAt
             )}
             takenColors={takenColorsExcept(coach.id)}
           />
@@ -318,7 +343,8 @@ export default async function CoachesPage() {
                   coach.id,
                   instancesByCoach.get(coach.id) ?? [],
                   coach.rate ?? groupClassRate(coach.level),
-                  validatedWeekStarts
+                  validatedWeekStarts,
+                  coach.privateBalancePaidAt
                 )}
                 takenColors={takenColorsExcept(coach.id)}
               />
