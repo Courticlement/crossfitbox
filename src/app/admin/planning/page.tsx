@@ -362,6 +362,20 @@ export default async function PlanningPage({
               <input type="checkbox" name="isPrivate" className="accent-white" />
               Cours privé
             </label>
+            <select
+              name="coachId"
+              defaultValue=""
+              className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
+            >
+              <option value="">Coach — à assigner plus tard</option>
+              {coaches
+                .filter((c) => !c.archived)
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+            </select>
             <button
               type="submit"
               className="mt-1 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"

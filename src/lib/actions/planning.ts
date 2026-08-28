@@ -310,11 +310,12 @@ export async function addAdHocClass(formData: FormData) {
   const label = String(formData.get("label") ?? "").trim();
   const room = String(formData.get("room") ?? "").trim();
   const isPrivate = formData.get("isPrivate") === "on";
+  const coachId = String(formData.get("coachId") ?? "").trim() || null;
   const date = parseDateOnly(dateStr);
   if (!date || !startTime || !endTime || !label || !room) return;
 
   await prisma.classInstance.create({
-    data: { date, startTime, endTime, label, room, isPrivate },
+    data: { date, startTime, endTime, label, room, isPrivate, coachId },
   });
   revalidateAll();
 }
