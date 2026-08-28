@@ -6,6 +6,7 @@ const links = [
   { href: "/admin/coaches", label: "Coachs" },
   { href: "/admin/templates", label: "Modèles de cours" },
   { href: "/admin/data", label: "Données" },
+  { href: "/admin/payments", label: "Paiements" },
   { href: "/upload", label: "Mes cours" },
 ];
 
