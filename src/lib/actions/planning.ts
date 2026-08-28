@@ -314,8 +314,16 @@ export async function addAdHocClass(formData: FormData) {
   const date = parseDateOnly(dateStr);
   if (!date || !startTime || !endTime || !label || !room) return;
 
+  // A private class assigned to a coach here is being logged as already
+  // delivered (mirrors the coach's own quick-add on My Classes — see
+  // addPrivateClass) — mark it DONE immediately so it's reflected on that
+  // coach's card (hours, private balance) right away instead of sitting
+  // PLANNED until someone reports it. A class with no coach yet, or a
+  // regular group class, keeps the normal PLANNED → reported flow.
+  const status = isPrivate && coachId ? "DONE" : "PLANNED";
+
   await prisma.classInstance.create({
-    data: { date, startTime, endTime, label, room, isPrivate, coachId },
+    data: { date, startTime, endTime, label, room, isPrivate, coachId, status },
   });
   revalidateAll();
 }
