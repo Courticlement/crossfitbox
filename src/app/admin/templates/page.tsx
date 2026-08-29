@@ -3,6 +3,7 @@ import { dayName } from "@/lib/dates";
 import { ROOMS } from "@/lib/rooms";
 import { PrevWeekBanner } from "@/components/prev-week-banner";
 import { TemplateFilters } from "@/components/template-filters";
+import { UnsavedChangesGuard } from "@/components/unsaved-changes-guard";
 import {
   createTemplate,
   updateTemplates,
@@ -51,6 +52,7 @@ export default async function ClassTemplatesPage({
         Modèles de cours
       </h1>
       <PrevWeekBanner />
+      <UnsavedChangesGuard formId={BULK_FORM_ID} />
       <p className="mb-4 text-sm text-neutral-500">
         L&apos;emploi du temps hebdomadaire récurrent de la box. Utilisé pour
         générer les cours de chaque semaine sur la page Planning. Modifiez
