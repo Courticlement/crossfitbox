@@ -335,3 +335,11 @@ export async function deleteClassInstance(formData: FormData) {
   await prisma.classInstance.delete({ where: { id } });
   revalidateAll();
 }
+
+export async function deleteClassInstances(formData: FormData) {
+  const ids = formData.getAll("ids").map(String).filter(Boolean);
+  if (ids.length === 0) return;
+
+  await prisma.classInstance.deleteMany({ where: { id: { in: ids } } });
+  revalidateAll();
+}

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { addDays, formatDateISO, formatDayLabel, parseDateOnly, toDateOnly } from "@/lib/dates";
 import { DataFilters } from "@/components/data-filters";
+import { DataClassesTable } from "@/components/data-classes-table";
+import { DataSubmissionsTable } from "@/components/data-submissions-table";
 import { PrevWeekBanner } from "@/components/prev-week-banner";
 import { statusLabel } from "@/lib/status-labels";
 
@@ -53,6 +55,29 @@ export default async function DataPage({
   const fromStr = formatDateISO(from);
   const toStr = formatDateISO(to);
 
+  const classRows = instances.map((inst) => ({
+    id: inst.id,
+    dateLabel: formatDayLabel(inst.date),
+    time: `${inst.startTime}–${inst.endTime}`,
+    room: inst.room,
+    label: inst.label,
+    type: inst.isPrivate ? "Privé" : "Collectif",
+    coachName: inst.coach?.name ?? "—",
+    substituteName: inst.substituteCoach?.name ?? "—",
+    status: statusLabel(inst.status),
+    statusColor: STATUS_COLOR[inst.status] ?? "",
+  }));
+
+  const submissionRows = submissions.map((sub) => ({
+    id: sub.id,
+    dateLabel: formatDayLabel(sub.classInstance.date),
+    classLabel: sub.classInstance.label,
+    coachName: sub.coach.name,
+    status: statusLabel(sub.status),
+    statusColor: STATUS_COLOR[sub.status] ?? "",
+    updatedAtLabel: sub.updatedAt.toLocaleString("fr-FR", { timeZone: "UTC" }),
+  }));
+
   return (
     <div className="text-neutral-300">
       <h1 className="mb-1 text-lg font-semibold text-white">Données</h1>
@@ -75,85 +100,13 @@ export default async function DataPage({
       <h2 className="mb-2 text-sm font-medium text-white">
         Cours ({formatDayLabel(from)} – {formatDayLabel(to)})
       </h2>
-      <div className="mb-8 overflow-hidden rounded-lg border border-neutral-800">
-        <table className="w-full text-sm">
-          <thead className="bg-neutral-900 text-left text-neutral-400">
-            <tr>
-              <th className="px-4 py-2 font-medium">Date</th>
-              <th className="px-4 py-2 font-medium">Heure</th>
-              <th className="px-4 py-2 font-medium">Salle</th>
-              <th className="px-4 py-2 font-medium">Intitulé</th>
-              <th className="px-4 py-2 font-medium">Type</th>
-              <th className="px-4 py-2 font-medium">Coach</th>
-              <th className="px-4 py-2 font-medium">Remplaçant</th>
-              <th className="px-4 py-2 font-medium">Statut</th>
-            </tr>
-          </thead>
-          <tbody>
-            {instances.map((inst) => (
-              <tr key={inst.id} className="border-t border-neutral-800">
-                <td className="px-4 py-2 whitespace-nowrap">{formatDayLabel(inst.date)}</td>
-                <td className="px-4 py-2 whitespace-nowrap">
-                  {inst.startTime}–{inst.endTime}
-                </td>
-                <td className="px-4 py-2">{inst.room}</td>
-                <td className="px-4 py-2 text-white">{inst.label}</td>
-                <td className="px-4 py-2">{inst.isPrivate ? "Privé" : "Collectif"}</td>
-                <td className="px-4 py-2">{inst.coach?.name ?? "—"}</td>
-                <td className="px-4 py-2">{inst.substituteCoach?.name ?? "—"}</td>
-                <td className={`px-4 py-2 ${STATUS_COLOR[inst.status] ?? ""}`}>
-                  {statusLabel(inst.status)}
-                </td>
-              </tr>
-            ))}
-            {instances.length === 0 && (
-              <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-neutral-500">
-                  Aucun cours sur cette période.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div className="mb-8">
+        <DataClassesTable rows={classRows} />
       </div>
 
       <h2 className="mb-2 text-sm font-medium text-white">Déclarations</h2>
-      <div className="mb-8 overflow-hidden rounded-lg border border-neutral-800">
-        <table className="w-full text-sm">
-          <thead className="bg-neutral-900 text-left text-neutral-400">
-            <tr>
-              <th className="px-4 py-2 font-medium">Date du cours</th>
-              <th className="px-4 py-2 font-medium">Cours</th>
-              <th className="px-4 py-2 font-medium">Coach</th>
-              <th className="px-4 py-2 font-medium">Déclaré</th>
-              <th className="px-4 py-2 font-medium">Dernière mise à jour</th>
-            </tr>
-          </thead>
-          <tbody>
-            {submissions.map((sub) => (
-              <tr key={sub.id} className="border-t border-neutral-800">
-                <td className="px-4 py-2 whitespace-nowrap">
-                  {formatDayLabel(sub.classInstance.date)}
-                </td>
-                <td className="px-4 py-2 text-white">{sub.classInstance.label}</td>
-                <td className="px-4 py-2">{sub.coach.name}</td>
-                <td className={`px-4 py-2 ${STATUS_COLOR[sub.status] ?? ""}`}>
-                  {statusLabel(sub.status)}
-                </td>
-                <td className="px-4 py-2 text-neutral-500">
-                  {sub.updatedAt.toLocaleString("fr-FR", { timeZone: "UTC" })}
-                </td>
-              </tr>
-            ))}
-            {submissions.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-neutral-500">
-                  Aucune déclaration sur cette période.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div className="mb-8">
+        <DataSubmissionsTable rows={submissionRows} />
       </div>
 
       <p className="text-xs text-neutral-600">

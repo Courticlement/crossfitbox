@@ -186,6 +186,31 @@ export async function dismissSubmission(formData: FormData) {
   revalidateAll();
 }
 
+// Bulk version of dismissSubmission for the admin Data tab, where a whole
+// batch of declarations can be selected at once. Processed sequentially
+// (not Promise.all) since submissions for the same classInstanceId would
+// otherwise race on applyOfficial's re-derivation.
+export async function dismissSubmissions(formData: FormData) {
+  const ids = Array.from(new Set(formData.getAll("submissionIds").map(String).filter(Boolean)));
+  if (ids.length === 0) return;
+
+  for (const submissionId of ids) {
+    const submission = await prisma.classSubmission.findUnique({ where: { id: submissionId } });
+    if (!submission) continue;
+    const { classInstanceId } = submission;
+
+    await prisma.classSubmission.delete({ where: { id: submissionId } }).catch(() => {});
+
+    const remaining = await prisma.classSubmission.findFirst({
+      where: { classInstanceId },
+      orderBy: { updatedAt: "desc" },
+    });
+    await applyOfficial(classInstanceId, remaining);
+  }
+
+  revalidateAll();
+}
+
 const PrivateClassSchema = z
   .object({
     weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
