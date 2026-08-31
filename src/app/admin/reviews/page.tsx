@@ -2,7 +2,15 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { addDays, formatDateISO, formatDayLabel, parseDateOnly } from "@/lib/dates";
 import { ReviewFilters } from "@/components/review-filters";
-import { PILLARS, PILLAR_COLUMN, pastilleColor, pastilleLabel, pillarRatingColor } from "@/lib/review-constants";
+import { CoachingEvolutionChart, type EvolutionPoint } from "@/components/coaching-evolution-chart";
+import {
+  PILLARS,
+  PILLAR_COLUMN,
+  pastilleColor,
+  pastilleLabel,
+  pillarRatingColor,
+  reviewScore,
+} from "@/lib/review-constants";
 
 export default async function ReviewsPage({
   searchParams,
@@ -16,27 +24,48 @@ export default async function ReviewsPage({
   const from = fromParam ? parseDateOnly(fromParam) : null;
   const to = toParam ? parseDateOnly(toParam) : null;
 
-  const [coaches, reviews] = await Promise.all([
+  const dateWhere = from || to
+    ? {
+        classInstance: {
+          date: {
+            ...(from ? { gte: from } : {}),
+            ...(to ? { lt: addDays(to, 1) } : {}),
+          },
+        },
+      }
+    : {};
+
+  const [coaches, reviews, chartReviews] = await Promise.all([
     prisma.coach.findMany({ orderBy: { name: "asc" } }),
     prisma.classReview.findMany({
       where: {
-        ...(from || to
-          ? {
-              classInstance: {
-                date: {
-                  ...(from ? { gte: from } : {}),
-                  ...(to ? { lt: addDays(to, 1) } : {}),
-                },
-              },
-            }
-          : {}),
+        ...dateWhere,
         ...(coachIdFilter ? { classInstance: { coachId: coachIdFilter } } : {}),
         ...(pastilleFilter ? { pastille: pastilleFilter } : {}),
       },
       include: { classInstance: { include: { coach: true } } },
       orderBy: { classInstance: { date: "desc" } },
     }),
+    // The chart always compares every coach — the Coach filter only
+    // narrows the list above and highlights (not hides) a line in the
+    // chart, so it's fetched separately, ignoring coachIdFilter.
+    prisma.classReview.findMany({
+      where: { ...dateWhere, ...(pastilleFilter ? { pastille: pastilleFilter } : {}) },
+      include: { classInstance: { include: { coach: true } } },
+    }),
   ]);
+
+  const evolutionPoints: EvolutionPoint[] = chartReviews
+    .filter((r) => r.classInstance.coach !== null)
+    .map((r) => ({
+      id: r.id,
+      date: r.classInstance.date,
+      score: reviewScore(r),
+      pastille: r.pastille,
+      coachId: r.classInstance.coach!.id,
+      coachName: r.classInstance.coach!.name,
+      coachColor: r.classInstance.coach!.color,
+    }));
 
   const groups = new Map<string, typeof reviews>();
   for (const review of reviews) {
@@ -63,6 +92,12 @@ export default async function ReviewsPage({
         coachId={coachIdFilter}
         pastille={pastilleFilter}
         coaches={coaches}
+      />
+
+      <CoachingEvolutionChart
+        points={evolutionPoints}
+        highlightCoachId={coachIdFilter}
+        currentParams={{ from: fromParam, to: toParam, pastille: pastilleFilter || undefined }}
       />
 
       {reviews.length === 0 ? (

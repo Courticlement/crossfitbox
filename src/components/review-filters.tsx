@@ -23,6 +23,7 @@ export function ReviewFilters({
       <div>
         <label className="mb-1 block text-xs text-neutral-500">Du</label>
         <input
+          key={from}
           type="date"
           name="from"
           defaultValue={from}
@@ -32,6 +33,7 @@ export function ReviewFilters({
       <div>
         <label className="mb-1 block text-xs text-neutral-500">Au</label>
         <input
+          key={to}
           type="date"
           name="to"
           defaultValue={to}
@@ -41,6 +43,7 @@ export function ReviewFilters({
       <div>
         <label className="mb-1 block text-xs text-neutral-500">Coach</label>
         <select
+          key={coachId}
           name="coachId"
           defaultValue={coachId}
           onChange={(e) => e.currentTarget.form?.requestSubmit()}
@@ -57,6 +60,7 @@ export function ReviewFilters({
       <div>
         <label className="mb-1 block text-xs text-neutral-500">Pastille</label>
         <select
+          key={pastille}
           name="pastille"
           defaultValue={pastille}
           onChange={(e) => e.currentTarget.form?.requestSubmit()}
