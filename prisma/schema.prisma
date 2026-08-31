@@ -123,10 +123,50 @@ model ClassInstance {
   updatedAt         DateTime       @updatedAt
 
   submissions ClassSubmission[]
+  review      ClassReview?
 
   @@index([date])
   @@index([coachId])
   @@index([substituteCoachId])
+}
+
+// The head coach's structured observation of a delivered class — walks
+// through each phase of the session, scores six coaching pillars, and ends
+// on one focus area for next time plus an overall color rating. One per
+// ClassInstance (see Suivi coaching / /admin/reviews for the history view,
+// filterable by coach and date).
+model ClassReview {
+  id              String        @id @default(cuid())
+  classInstanceId String        @unique
+  classInstance   ClassInstance @relation(fields: [classInstanceId], references: [id], onDelete: Cascade)
+
+  briefingNotes   String?
+  generalWuNotes  String?
+  specificWuNotes String?
+  skillWodNotes   String?
+  coolDownNotes   String?
+
+  // Each pillar is "ok" | "mid" | "bad" — rated on the whole session, not
+  // per segment (see the Piliers step of the review wizard).
+  pillarEnseignement     String
+  pillarObservation      String
+  pillarCorrection       String
+  pillarGestionGroupe    String
+  pillarPresenceAttitude String
+  pillarDemonstration    String
+
+  // What the coach recognized themselves during the debrief — optional,
+  // since not every review includes a live exchange with the coach.
+  identifiedText String?
+  // The single focus until the next observation — the one required outcome
+  // of a review, so it's always present.
+  focusText      String
+  // Overall session rating: "green" | "yellow" | "orange" | "red".
+  pastille       String
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 model CoachWeeklyQuota {

@@ -14,6 +14,7 @@ import { CoachSelect } from "@/components/coach-select";
 import { ConflictsPanel, type ConflictInstance } from "@/components/conflicts-panel";
 import { DeleteClassButton } from "@/components/delete-class-button";
 import { PlanningFilters } from "@/components/planning-filters";
+import { ReviewButton } from "@/components/review-button";
 import { PrevWeekBanner } from "@/components/prev-week-banner";
 import { UnavailabilityAlert } from "@/components/unavailability-alert";
 import { ResetWeekButton } from "@/components/reset-week-button";
@@ -43,7 +44,7 @@ export default async function PlanningPage({
     await Promise.all([
       prisma.classInstance.findMany({
         where: { date: { gte: weekStart, lt: weekEnd } },
-        include: { coach: true, template: { include: { coach: true } } },
+        include: { coach: true, template: { include: { coach: true } }, review: true },
         orderBy: [{ date: "asc" }, { startTime: "asc" }, { room: "asc" }],
       }),
       prisma.coach.findMany({ orderBy: { name: "asc" } }),
@@ -283,10 +284,17 @@ export default async function PlanningPage({
           closedDates={closedDates}
           selectionAction={(inst) => <SelectClassCheckbox id={inst.id} />}
           headerAction={(inst) => (
-            <DeleteClassButton
-              id={inst.id}
-              reported={inst.status === "DONE" || inst.status === "MISSED"}
-            />
+            <div className="flex items-center gap-1">
+              <ReviewButton
+                classInstanceId={inst.id}
+                review={inst.review ? { id: inst.review.id, pastille: inst.review.pastille } : null}
+                weekParam={weekStartStr}
+              />
+              <DeleteClassButton
+                id={inst.id}
+                reported={inst.status === "DONE" || inst.status === "MISSED"}
+              />
+            </div>
           )}
           control={(inst) => (
             <div className="flex flex-col gap-0.5">
