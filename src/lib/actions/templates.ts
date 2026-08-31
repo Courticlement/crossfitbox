@@ -78,6 +78,41 @@ export async function updateTemplates(formData: FormData) {
   revalidatePath("/admin/planning");
 }
 
+// Unassigns the default coach from every template, active or not — a
+// full reset rather than scoped to whatever filter happens to be applied to
+// the table, since "reset all" is the whole recurring schedule. Doesn't
+// touch anything already generated on the Planning page; that's a separate
+// per-week assignment (see assignCoach in actions/planning.ts).
+export async function resetAllTemplateCoaches() {
+  await prisma.classTemplate.updateMany({ data: { coachId: null } });
+  revalidatePath("/admin/templates");
+}
+
+export type BulkAssignTemplateCoachState = { assigned: number };
+
+// Bulk version of a single row's coach select in updateTemplates — the
+// templates table's multi-select toolbar reassigns several rows' default
+// coach in one submit. No scheduling-conflict check, same as the per-row
+// select: a template's default coach is only ever a suggestion applied at
+// generation time (see generateWeek's isBusy check in actions/planning.ts),
+// not a binding commitment the way an actual ClassInstance's coach is.
+export async function bulkAssignTemplateCoach(
+  _prevState: BulkAssignTemplateCoachState,
+  formData: FormData
+): Promise<BulkAssignTemplateCoachState> {
+  const ids = formData.getAll("ids").map(String).filter(Boolean);
+  const coachId = String(formData.get("coachId") ?? "").trim() || null;
+  if (ids.length === 0) return { assigned: 0 };
+
+  const { count } = await prisma.classTemplate.updateMany({
+    where: { id: { in: ids } },
+    data: { coachId },
+  });
+
+  revalidatePath("/admin/templates");
+  return { assigned: count };
+}
+
 export async function toggleTemplateActive(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const active = formData.get("active") === "true";

@@ -261,6 +261,92 @@ export async function assignCoach(
   return { error: null };
 }
 
+export type BulkAssignState = { error: string | null; assigned: number };
+
+// Reassigns the coach on several classes at once (Planning grid's
+// multi-select). Applies the same per-instance conflict check as assignCoach
+// — sequentially, so two selected classes assigned to the same new coach
+// still catch each other if their times overlap — and simply skips any
+// instance that conflicts rather than failing the whole batch, reporting
+// the count so the admin can see some were skipped.
+export async function bulkAssignCoach(
+  _prevState: BulkAssignState,
+  formData: FormData
+): Promise<BulkAssignState> {
+  const ids = formData.getAll("ids").map(String).filter(Boolean);
+  const coachId = String(formData.get("coachId") ?? "").trim() || null;
+  if (ids.length === 0) return { error: null, assigned: 0 };
+
+  const instances = await prisma.classInstance.findMany({ where: { id: { in: ids } } });
+
+  let assigned = 0;
+  let skipped = 0;
+  for (const instance of instances) {
+    if (coachId) {
+      const conflict = await findSchedulingConflict(coachId, instance);
+      if (conflict) {
+        skipped++;
+        continue;
+      }
+    }
+
+    // Same orphaning safeguard as assignCoach: unassigning an already
+    // resolved (DONE/MISSED) class resets it to PLANNED instead of leaving
+    // it credited to nobody.
+    const orphaning = !coachId && instance.status !== "PLANNED";
+
+    await prisma.classInstance.update({
+      where: { id: instance.id },
+      data: {
+        coachId,
+        ...(orphaning ? { status: "PLANNED", substituteCoachId: null } : {}),
+      },
+    });
+    assigned++;
+  }
+
+  revalidateAll();
+  return {
+    error: skipped > 0 ? `${skipped} cours ignoré(s) — coach déjà occupé à cette heure.` : null,
+    assigned,
+  };
+}
+
+export type BulkStatusState = { error: null; updated: number };
+
+const CLASS_STATUS_VALUES = ["PLANNED", "DONE", "MISSED"] as const;
+
+// Admin-only validation, bulk-only: the Planning grid's multi-select
+// toolbar (see BulkAssignProvider) is the sole way to confirm a batch of
+// classes Fait/Manqué — coaches no longer self-report this (see
+// submissions.ts history), and there's no per-class control for it either.
+// Doesn't touch coachId; who's assigned is still set separately via
+// assignCoach/CoachSelect.
+export async function bulkSetClassStatus(
+  _prevState: BulkStatusState,
+  formData: FormData
+): Promise<BulkStatusState> {
+  const ids = formData.getAll("ids").map(String).filter(Boolean);
+  const statusRaw = String(formData.get("status") ?? "");
+  if (ids.length === 0 || !(CLASS_STATUS_VALUES as readonly string[]).includes(statusRaw)) {
+    return { error: null, updated: 0 };
+  }
+  const status = statusRaw as (typeof CLASS_STATUS_VALUES)[number];
+
+  const { count } = await prisma.classInstance.updateMany({
+    where: { id: { in: ids } },
+    data: {
+      status,
+      // A "covered by" note only makes sense while the class is Manqué —
+      // clear it the moment the class is confirmed Fait or reset back to
+      // Planifié, same as applyOfficial's DONE/undo handling used to.
+      ...(status !== "MISSED" ? { substituteCoachId: null } : {}),
+    },
+  });
+  revalidateAll();
+  return { error: null, updated: count };
+}
+
 // Shared by both the admin's Planning page and a coach's own My Classes page
 // (as part of self-reporting a missed class's cover). The `context` field
 // distinguishes the two: only the coach-facing usage is blocked once the

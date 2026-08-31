@@ -61,6 +61,7 @@ export function WeekGrid<T extends WeekGridInstance>({
   instances,
   headerAction,
   control,
+  selectionAction,
   highlightCoachId,
   unavailableInstanceIds,
   closedDates,
@@ -69,6 +70,11 @@ export function WeekGrid<T extends WeekGridInstance>({
   instances: T[];
   headerAction?: (inst: T) => ReactNode;
   control: (inst: T) => ReactNode;
+  // Rendered at the very start of each block's header row (before the time
+  // label) — used by the admin Planning page to drop in a selection
+  // checkbox for bulk coach reassignment. Left undefined anywhere else
+  // (e.g. a coach's own My Classes grid), so nothing renders there.
+  selectionAction?: (inst: T) => ReactNode;
   // When set, the selected coach's own group classes get a bright ring and
   // everyone else's classes fade back — makes "which of these are mine"
   // answerable at a glance instead of reading each block's assignment.
@@ -209,9 +215,12 @@ export function WeekGrid<T extends WeekGridInstance>({
                 }}
               >
                 <div className="flex items-center justify-between gap-1">
-                  <span className="truncate font-mono text-[10px] font-semibold text-neutral-300">
-                    {inst.startTime}–{inst.endTime}
-                  </span>
+                  <div className="flex min-w-0 items-center gap-1">
+                    {selectionAction?.(inst)}
+                    <span className="truncate font-mono text-[10px] font-semibold text-neutral-300">
+                      {inst.startTime}–{inst.endTime}
+                    </span>
+                  </div>
                   <div className="flex shrink-0 items-center gap-1">
                     {coachUnavailable && (
                       <span className="rounded-full bg-red-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-red-300">

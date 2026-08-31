@@ -3,6 +3,11 @@ import { dayName } from "@/lib/dates";
 import { ROOMS } from "@/lib/rooms";
 import { PrevWeekBanner } from "@/components/prev-week-banner";
 import { TemplateFilters } from "@/components/template-filters";
+import {
+  SelectAllTemplatesCheckbox,
+  SelectTemplateCheckbox,
+  TemplateBulkAssignProvider,
+} from "@/components/template-bulk-assign";
 import { UnsavedChangesGuard } from "@/components/unsaved-changes-guard";
 import {
   createTemplate,
@@ -176,163 +181,171 @@ export default async function ClassTemplatesPage({
         </button>
       </div>
 
-      <div className="mb-8 overflow-hidden rounded-lg border border-neutral-800">
-        <table className="w-full text-sm">
-          <thead className="bg-neutral-900 text-left text-neutral-400">
-            <tr>
-              <th className="px-4 py-2 font-medium">Jour</th>
-              <th className="px-4 py-2 font-medium">Heure</th>
-              <th className="px-4 py-2 font-medium">Salle</th>
-              <th className="px-4 py-2 font-medium">Intitulé</th>
-              <th className="px-4 py-2 font-medium">Privé</th>
-              <th className="px-4 py-2 font-medium">Coach</th>
-              <th className="px-4 py-2 font-medium">Statut</th>
-              <th className="px-4 py-2 font-medium" />
-            </tr>
-          </thead>
-          <tbody>
-            {templates.map((tpl) => {
-              // Keying on the editable fields (not just tpl.id) forces this
-              // row to remount after a successful save — otherwise the
-              // uncontrolled select/input elements keep showing whatever
-              // was last typed/selected instead of the saved value.
-              const rowKey = [
-                tpl.id,
-                tpl.dayOfWeek,
-                tpl.startTime,
-                tpl.endTime,
-                tpl.room,
-                tpl.label,
-                tpl.coachId ?? "",
-              ].join(":");
-              return (
-                <tr key={rowKey} className="border-t border-neutral-800">
-                  <td className="px-1 py-1">
-                    <input type="hidden" name="ids" value={tpl.id} form={BULK_FORM_ID} />
-                    <select
-                      name={`dayOfWeek:${tpl.id}`}
-                      form={BULK_FORM_ID}
-                      defaultValue={tpl.dayOfWeek}
-                      className={FIELD_CLASS}
-                    >
-                      {[1, 2, 3, 4, 5, 6, 7].map((d) => (
-                        <option key={d} value={d}>
-                          {dayName(d)}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-1 py-1">
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="time"
-                        name={`startTime:${tpl.id}`}
+      <TemplateBulkAssignProvider coaches={coaches}>
+        <div className="mb-8 overflow-hidden rounded-lg border border-neutral-800">
+          <table className="w-full text-sm">
+            <thead className="bg-neutral-900 text-left text-neutral-400">
+              <tr>
+                <th className="w-8 px-4 py-2">
+                  <SelectAllTemplatesCheckbox ids={templates.map((tpl) => tpl.id)} />
+                </th>
+                <th className="px-4 py-2 font-medium">Jour</th>
+                <th className="px-4 py-2 font-medium">Heure</th>
+                <th className="px-4 py-2 font-medium">Salle</th>
+                <th className="px-4 py-2 font-medium">Intitulé</th>
+                <th className="px-4 py-2 font-medium">Privé</th>
+                <th className="px-4 py-2 font-medium">Coach</th>
+                <th className="px-4 py-2 font-medium">Statut</th>
+                <th className="px-4 py-2 font-medium" />
+              </tr>
+            </thead>
+            <tbody>
+              {templates.map((tpl) => {
+                // Keying on the editable fields (not just tpl.id) forces this
+                // row to remount after a successful save — otherwise the
+                // uncontrolled select/input elements keep showing whatever
+                // was last typed/selected instead of the saved value.
+                const rowKey = [
+                  tpl.id,
+                  tpl.dayOfWeek,
+                  tpl.startTime,
+                  tpl.endTime,
+                  tpl.room,
+                  tpl.label,
+                  tpl.coachId ?? "",
+                ].join(":");
+                return (
+                  <tr key={rowKey} className="border-t border-neutral-800">
+                    <td className="px-4 py-2">
+                      <SelectTemplateCheckbox id={tpl.id} />
+                    </td>
+                    <td className="px-1 py-1">
+                      <input type="hidden" name="ids" value={tpl.id} form={BULK_FORM_ID} />
+                      <select
+                        name={`dayOfWeek:${tpl.id}`}
                         form={BULK_FORM_ID}
-                        defaultValue={tpl.startTime}
+                        defaultValue={tpl.dayOfWeek}
                         className={FIELD_CLASS}
-                      />
-                      <input
-                        type="time"
-                        name={`endTime:${tpl.id}`}
-                        form={BULK_FORM_ID}
-                        defaultValue={tpl.endTime}
-                        className={FIELD_CLASS}
-                      />
-                    </div>
-                  </td>
-                  <td className="px-1 py-1">
-                    <select
-                      name={`room:${tpl.id}`}
-                      form={BULK_FORM_ID}
-                      defaultValue={tpl.room}
-                      className={FIELD_CLASS}
-                    >
-                      {ROOMS.map((room) => (
-                        <option key={room} value={room}>
-                          {room}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-1 py-1">
-                    <input
-                      type="text"
-                      name={`label:${tpl.id}`}
-                      form={BULK_FORM_ID}
-                      defaultValue={tpl.label}
-                      className={FIELD_CLASS}
-                    />
-                  </td>
-                  <td className="px-4 py-2 text-neutral-400">
-                    {tpl.isPrivate ? "Oui" : "—"}
-                  </td>
-                  <td className="px-1 py-1">
-                    <select
-                      name={`coachId:${tpl.id}`}
-                      form={BULK_FORM_ID}
-                      defaultValue={tpl.coachId ?? ""}
-                      className={FIELD_CLASS}
-                    >
-                      <option value="">Non assigné</option>
-                      {coaches.map((coach) => (
-                        <option key={coach.id} value={coach.id}>
-                          {coach.name}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-4 py-2">
-                    <form action={toggleTemplateActive}>
-                      <input type="hidden" name="id" value={tpl.id} />
-                      <input
-                        type="hidden"
-                        name="active"
-                        value={String(tpl.active)}
-                      />
-                      <button
-                        type="submit"
-                        role="switch"
-                        aria-checked={tpl.active}
-                        title={tpl.active ? "Actif — cliquer pour désactiver" : "Inactif — cliquer pour activer"}
-                        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
-                          tpl.active ? "bg-emerald-600" : "bg-neutral-700"
-                        }`}
                       >
-                        <span
-                          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                            tpl.active ? "translate-x-[18px]" : "translate-x-[2px]"
-                          }`}
+                        {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+                          <option key={d} value={d}>
+                            {dayName(d)}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-1 py-1">
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="time"
+                          name={`startTime:${tpl.id}`}
+                          form={BULK_FORM_ID}
+                          defaultValue={tpl.startTime}
+                          className={FIELD_CLASS}
                         />
-                      </button>
-                    </form>
-                  </td>
-                  <td className="px-4 py-2 text-right whitespace-nowrap">
-                    <form action={deleteTemplate} className="inline">
-                      <input type="hidden" name="id" value={tpl.id} />
-                      <button
-                        type="submit"
-                        className="text-xs text-red-400 hover:text-red-300"
+                        <input
+                          type="time"
+                          name={`endTime:${tpl.id}`}
+                          form={BULK_FORM_ID}
+                          defaultValue={tpl.endTime}
+                          className={FIELD_CLASS}
+                        />
+                      </div>
+                    </td>
+                    <td className="px-1 py-1">
+                      <select
+                        name={`room:${tpl.id}`}
+                        form={BULK_FORM_ID}
+                        defaultValue={tpl.room}
+                        className={FIELD_CLASS}
                       >
-                        Supprimer
-                      </button>
-                    </form>
+                        {ROOMS.map((room) => (
+                          <option key={room} value={room}>
+                            {room}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-1 py-1">
+                      <input
+                        type="text"
+                        name={`label:${tpl.id}`}
+                        form={BULK_FORM_ID}
+                        defaultValue={tpl.label}
+                        className={FIELD_CLASS}
+                      />
+                    </td>
+                    <td className="px-4 py-2 text-neutral-400">
+                      {tpl.isPrivate ? "Oui" : "—"}
+                    </td>
+                    <td className="px-1 py-1">
+                      <select
+                        name={`coachId:${tpl.id}`}
+                        form={BULK_FORM_ID}
+                        defaultValue={tpl.coachId ?? ""}
+                        className={FIELD_CLASS}
+                      >
+                        <option value="">Non assigné</option>
+                        {coaches.map((coach) => (
+                          <option key={coach.id} value={coach.id}>
+                            {coach.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-4 py-2">
+                      <form action={toggleTemplateActive}>
+                        <input type="hidden" name="id" value={tpl.id} />
+                        <input
+                          type="hidden"
+                          name="active"
+                          value={String(tpl.active)}
+                        />
+                        <button
+                          type="submit"
+                          role="switch"
+                          aria-checked={tpl.active}
+                          title={tpl.active ? "Actif — cliquer pour désactiver" : "Inactif — cliquer pour activer"}
+                          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+                            tpl.active ? "bg-emerald-600" : "bg-neutral-700"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                              tpl.active ? "translate-x-[18px]" : "translate-x-[2px]"
+                            }`}
+                          />
+                        </button>
+                      </form>
+                    </td>
+                    <td className="px-4 py-2 text-right whitespace-nowrap">
+                      <form action={deleteTemplate} className="inline">
+                        <input type="hidden" name="id" value={tpl.id} />
+                        <button
+                          type="submit"
+                          className="text-xs text-red-400 hover:text-red-300"
+                        >
+                          Supprimer
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                );
+              })}
+              {templates.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={9}
+                    className="px-4 py-6 text-center text-neutral-500"
+                  >
+                    Aucun modèle de cours pour l&apos;instant.
                   </td>
                 </tr>
-              );
-            })}
-            {templates.length === 0 && (
-              <tr>
-                <td
-                  colSpan={8}
-                  className="px-4 py-6 text-center text-neutral-500"
-                >
-                  Aucun modèle de cours pour l&apos;instant.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </TemplateBulkAssignProvider>
     </div>
   );
 }

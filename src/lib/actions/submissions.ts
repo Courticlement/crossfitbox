@@ -14,11 +14,11 @@ function revalidateAll() {
   refresh();
 }
 
-// Blocks self-service writes (report a class, log a private class, undo a
-// submission) from a coach who's been archived — their private link may
-// still be bookmarked, but they're no longer a coach at the box. Admin-side
-// conflict resolution (useSubmission/dismissSubmission) isn't gated by this,
-// since that's the admin acting on old history, not the coach uploading.
+// Blocks self-service writes (log or delete a private class) from a coach
+// who's been archived — their private link may still be bookmarked, but
+// they're no longer a coach at the box. Admin-side conflict resolution
+// (useSubmission/dismissSubmission) isn't gated by this, since that's the
+// admin acting on old history, not the coach uploading.
 async function assertCoachActive(coachId: string): Promise<boolean> {
   const coach = await prisma.coach.findUnique({ where: { id: coachId }, select: { archived: true } });
   return coach !== null && !coach.archived;
@@ -30,14 +30,13 @@ type OfficialSubmission = {
 } | null;
 
 // Applies a submission as the class's official record, or (if null) resets
-// the class back to an unreported PLANNED state.
+// the class back to an unreported PLANNED state. Only reachable now via the
+// admin's conflict-resolution actions below (useSubmission/dismissSubmission)
+// — coaches no longer self-report, see bulkSetClassStatus in actions/planning.ts.
 //
-// For a DONE report, coachId is overwritten to whoever just reported it —
-// there's no "earliest wins" gate, so the most recent DONE report is always
-// what's reflected. This means any coach can reclaim a wrongly-claimed class
-// just by reporting it themselves, and a coach who made a mistake can fix it
-// by clearing their own submission (see clearMySubmission below), which
-// re-derives the class from whatever's left.
+// For a DONE report, coachId is overwritten to whoever the admin picked as
+// official — this re-derives from whatever's left among the historical
+// submissions.
 //
 // A MISSED report never changes coachId — it records that the class was
 // missed without reassigning who's on the hook for it. substituteCoachId
@@ -71,74 +70,6 @@ async function applyOfficial(classInstanceId: string, submission: OfficialSubmis
       substituteCoachId: submission.status === "DONE" ? null : instance.substituteCoachId,
     },
   });
-}
-
-const StatusValue = z.enum(["DONE", "MISSED"]);
-
-// Batch save for My Classes: every class's status select on the week grid
-// lives in one shared form (see the `ids` hidden inputs, one per class),
-// namespaced per class instance id (`status:${id}`) the same way Class
-// Templates' bulk save works — one submit reports every class the coach
-// picked a status for. Rows still at the unselected placeholder are
-// skipped rather than erroring the whole save. Any coach can report on any
-// class in the week, not just the one they're assigned to — and every
-// report takes effect immediately as the class's official record. All
-// submissions are kept (not just the latest), so if a report turns out to
-// be wrong, clearing it falls back to whatever's next most recent instead
-// of losing the history.
-export async function submitClassReports(formData: FormData) {
-  const coachId = await requireCoachId();
-  if (!coachId) return;
-  if (!(await assertCoachActive(coachId))) return;
-
-  const ids = Array.from(new Set(formData.getAll("ids").map(String)));
-
-  await Promise.all(
-    ids.map(async (classInstanceId) => {
-      const parsed = StatusValue.safeParse(formData.get(`status:${classInstanceId}`));
-      if (!parsed.success) return;
-      const status = parsed.data;
-
-      const instance = await prisma.classInstance.findUnique({ where: { id: classInstanceId } });
-      if (!instance) return;
-      if (await isDateInValidatedWeek(instance.date)) return;
-
-      await prisma.classSubmission.upsert({
-        where: { classInstanceId_coachId: { classInstanceId, coachId } },
-        create: { classInstanceId, coachId, status },
-        update: { status },
-      });
-
-      await applyOfficial(classInstanceId, { coachId, status });
-    })
-  );
-
-  revalidateAll();
-}
-
-// Self-service undo: a coach clears their own mistaken submission. The
-// class's official record is re-derived from whatever's now the most
-// recently updated remaining submission (from any coach), or reset to
-// PLANNED with nobody credited if none are left.
-export async function clearMySubmission(formData: FormData) {
-  const classInstanceId = String(formData.get("classInstanceId") ?? "");
-  const coachId = await requireCoachId();
-  if (!classInstanceId || !coachId) return;
-  if (!(await assertCoachActive(coachId))) return;
-
-  const instance = await prisma.classInstance.findUnique({ where: { id: classInstanceId } });
-  if (!instance) return;
-  if (await isDateInValidatedWeek(instance.date)) return;
-
-  await prisma.classSubmission.deleteMany({ where: { classInstanceId, coachId } });
-
-  const remaining = await prisma.classSubmission.findFirst({
-    where: { classInstanceId },
-    orderBy: { updatedAt: "desc" },
-  });
-
-  await applyOfficial(classInstanceId, remaining);
-  revalidateAll();
 }
 
 // Admin conflict resolution: force a specific submission to be the official

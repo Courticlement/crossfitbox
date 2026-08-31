@@ -15,15 +15,9 @@ import { PrivateClassForm } from "@/components/private-class-form";
 import { UnavailabilityForm } from "@/components/unavailability-form";
 import { MyClassesGrid } from "@/components/my-classes-grid";
 import { CoachPrevWeekBanner } from "@/components/coach-prev-week-banner";
-import { submitClassReports } from "@/lib/actions/submissions";
 import { coachLogout } from "@/lib/actions/auth";
 import { loadCoachWeekData } from "@/lib/coach-upload-data";
 import { COACH_COOKIE, verifyCoachSessionToken } from "@/lib/session";
-
-// Every class's status select on the grid shares this one form (via the
-// `form=` attribute) so "Save all changes" commits every pick in one submit
-// instead of the coach having to save each class individually.
-const BULK_FORM_ID = "my-classes-bulk-form";
 
 export default async function UploadPage({
   searchParams,
@@ -65,7 +59,7 @@ export default async function UploadPage({
     orderBy: { name: "asc" },
   });
 
-  const [{ instances, mySubmissionByInstance, myPrivateClasses, locked }, myUnavailability] =
+  const [{ instances, myPrivateClasses, locked }, myUnavailability] =
     await Promise.all([
       loadCoachWeekData(coach.id, weekStart, weekEnd),
       prisma.unavailability.findMany({
@@ -99,10 +93,9 @@ export default async function UploadPage({
         </h1>
         <p className="mb-4 text-sm text-neutral-500">
           Vous verrez ci-dessous vos cours de la semaine, ainsi que ceux
-          encore non assignés — marquez-en un que vous avez fait (ou manqué).
-          Une fois un cours marqué Manqué, vous pouvez indiquer directement
-          qui l&apos;a couvert. Si vous déclarez un cours plusieurs fois,
-          c&apos;est la déclaration la plus récente qui compte.
+          encore non assignés. Le statut (Fait / Manqué) de chaque cours est
+          validé par l&apos;admin. Si l&apos;un de vos cours est marqué
+          Manqué, vous pouvez indiquer directement qui l&apos;a couvert.
         </p>
 
         <div className="mb-6">
@@ -139,8 +132,8 @@ export default async function UploadPage({
         {locked && (
           <p className="mb-6 rounded-md border border-amber-900 bg-amber-950 px-3 py-2 text-sm text-amber-300">
             Le planning de cette semaine a été validé par l&apos;admin — les
-            déclarations sont fermées. Contactez l&apos;admin si quelque chose
-            doit changer.
+            modifications sont fermées. Contactez l&apos;admin si quelque
+            chose doit changer.
           </p>
         )}
 
@@ -151,30 +144,12 @@ export default async function UploadPage({
           locked={locked}
         />
 
-        {instances.length > 0 && (
-          <>
-            <form id={BULK_FORM_ID} action={submitClassReports} />
-            <div className="mb-3 flex justify-end">
-              <button
-                type="submit"
-                form={BULK_FORM_ID}
-                disabled={locked}
-                className="rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Enregistrer les modifications
-              </button>
-            </div>
-          </>
-        )}
-
         {instances.length > 0 ? (
           <MyClassesGrid
             weekStart={weekStart}
             instances={instances}
             coachId={coach.id}
             coaches={coaches}
-            mySubmissionByInstance={mySubmissionByInstance}
-            bulkFormId={BULK_FORM_ID}
             locked={locked}
           />
         ) : (

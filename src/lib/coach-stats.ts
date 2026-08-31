@@ -107,10 +107,9 @@ export function computeCoachStats(
   const pastMonthHours = new Map<string, number>(); // "YYYY-M" -> hours, excludes current month
 
   for (const inst of instances) {
-    // Who actually delivered this class: a DONE report always directly
-    // credits its coachId (see submitClassReports — the most recent DONE
-    // report always wins), while a MISSED report credits whoever covered it
-    // as a substitute, if anyone did.
+    // Who actually delivered this class: DONE always directly credits its
+    // coachId (the admin sets this via bulkSetClassStatus in actions/planning.ts),
+    // while MISSED credits whoever covered it as a substitute, if anyone did.
     const deliveredBy =
       inst.status === "DONE"
         ? inst.coachId

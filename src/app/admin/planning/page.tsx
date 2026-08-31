@@ -9,6 +9,7 @@ import {
   toDateOnly,
 } from "@/lib/dates";
 import { BoxClosuresCard } from "@/components/box-closures-card";
+import { BulkAssignProvider, SelectClassCheckbox } from "@/components/bulk-coach-assign";
 import { CoachSelect } from "@/components/coach-select";
 import { ConflictsPanel, type ConflictInstance } from "@/components/conflicts-panel";
 import { DeleteClassButton } from "@/components/delete-class-button";
@@ -274,37 +275,40 @@ export default async function PlanningPage({
         </div>
       )}
 
-      <WeekGrid
-        weekStart={weekStart}
-        instances={filteredInstances}
-        unavailableInstanceIds={unavailableInstanceIds}
-        closedDates={closedDates}
-        headerAction={(inst) => (
-          <DeleteClassButton
-            id={inst.id}
-            reported={inst.status === "DONE" || inst.status === "MISSED"}
-          />
-        )}
-        control={(inst) => (
-          <div className="flex flex-col gap-0.5">
-            <CoachSelect
-              classInstanceId={inst.id}
-              coachId={inst.coachId}
-              coaches={coaches}
-              templateCoachName={inst.template?.coach?.name ?? null}
+      <BulkAssignProvider coaches={coaches}>
+        <WeekGrid
+          weekStart={weekStart}
+          instances={filteredInstances}
+          unavailableInstanceIds={unavailableInstanceIds}
+          closedDates={closedDates}
+          selectionAction={(inst) => <SelectClassCheckbox id={inst.id} />}
+          headerAction={(inst) => (
+            <DeleteClassButton
+              id={inst.id}
+              reported={inst.status === "DONE" || inst.status === "MISSED"}
             />
-            {inst.status === "MISSED" && (
-              <SubstituteSelect
+          )}
+          control={(inst) => (
+            <div className="flex flex-col gap-0.5">
+              <CoachSelect
                 classInstanceId={inst.id}
                 coachId={inst.coachId}
-                substituteCoachId={inst.substituteCoachId}
                 coaches={coaches}
-                adminContext
+                templateCoachName={inst.template?.coach?.name ?? null}
               />
-            )}
-          </div>
-        )}
-      />
+              {inst.status === "MISSED" && (
+                <SubstituteSelect
+                  classInstanceId={inst.id}
+                  coachId={inst.coachId}
+                  substituteCoachId={inst.substituteCoachId}
+                  coaches={coaches}
+                  adminContext
+                />
+              )}
+            </div>
+          )}
+        />
+      </BulkAssignProvider>
 
       <div className="flex flex-wrap gap-4">
         <BoxClosuresCard entries={upcomingClosures} />
