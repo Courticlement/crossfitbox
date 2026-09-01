@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { addDays, formatDateISO } from "@/lib/dates";
+import { hexToRgba } from "@/lib/coach-colors";
 import { statusLabel } from "@/lib/status-labels";
 import { STATUS_BORDER, type WeekGridInstance } from "@/components/week-grid";
 
@@ -86,6 +87,11 @@ export function DayAgenda<T extends WeekGridInstance>({
           {dayInstances.map((inst) => {
             const isHighlighted = highlightInstanceId != null && inst.id === highlightInstanceId;
             const coachUnavailable = unavailableInstanceIds?.has(inst.id) ?? false;
+            // Same coach-color tint as WeekGrid, so a coach's classes read
+            // the same way whether the head coach is looking at the full
+            // week grid or this one-day mobile view — the status color
+            // still carries the outcome via the left border regardless.
+            const coachBg = !coachUnavailable && inst.coachColor ? hexToRgba(inst.coachColor, 0.35) : null;
             return (
               <div
                 key={inst.id}
@@ -95,11 +101,12 @@ export function DayAgenda<T extends WeekGridInstance>({
                 // sharing an id would be invalid HTML. See ScrollToHighlight,
                 // which tries both.
                 id={isHighlighted ? `class-instance-mobile-${inst.id}` : undefined}
-                className={`rounded-lg border border-l-4 border-neutral-800 bg-neutral-900 p-3 ${
-                  STATUS_BORDER[inst.status] ?? "border-l-neutral-600"
-                } ${isHighlighted ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-neutral-950" : ""} ${
-                  coachUnavailable ? "ring-2 ring-red-500" : ""
-                }`}
+                className={`rounded-lg border border-l-4 border-neutral-800 p-3 ${
+                  coachUnavailable ? "bg-red-950/60" : coachBg ? "" : "bg-neutral-900"
+                } ${STATUS_BORDER[inst.status] ?? "border-l-neutral-600"} ${
+                  isHighlighted ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-neutral-950" : ""
+                } ${coachUnavailable ? "ring-2 ring-red-500" : ""}`}
+                style={coachBg ? { backgroundColor: coachBg } : undefined}
               >
                 <div className="mb-1.5 flex items-center justify-between gap-2">
                   <span className="font-mono text-sm font-semibold text-white">
