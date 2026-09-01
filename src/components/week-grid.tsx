@@ -47,6 +47,11 @@ export type WeekGridInstance = {
   room: string;
   status: string;
   isPrivate: boolean;
+  // A whole-team event (see ClassInstance.isTeamEvent) — rendered with a
+  // much louder treatment than any other class, on both this grid and
+  // DayAgenda, since it needs every coach to notice it regardless of
+  // whether it's "theirs".
+  isTeamEvent?: boolean;
   coachId: string | null;
   // The assigned coach's Coach.color, if they have one set — tints
   // still-PLANNED/CANCELLED classes on the admin Planning grid so the head
@@ -187,11 +192,15 @@ export function WeekGrid<T extends WeekGridInstance>({
           );
 
           return positioned.map(({ item: inst, rowStart, rowEnd, left, width }) => {
-            const needsCoach = !inst.coachId && inst.status === "PLANNED";
+            const needsCoach = !inst.coachId && inst.status === "PLANNED" && !inst.isTeamEvent;
             const isHighlighted = highlightInstanceId != null && inst.id === highlightInstanceId;
             const isMine = highlightCoachId != null && inst.coachId === highlightCoachId;
             const isMineGroup = isMine && !inst.isPrivate;
-            const faded = highlightCoachId != null && !isMine;
+            // A team event has no coachId (see ClassInstance.isTeamEvent) but
+            // is everyone's — the "dim what isn't mine" treatment that helps
+            // a coach find their own classes shouldn't wash out the one
+            // block every coach actually needs to notice.
+            const faded = highlightCoachId != null && !isMine && !inst.isTeamEvent;
             const coachUnavailable = unavailableInstanceIds?.has(inst.id) ?? false;
             const statusBg = STATUS_BG[inst.status];
             // The coach's color now always wins the background, DONE/MISSED
@@ -207,19 +216,25 @@ export function WeekGrid<T extends WeekGridInstance>({
             const bg = coachUnavailable
               ? "bg-red-950/60"
               : (coachBg ? "" : (statusBg ?? (ROOM_BG[inst.room] ?? "bg-neutral-900")));
+            // A team event overrides every other border/background rule —
+            // it has no coach and no status story to tell, just "everyone
+            // needs to see this" (see ClassInstance.isTeamEvent).
+            const border = inst.isTeamEvent
+              ? "border-2 border-amber-400"
+              : `border-l-4 ${STATUS_BORDER[inst.status] ?? "border-l-neutral-600"}`;
             return (
               <div
                 key={inst.id}
                 id={isHighlighted ? `class-instance-${inst.id}` : undefined}
-                title={`${inst.label} · ${inst.room} · ${inst.startTime}–${inst.endTime} · ${statusLabel(inst.status)}${coachUnavailable ? " · le coach assigné est indisponible" : ""}`}
-                className={`group relative z-10 flex flex-col gap-1 overflow-hidden rounded-md border-l-4 p-1.5 transition-opacity ${STATUS_BORDER[inst.status] ?? "border-l-neutral-600"} ${bg} ${needsCoach ? "ring-1 ring-inset ring-amber-600/60" : ""} ${coachUnavailable ? "ring-2 ring-inset ring-red-500" : ""} ${isMineGroup ? "ring-2 ring-inset ring-white/80" : ""} ${isHighlighted ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-neutral-950" : ""} ${faded ? "opacity-40" : ""}`}
+                title={`${inst.isTeamEvent ? "Événement d'équipe · " : ""}${inst.label} · ${inst.room} · ${inst.startTime}–${inst.endTime} · ${statusLabel(inst.status)}${coachUnavailable ? " · le coach assigné est indisponible" : ""}`}
+                className={`group relative z-10 flex flex-col gap-1 overflow-hidden rounded-md p-1.5 transition-opacity ${border} ${inst.isTeamEvent ? "bg-gradient-to-br from-amber-500/30 via-amber-600/15 to-neutral-900" : bg} ${needsCoach ? "ring-1 ring-inset ring-amber-600/60" : ""} ${coachUnavailable ? "ring-2 ring-inset ring-red-500" : ""} ${isMineGroup ? "ring-2 ring-inset ring-white/80" : ""} ${isHighlighted ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-neutral-950" : ""} ${faded ? "opacity-40" : ""}`}
                 style={{
                   gridColumn: dayIdx + 2,
                   gridRow: `${1 + rowStart} / ${1 + rowEnd}`,
                   justifySelf: "start",
                   marginLeft: `${left}%`,
                   width: `calc(${width}% - 2px)`,
-                  ...(coachBg ? { backgroundColor: coachBg } : {}),
+                  ...(!inst.isTeamEvent && coachBg ? { backgroundColor: coachBg } : {}),
                 }}
               >
                 <div className="flex items-center justify-between gap-1">
@@ -230,6 +245,11 @@ export function WeekGrid<T extends WeekGridInstance>({
                     </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
+                    {inst.isTeamEvent && (
+                      <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[8px] font-bold uppercase leading-none tracking-wide text-amber-950">
+                        🎉 Équipe
+                      </span>
+                    )}
                     {isHighlighted && (
                       <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-amber-300">
                         Prochain
@@ -248,7 +268,11 @@ export function WeekGrid<T extends WeekGridInstance>({
                     {headerAction?.(inst)}
                   </div>
                 </div>
-                <div className="line-clamp-2 text-[12px] font-semibold leading-tight text-white">
+                <div
+                  className={`line-clamp-2 text-[12px] font-semibold leading-tight ${
+                    inst.isTeamEvent ? "text-amber-100" : "text-white"
+                  }`}
+                >
                   {inst.label}
                 </div>
                 <div className="mt-auto">{control(inst)}</div>

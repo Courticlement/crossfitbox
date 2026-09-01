@@ -105,6 +105,13 @@ model ClassInstance {
   label             String
   room              String         @default("Salle 1")
   isPrivate         Boolean        @default(false)
+  // A whole-team event (staff meeting, seminar, box party…) rather than a
+  // class taught by one coach — created with coachId left null (see
+  // addAdHocClass) so it doesn't count toward anyone's quota or pay, and
+  // shows up on every coach's My Classes the same way an unassigned class
+  // does. Rendered with a much louder treatment than a normal class on both
+  // WeekGrid and DayAgenda so it can't be missed.
+  isTeamEvent       Boolean        @default(false)
   // Who's credited with this class. For a still-PLANNED class this is the
   // planning assignment (set by the admin). Once any coach self-reports a
   // DONE class, this is overwritten to whoever reported it — the most

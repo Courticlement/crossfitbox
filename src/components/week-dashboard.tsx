@@ -59,7 +59,9 @@ export async function WeekDashboard({
 
   const activeInstances = instances.filter((i) => i.status !== "CANCELLED");
   const totalClasses = activeInstances.length;
-  const unassignedClasses = activeInstances.filter((i) => !i.coachId).length;
+  // A team event never gets a coach by design (see ClassInstance.isTeamEvent)
+  // — it shouldn't inflate the "needs assignment" count.
+  const unassignedClasses = activeInstances.filter((i) => !i.coachId && !i.isTeamEvent).length;
   const groupClasses = activeInstances.filter((i) => !i.isPrivate).length;
   const privateClasses = activeInstances.filter((i) => i.isPrivate).length;
 

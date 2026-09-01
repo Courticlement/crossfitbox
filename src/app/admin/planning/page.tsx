@@ -8,6 +8,7 @@ import {
   parseDateOnly,
   toDateOnly,
 } from "@/lib/dates";
+import { AddAdHocClassForm } from "@/components/add-adhoc-class-form";
 import { BoxClosuresCard } from "@/components/box-closures-card";
 import { BulkAssignProvider, SelectClassCheckbox } from "@/components/bulk-coach-assign";
 import { CoachSelect } from "@/components/coach-select";
@@ -23,8 +24,7 @@ import { ResetWeekButton } from "@/components/reset-week-button";
 import { SubstituteSelect } from "@/components/substitute-select";
 import { TimeConflictsPanel, type TimeConflictGroup } from "@/components/time-conflicts-panel";
 import { WeekGrid } from "@/components/week-grid";
-import { ROOMS } from "@/lib/rooms";
-import { generateWeek, addAdHocClass, validateWeek, unlockWeek } from "@/lib/actions/planning";
+import { generateWeek, validateWeek, unlockWeek } from "@/lib/actions/planning";
 
 export default async function PlanningPage({
   searchParams,
@@ -132,7 +132,11 @@ export default async function PlanningPage({
   // a hidden coach's double-booking doesn't silently disappear.
   const filteredInstances = instances
     .filter((inst) => {
-      if (coachIdFilter && inst.coachId !== coachIdFilter) return false;
+      // A team event has no coachId by design (see ClassInstance.isTeamEvent)
+      // but involves every coach — filtering Planning down to one coach
+      // shouldn't hide it, the same way it wouldn't hide a class that
+      // coach is actually assigned to.
+      if (coachIdFilter && inst.coachId !== coachIdFilter && !inst.isTeamEvent) return false;
       if (typeFilter === "private" && !inst.isPrivate) return false;
       if (typeFilter === "group" && inst.isPrivate) return false;
       if (roomFilter && inst.room !== roomFilter) return false;
@@ -224,25 +228,29 @@ export default async function PlanningPage({
       />
     </div>
   );
-  const renderControl = (inst: (typeof filteredInstances)[number]) => (
-    <div className="flex flex-col gap-0.5">
-      <CoachSelect
-        classInstanceId={inst.id}
-        coachId={inst.coachId}
-        coaches={coaches}
-        templateCoachName={inst.template?.coach?.name ?? null}
-      />
-      {inst.status === "MISSED" && (
-        <SubstituteSelect
+  // A team event has no single coach to assign (see ClassInstance.isTeamEvent)
+  // — showing the assign dropdown would just invite picking one, which
+  // contradicts the whole point of the event.
+  const renderControl = (inst: (typeof filteredInstances)[number]) =>
+    inst.isTeamEvent ? null : (
+      <div className="flex flex-col gap-0.5">
+        <CoachSelect
           classInstanceId={inst.id}
           coachId={inst.coachId}
-          substituteCoachId={inst.substituteCoachId}
           coaches={coaches}
-          adminContext
+          templateCoachName={inst.template?.coach?.name ?? null}
         />
-      )}
-    </div>
-  );
+        {inst.status === "MISSED" && (
+          <SubstituteSelect
+            classInstanceId={inst.id}
+            coachId={inst.coachId}
+            substituteCoachId={inst.substituteCoachId}
+            coaches={coaches}
+            adminContext
+          />
+        )}
+      </div>
+    );
 
   return (
     <div className="text-neutral-300">
@@ -374,82 +382,7 @@ export default async function PlanningPage({
 
       <div className="flex flex-wrap gap-4">
         <BoxClosuresCard entries={upcomingClosures} />
-        <div className="max-w-sm rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-          <h2 className="mb-3 text-sm font-medium text-white">
-            Ajouter un cours ponctuel
-          </h2>
-          <form action={addAdHocClass} className="flex flex-col gap-2">
-            <input
-              type="date"
-              name="date"
-              required
-              defaultValue={formatDateISO(weekStart)}
-              min={formatDateISO(weekStart)}
-              max={formatDateISO(addDays(weekStart, 6))}
-              className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
-            />
-            <div className="flex gap-2">
-              <input
-                type="time"
-                name="startTime"
-                required
-                className="w-1/2 rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
-              />
-              <input
-                type="time"
-                name="endTime"
-                required
-                className="w-1/2 rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
-              />
-            </div>
-            <select
-              name="room"
-              required
-              defaultValue=""
-              className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
-            >
-              <option value="" disabled>
-                Salle
-              </option>
-              {ROOMS.map((room) => (
-                <option key={room} value={room}>
-                  {room}
-                </option>
-              ))}
-            </select>
-            <input
-              type="text"
-              name="label"
-              required
-              placeholder="Intitulé"
-              className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
-            />
-            <label className="flex items-center gap-1.5 text-sm text-neutral-300">
-              <input type="checkbox" name="isPrivate" className="accent-white" />
-              Cours privé
-            </label>
-            <select
-              name="coachId"
-              defaultValue=""
-              className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
-            >
-              <option value="">Coach — à assigner plus tard</option>
-              {coaches
-                .filter((c) => !c.archived)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-            </select>
-            <button
-              type="submit"
-              className="mt-1 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
-            >
-              Ajouter le cours
-            </button>
-          </form>
-        </div>
+        <AddAdHocClassForm weekStart={weekStart} coaches={coaches} />
       </div>
     </div>
   );

@@ -396,7 +396,10 @@ export async function addAdHocClass(formData: FormData) {
   const label = String(formData.get("label") ?? "").trim();
   const room = String(formData.get("room") ?? "").trim();
   const isPrivate = formData.get("isPrivate") === "on";
-  const coachId = String(formData.get("coachId") ?? "").trim() || null;
+  const isTeamEvent = formData.get("isTeamEvent") === "on";
+  // A team event has no single coach by definition — ignore whatever the
+  // (disabled, in the UI) coach field carries rather than trust the client.
+  const coachId = isTeamEvent ? null : String(formData.get("coachId") ?? "").trim() || null;
   const date = parseDateOnly(dateStr);
   if (!date || !startTime || !endTime || !label || !room) return;
 
@@ -409,7 +412,7 @@ export async function addAdHocClass(formData: FormData) {
   const status = isPrivate && coachId ? "DONE" : "PLANNED";
 
   await prisma.classInstance.create({
-    data: { date, startTime, endTime, label, room, isPrivate, coachId, status },
+    data: { date, startTime, endTime, label, room, isPrivate, isTeamEvent, coachId, status },
   });
   revalidateAll();
 }
