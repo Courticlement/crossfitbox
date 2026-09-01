@@ -63,3 +63,28 @@ export async function createClassReview(
   revalidatePath("/admin/reviews");
   redirect(`/admin/reviews/${review.id}?created=1`);
 }
+
+// Backs both the per-row trash icon (one id) and the multi-select bulk bar
+// (several) on /admin/reviews — same action either way, since deleting one
+// review is just a delete of a one-element selection. Called from the
+// review detail page too, which passes redirectTo since there's no list to
+// stay on afterward.
+export async function deleteClassReviews(formData: FormData) {
+  const ids = formData
+    .getAll("ids")
+    .filter((v): v is string => typeof v === "string" && v.length > 0);
+
+  if (ids.length > 0) {
+    await prisma.classReview.deleteMany({ where: { id: { in: ids } } });
+  }
+
+  revalidatePath("/admin/planning");
+  revalidatePath("/admin/reviews");
+  revalidatePath("/admin");
+  revalidatePath("/upload");
+
+  const redirectTo = formData.get("redirectTo");
+  if (typeof redirectTo === "string" && redirectTo) {
+    redirect(redirectTo);
+  }
+}

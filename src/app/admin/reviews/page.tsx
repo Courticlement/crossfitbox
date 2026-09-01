@@ -4,6 +4,11 @@ import { addDays, formatDateISO, formatDayLabel, parseDateOnly } from "@/lib/dat
 import { ReviewFilters } from "@/components/review-filters";
 import { CoachingEvolutionChart, type EvolutionPoint } from "@/components/coaching-evolution-chart";
 import { CoachingFocusPanel } from "@/components/coaching-focus-panel";
+import { DeleteReviewButton } from "@/components/delete-review-button";
+import {
+  ReviewsBulkDeleteBar,
+  REVIEWS_BULK_DELETE_FORM_ID,
+} from "@/components/reviews-bulk-delete-bar";
 import { getLastFocusByCoach } from "@/lib/coaching-focus";
 import {
   PILLARS,
@@ -114,6 +119,8 @@ export default async function ReviewsPage({
         currentParams={{ from: fromParam, to: toParam, pastille: pastilleFilter || undefined }}
       />
 
+      <ReviewsBulkDeleteBar />
+
       {reviews.length === 0 ? (
         <div className="rounded-lg border border-dashed border-neutral-800 p-10 text-center text-sm text-neutral-500">
           Aucune review ne correspond à ces filtres.
@@ -128,39 +135,48 @@ export default async function ReviewsPage({
               {dayReviews.map((review) => {
                 const inst = review.classInstance;
                 const color = pastilleColor(review.pastille);
+                const coachLabel = inst.coach?.name ?? "Non assigné";
                 return (
-                  <Link
+                  <div
                     key={review.id}
-                    href={`/admin/reviews/${review.id}`}
-                    className="grid grid-cols-[120px_1fr_auto_auto_auto] items-center gap-4 rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-3 hover:border-neutral-600"
+                    className="grid grid-cols-[auto_120px_1fr_auto_auto_auto_auto] items-center gap-4 rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-3 hover:border-neutral-600"
                   >
-                    <span className="truncate text-sm font-semibold text-white">
-                      {inst.coach?.name ?? "Non assigné"}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-white">{inst.label}</span>
-                      <span className="block text-xs text-neutral-500">{inst.startTime}–{inst.endTime}</span>
-                    </span>
-                    <span className="hidden gap-1 sm:flex">
-                      {PILLARS.map((p) => (
-                        <span
-                          key={p.key}
-                          title={p.label}
-                          className="h-2.5 w-2.5 rounded-full"
-                          style={{
-                            backgroundColor: pillarRatingColor(
-                              review[PILLAR_COLUMN[p.key] as keyof typeof review] as string
-                            ),
-                          }}
-                        />
-                      ))}
-                    </span>
-                    <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ color }}>
-                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-                      {pastilleLabel(review.pastille)}
-                    </span>
-                    <span className="text-xs font-semibold text-neutral-500">Voir →</span>
-                  </Link>
+                    <input
+                      type="checkbox"
+                      name="ids"
+                      value={review.id}
+                      form={REVIEWS_BULK_DELETE_FORM_ID}
+                      aria-label={`Sélectionner la review de ${coachLabel}`}
+                      className="h-4 w-4 accent-red-600"
+                    />
+                    <Link href={`/admin/reviews/${review.id}`} className="contents">
+                      <span className="truncate text-sm font-semibold text-white">{coachLabel}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-white">{inst.label}</span>
+                        <span className="block text-xs text-neutral-500">{inst.startTime}–{inst.endTime}</span>
+                      </span>
+                      <span className="hidden gap-1 sm:flex">
+                        {PILLARS.map((p) => (
+                          <span
+                            key={p.key}
+                            title={p.label}
+                            className="h-2.5 w-2.5 rounded-full"
+                            style={{
+                              backgroundColor: pillarRatingColor(
+                                review[PILLAR_COLUMN[p.key] as keyof typeof review] as string
+                              ),
+                            }}
+                          />
+                        ))}
+                      </span>
+                      <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ color }}>
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+                        {pastilleLabel(review.pastille)}
+                      </span>
+                      <span className="text-xs font-semibold text-neutral-500">Voir →</span>
+                    </Link>
+                    <DeleteReviewButton reviewId={review.id} label={`de ${coachLabel} — ${inst.label}`} />
+                  </div>
                 );
               })}
             </div>

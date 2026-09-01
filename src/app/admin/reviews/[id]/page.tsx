@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatDayLabel } from "@/lib/dates";
 import { ReviewRecap } from "@/components/review-recap";
+import { DeleteReviewButton } from "@/components/delete-review-button";
 import { PILLARS, PILLAR_COLUMN, type PillarKey, type PillarRating } from "@/lib/review-constants";
 
 export default async function ReviewDetailPage({
@@ -26,9 +27,16 @@ export default async function ReviewDetailPage({
 
   return (
     <div className="mx-auto max-w-2xl text-neutral-300">
-      <Link href="/admin/reviews" className="mb-4 inline-block text-sm text-neutral-500 hover:text-white">
-        ‹ Retour à l&apos;historique
-      </Link>
+      <div className="mb-4 flex items-center justify-between">
+        <Link href="/admin/reviews" className="text-sm text-neutral-500 hover:text-white">
+          ‹ Retour à l&apos;historique
+        </Link>
+        <DeleteReviewButton
+          reviewId={review.id}
+          label={`de ${inst.coach?.name ?? "ce cours"} — ${inst.label}`}
+          redirectTo="/admin/reviews"
+        />
+      </div>
 
       {justCreated && (
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-300">
