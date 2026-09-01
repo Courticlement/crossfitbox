@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DashboardCoachCards } from "@/components/dashboard-coach-cards";
 import { prisma } from "@/lib/prisma";
 import {
   startOfWeekMonday,
@@ -202,7 +203,9 @@ export async function WeekDashboard({
         </div>
       </div>
 
-      <div className="mb-6 overflow-hidden rounded-lg border border-neutral-800">
+      <DashboardCoachCards rows={rows} />
+
+      <div className="mb-6 hidden overflow-hidden rounded-lg border border-neutral-800 md:block">
         <table className="w-full text-sm">
           <thead className="bg-neutral-900 text-left text-neutral-400">
             <tr>

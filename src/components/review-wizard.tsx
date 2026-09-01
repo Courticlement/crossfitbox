@@ -143,7 +143,7 @@ export function ReviewWizard({
             </p>
             <div className="divide-y divide-neutral-800">
               {PILLARS.map((p) => (
-                <div key={p.key} className="flex items-center justify-between py-4">
+                <div key={p.key} className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
                   <span className="text-[14.5px] font-semibold text-white">{p.label}</span>
                   <div className="flex gap-2.5">
                     {PILLAR_RATINGS.map((r) => {
@@ -174,10 +174,6 @@ export function ReviewWizard({
           </div>
 
           <div className={isFeedback ? "" : "hidden"}>
-            <div className="mb-5 inline-block rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-xs font-bold text-neutral-400">
-              Coach Tracker – CFL3
-            </div>
-
             <div className="mb-6">
               <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-neutral-500">
                 Le coach a identifié

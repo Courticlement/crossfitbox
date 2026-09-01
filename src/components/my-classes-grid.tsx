@@ -1,4 +1,5 @@
 import { WeekGrid, type WeekGridInstance } from "@/components/week-grid";
+import { DayAgenda } from "@/components/day-agenda";
 import { SubstituteSelect } from "@/components/substitute-select";
 import { statusLabel } from "@/lib/status-labels";
 
@@ -21,43 +22,63 @@ const STATUS_TEXT_COLOR: Record<string, string> = {
 // class Manqué.
 export function MyClassesGrid({
   weekStart,
+  selectedDay,
+  dayHrefs,
   instances,
   coachId,
   coaches,
   locked,
 }: {
   weekStart: Date;
+  // See DayAgenda — the mobile day-at-a-time counterpart to the week grid
+  // below, resolved by the caller (upload/page.tsx) from a `day` param.
+  selectedDay: Date;
+  dayHrefs: Record<string, string>;
   instances: Instance[];
   coachId: string;
   coaches: { id: string; name: string }[];
   locked: boolean;
 }) {
-  return (
-    <WeekGrid
-      weekStart={weekStart}
-      instances={instances}
-      highlightCoachId={coachId}
-      control={(inst) => (
-        <div className="flex flex-col gap-0.5">
-          {inst.coach?.name && (
-            <div className="truncate text-[9px] text-neutral-500">
-              Assigné : {inst.coach.name}
-            </div>
-          )}
-          <div className={`truncate text-[10px] font-medium ${STATUS_TEXT_COLOR[inst.status] ?? ""}`}>
-            {statusLabel(inst.status)}
-          </div>
-          {inst.status === "MISSED" && (
-            <SubstituteSelect
-              classInstanceId={inst.id}
-              coachId={inst.coachId}
-              substituteCoachId={inst.substituteCoachId}
-              coaches={coaches}
-              locked={locked}
-            />
-          )}
+  const renderControl = (inst: Instance) => (
+    <div className="flex flex-col gap-0.5">
+      {inst.coach?.name && (
+        <div className="truncate text-[9px] text-neutral-500">
+          Assigné : {inst.coach.name}
         </div>
       )}
-    />
+      <div className={`truncate text-[10px] font-medium ${STATUS_TEXT_COLOR[inst.status] ?? ""}`}>
+        {statusLabel(inst.status)}
+      </div>
+      {inst.status === "MISSED" && (
+        <SubstituteSelect
+          classInstanceId={inst.id}
+          coachId={inst.coachId}
+          substituteCoachId={inst.substituteCoachId}
+          coaches={coaches}
+          locked={locked}
+        />
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      <div className="hidden md:block">
+        <WeekGrid
+          weekStart={weekStart}
+          instances={instances}
+          highlightCoachId={coachId}
+          control={renderControl}
+        />
+      </div>
+      <DayAgenda
+        weekStart={weekStart}
+        selectedDay={selectedDay}
+        dayHrefs={dayHrefs}
+        instances={instances}
+        control={renderControl}
+        emptyLabel="Aucun cours ce jour-là."
+      />
+    </>
   );
 }

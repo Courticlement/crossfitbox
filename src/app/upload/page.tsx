@@ -56,6 +56,20 @@ export default async function UploadPage({
   const prevWeek = formatDateISO(addDays(weekStart, -7));
   const nextWeek = formatDateISO(addDays(weekStart, 7));
 
+  // Which single day the mobile agenda (DayAgenda) shows — see the same
+  // logic on admin/planning/page.tsx. No highlight param here, so it's just
+  // an explicit ?day= or today, clamped to the displayed week.
+  const dayParam = typeof params?.day === "string" ? params.day : undefined;
+  let selectedDay = weekStart;
+  const dayCandidate = (dayParam && parseDateOnly(dayParam)) || today;
+  if (dayCandidate >= weekStart && dayCandidate < weekEnd) selectedDay = dayCandidate;
+
+  const dayHrefs: Record<string, string> = {};
+  for (let i = 0; i < 7; i++) {
+    const iso = formatDateISO(addDays(weekStart, i));
+    dayHrefs[iso] = `/upload?week=${formatDateISO(weekStart)}&day=${iso}`;
+  }
+
   const coaches = await prisma.coach.findMany({
     where: { archived: false },
     orderBy: { name: "asc" },
@@ -152,6 +166,8 @@ export default async function UploadPage({
         {instances.length > 0 ? (
           <MyClassesGrid
             weekStart={weekStart}
+            selectedDay={selectedDay}
+            dayHrefs={dayHrefs}
             instances={instances}
             coachId={coach.id}
             coaches={coaches}

@@ -15,7 +15,7 @@ const DEFAULT_END_HOUR = 21;
 const GUTTER_COL = "64px";
 const DAY_COL = "minmax(150px, 1fr)";
 
-const STATUS_BORDER: Record<string, string> = {
+export const STATUS_BORDER: Record<string, string> = {
   PLANNED: "border-l-neutral-600",
   DONE: "border-l-emerald-500",
   MISSED: "border-l-red-500",

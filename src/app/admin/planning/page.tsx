@@ -12,6 +12,7 @@ import { BoxClosuresCard } from "@/components/box-closures-card";
 import { BulkAssignProvider, SelectClassCheckbox } from "@/components/bulk-coach-assign";
 import { CoachSelect } from "@/components/coach-select";
 import { ConflictsPanel, type ConflictInstance } from "@/components/conflicts-panel";
+import { DayAgenda } from "@/components/day-agenda";
 import { DeleteClassButton } from "@/components/delete-class-button";
 import { PlanningFilters } from "@/components/planning-filters";
 import { ReviewButton } from "@/components/review-button";
@@ -81,6 +82,33 @@ export default async function PlanningPage({
   const closedDates = new Set(weekClosures.map((c) => formatDateISO(c.date)));
 
   const instancesById = new Map(instances.map((i) => [i.id, i]));
+
+  // Which single day the mobile agenda (DayAgenda) shows — the full week
+  // grid works fine on mobile as read-only-ish scroll, but picking one
+  // class to act on inside it doesn't, so mobile gets a day-at-a-time view
+  // instead. Prefers an explicit ?day=, then the highlighted instance's own
+  // day (see highlightInstanceId above), then today, all clamped to this
+  // week.
+  const dayParam = typeof params?.day === "string" ? params.day : undefined;
+  const today = toDateOnly(new Date());
+  let selectedDay = weekStart;
+  const dayCandidate =
+    (dayParam && parseDateOnly(dayParam)) ||
+    (highlightInstanceId ? instancesById.get(highlightInstanceId)?.date : undefined) ||
+    today;
+  if (dayCandidate >= weekStart && dayCandidate < weekEnd) selectedDay = dayCandidate;
+
+  const dayHrefs: Record<string, string> = {};
+  for (let i = 0; i < 7; i++) {
+    const iso = formatDateISO(addDays(weekStart, i));
+    const sp = new URLSearchParams();
+    sp.set("week", weekStartStr);
+    if (coachIdFilter) sp.set("coachId", coachIdFilter);
+    if (typeFilter) sp.set("type", typeFilter);
+    if (roomFilter) sp.set("room", roomFilter);
+    sp.set("day", iso);
+    dayHrefs[iso] = `/admin/planning?${sp.toString()}`;
+  }
 
   // Flags any still-open class (PLANNED, or MISSED with a substitute lined
   // up) whose currently-assigned coach flagged that exact day as
@@ -180,6 +208,41 @@ export default async function PlanningPage({
       }),
     });
   }
+
+  // Shared by WeekGrid (desktop) and DayAgenda (mobile) below, so admin
+  // actions — assign, review, delete, substitute — stay identical on both.
+  const renderHeaderAction = (inst: (typeof filteredInstances)[number]) => (
+    <div className="flex items-center gap-1">
+      <ReviewButton
+        classInstanceId={inst.id}
+        review={inst.review ? { id: inst.review.id, pastille: inst.review.pastille } : null}
+        weekParam={weekStartStr}
+      />
+      <DeleteClassButton
+        id={inst.id}
+        reported={inst.status === "DONE" || inst.status === "MISSED"}
+      />
+    </div>
+  );
+  const renderControl = (inst: (typeof filteredInstances)[number]) => (
+    <div className="flex flex-col gap-0.5">
+      <CoachSelect
+        classInstanceId={inst.id}
+        coachId={inst.coachId}
+        coaches={coaches}
+        templateCoachName={inst.template?.coach?.name ?? null}
+      />
+      {inst.status === "MISSED" && (
+        <SubstituteSelect
+          classInstanceId={inst.id}
+          coachId={inst.coachId}
+          substituteCoachId={inst.substituteCoachId}
+          coaches={coaches}
+          adminContext
+        />
+      )}
+    </div>
+  );
 
   return (
     <div className="text-neutral-300">
@@ -283,48 +346,31 @@ export default async function PlanningPage({
 
       {highlightInstanceId && <ScrollToHighlight instanceId={highlightInstanceId} />}
 
-      <BulkAssignProvider coaches={coaches}>
-        <WeekGrid
-          weekStart={weekStart}
-          instances={filteredInstances}
-          highlightInstanceId={highlightInstanceId}
-          unavailableInstanceIds={unavailableInstanceIds}
-          closedDates={closedDates}
-          selectionAction={(inst) => <SelectClassCheckbox id={inst.id} />}
-          headerAction={(inst) => (
-            <div className="flex items-center gap-1">
-              <ReviewButton
-                classInstanceId={inst.id}
-                review={inst.review ? { id: inst.review.id, pastille: inst.review.pastille } : null}
-                weekParam={weekStartStr}
-              />
-              <DeleteClassButton
-                id={inst.id}
-                reported={inst.status === "DONE" || inst.status === "MISSED"}
-              />
-            </div>
-          )}
-          control={(inst) => (
-            <div className="flex flex-col gap-0.5">
-              <CoachSelect
-                classInstanceId={inst.id}
-                coachId={inst.coachId}
-                coaches={coaches}
-                templateCoachName={inst.template?.coach?.name ?? null}
-              />
-              {inst.status === "MISSED" && (
-                <SubstituteSelect
-                  classInstanceId={inst.id}
-                  coachId={inst.coachId}
-                  substituteCoachId={inst.substituteCoachId}
-                  coaches={coaches}
-                  adminContext
-                />
-              )}
-            </div>
-          )}
-        />
-      </BulkAssignProvider>
+      <div className="hidden md:block">
+        <BulkAssignProvider coaches={coaches}>
+          <WeekGrid
+            weekStart={weekStart}
+            instances={filteredInstances}
+            highlightInstanceId={highlightInstanceId}
+            unavailableInstanceIds={unavailableInstanceIds}
+            closedDates={closedDates}
+            selectionAction={(inst) => <SelectClassCheckbox id={inst.id} />}
+            headerAction={renderHeaderAction}
+            control={renderControl}
+          />
+        </BulkAssignProvider>
+      </div>
+      <DayAgenda
+        weekStart={weekStart}
+        selectedDay={selectedDay}
+        dayHrefs={dayHrefs}
+        instances={filteredInstances}
+        highlightInstanceId={highlightInstanceId}
+        unavailableInstanceIds={unavailableInstanceIds}
+        closedDates={closedDates}
+        headerAction={renderHeaderAction}
+        control={renderControl}
+      />
 
       <div className="flex flex-wrap gap-4">
         <BoxClosuresCard entries={upcomingClosures} />

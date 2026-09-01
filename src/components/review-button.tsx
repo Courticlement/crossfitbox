@@ -24,7 +24,7 @@ export function ReviewButton({
       <Link
         href={`/admin/reviews/${review.id}`}
         title="Voir la review de ce cours"
-        className="flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide"
+        className="flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-semibold uppercase leading-none tracking-wide md:px-1.5 md:py-0.5 md:text-[8px]"
         style={{ borderColor: `${color}73`, backgroundColor: `${color}29`, color }}
       >
         <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color }} />
@@ -37,7 +37,11 @@ export function ReviewButton({
     <Link
       href={`/admin/planning/review/${classInstanceId}?week=${weekParam}`}
       title="Démarrer une review de coaching"
-      className="shrink-0 text-[10px] text-neutral-500 opacity-0 hover:text-white group-hover:opacity-100"
+      // Visible by default — a touch screen has no hover state to reveal
+      // it. Only fades in on hover once there's room for a full week grid
+      // (see WeekGrid, whose event blocks carry the `group` class this
+      // relies on at md+).
+      className="shrink-0 rounded-md p-1 text-base text-neutral-500 hover:text-white md:p-0 md:text-[10px] md:opacity-0 md:group-hover:opacity-100"
       aria-label="Démarrer une review de coaching"
     >
       📋
