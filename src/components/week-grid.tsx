@@ -63,6 +63,7 @@ export function WeekGrid<T extends WeekGridInstance>({
   control,
   selectionAction,
   highlightCoachId,
+  highlightInstanceId,
   unavailableInstanceIds,
   closedDates,
 }: {
@@ -81,6 +82,11 @@ export function WeekGrid<T extends WeekGridInstance>({
   // Private classes aren't dimmed either way (they're already unambiguous —
   // a coach's own private classes only ever show up on their own page).
   highlightCoachId?: string | null;
+  // One specific instance to call out — e.g. the Dashboard's "no review yet"
+  // link into a coach's next class. Gets a bright ring plus a small badge,
+  // and the page auto-scrolls to it (see the Planning page's highlight
+  // param) since the target class can land anywhere in the grid.
+  highlightInstanceId?: string | null;
   // Instance ids whose currently-assigned coach flagged themselves
   // unavailable that day (see admin/planning's unavailableInstanceIds) —
   // turns the block red so the admin spots it needs a different coach.
@@ -182,6 +188,7 @@ export function WeekGrid<T extends WeekGridInstance>({
 
           return positioned.map(({ item: inst, rowStart, rowEnd, left, width }) => {
             const needsCoach = !inst.coachId && inst.status === "PLANNED";
+            const isHighlighted = highlightInstanceId != null && inst.id === highlightInstanceId;
             const isMine = highlightCoachId != null && inst.coachId === highlightCoachId;
             const isMineGroup = isMine && !inst.isPrivate;
             const faded = highlightCoachId != null && !isMine;
@@ -203,8 +210,9 @@ export function WeekGrid<T extends WeekGridInstance>({
             return (
               <div
                 key={inst.id}
+                id={isHighlighted ? `class-instance-${inst.id}` : undefined}
                 title={`${inst.label} · ${inst.room} · ${inst.startTime}–${inst.endTime} · ${statusLabel(inst.status)}${coachUnavailable ? " · le coach assigné est indisponible" : ""}`}
-                className={`group relative z-10 flex flex-col gap-1 overflow-hidden rounded-md border-l-4 p-1.5 transition-opacity ${STATUS_BORDER[inst.status] ?? "border-l-neutral-600"} ${bg} ${needsCoach ? "ring-1 ring-inset ring-amber-600/60" : ""} ${coachUnavailable ? "ring-2 ring-inset ring-red-500" : ""} ${isMineGroup ? "ring-2 ring-inset ring-white/80" : ""} ${faded ? "opacity-40" : ""}`}
+                className={`group relative z-10 flex flex-col gap-1 overflow-hidden rounded-md border-l-4 p-1.5 transition-opacity ${STATUS_BORDER[inst.status] ?? "border-l-neutral-600"} ${bg} ${needsCoach ? "ring-1 ring-inset ring-amber-600/60" : ""} ${coachUnavailable ? "ring-2 ring-inset ring-red-500" : ""} ${isMineGroup ? "ring-2 ring-inset ring-white/80" : ""} ${isHighlighted ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-neutral-950" : ""} ${faded ? "opacity-40" : ""}`}
                 style={{
                   gridColumn: dayIdx + 2,
                   gridRow: `${1 + rowStart} / ${1 + rowEnd}`,
@@ -222,6 +230,11 @@ export function WeekGrid<T extends WeekGridInstance>({
                     </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
+                    {isHighlighted && (
+                      <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-amber-300">
+                        Prochain
+                      </span>
+                    )}
                     {coachUnavailable && (
                       <span className="rounded-full bg-red-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-red-300">
                         Indisponible

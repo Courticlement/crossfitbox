@@ -15,8 +15,10 @@ import { PrivateClassForm } from "@/components/private-class-form";
 import { UnavailabilityForm } from "@/components/unavailability-form";
 import { MyClassesGrid } from "@/components/my-classes-grid";
 import { CoachPrevWeekBanner } from "@/components/coach-prev-week-banner";
+import { MyFocusCard } from "@/components/my-focus-card";
 import { coachLogout } from "@/lib/actions/auth";
 import { loadCoachWeekData } from "@/lib/coach-upload-data";
+import { getLastFocus } from "@/lib/coaching-focus";
 import { COACH_COOKIE, verifyCoachSessionToken } from "@/lib/session";
 
 export default async function UploadPage({
@@ -59,7 +61,7 @@ export default async function UploadPage({
     orderBy: { name: "asc" },
   });
 
-  const [{ instances, myPrivateClasses, locked }, myUnavailability] =
+  const [{ instances, myPrivateClasses, locked }, myUnavailability, lastFocus] =
     await Promise.all([
       loadCoachWeekData(coach.id, weekStart, weekEnd),
       prisma.unavailability.findMany({
@@ -70,6 +72,7 @@ export default async function UploadPage({
         select: { id: true, startDate: true, endDate: true, recurring: true, note: true },
         orderBy: { startDate: "asc" },
       }),
+      getLastFocus(coach.id),
     ]);
 
   return (
@@ -97,6 +100,8 @@ export default async function UploadPage({
           validé par l&apos;admin. Si l&apos;un de vos cours est marqué
           Manqué, vous pouvez indiquer directement qui l&apos;a couvert.
         </p>
+
+        <MyFocusCard focus={lastFocus} />
 
         <div className="mb-6">
           <div className="flex items-center gap-3 text-sm">

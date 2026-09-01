@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { addDays, formatDateISO, formatDayLabel, parseDateOnly } from "@/lib/dates";
 import { ReviewFilters } from "@/components/review-filters";
 import { CoachingEvolutionChart, type EvolutionPoint } from "@/components/coaching-evolution-chart";
+import { CoachingFocusPanel } from "@/components/coaching-focus-panel";
+import { getLastFocusByCoach } from "@/lib/coaching-focus";
 import {
   PILLARS,
   PILLAR_COLUMN,
@@ -55,6 +57,16 @@ export default async function ReviewsPage({
     }),
   ]);
 
+  // Independent of every filter above, same reasoning as the chart — this
+  // is "what matters right now" for the whole team, not a slice of history.
+  const lastFocusByCoach = await getLastFocusByCoach(coaches.map((c) => c.id));
+  const focusItems = coaches
+    .map((coach) => {
+      const focus = lastFocusByCoach.get(coach.id);
+      return focus ? { coachId: coach.id, coachName: coach.name, coachColor: coach.color, focus } : null;
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
+
   const evolutionPoints: EvolutionPoint[] = chartReviews
     .filter((r) => r.classInstance.coach !== null)
     .map((r) => ({
@@ -85,6 +97,8 @@ export default async function ReviewsPage({
           temps.
         </p>
       </div>
+
+      <CoachingFocusPanel items={focusItems} />
 
       <ReviewFilters
         from={fromParam ?? ""}

@@ -1,4 +1,4 @@
-export const COACH_LEVELS = ["CF1", "CF2", "CF3", "CF4"] as const;
+export const COACH_LEVELS = ["Level 1", "Level 2", "Level 3", "Level 4"] as const;
 export type CoachLevel = (typeof COACH_LEVELS)[number];
 
 export function isCoachLevel(value: string): value is CoachLevel {
@@ -7,10 +7,10 @@ export function isCoachLevel(value: string): value is CoachLevel {
 
 // € paid per validated group class delivered, by CrossFit level.
 const GROUP_CLASS_RATE_EUR: Record<CoachLevel, number> = {
-  CF1: 20,
-  CF2: 20,
-  CF3: 30,
-  CF4: 30,
+  "Level 1": 20,
+  "Level 2": 20,
+  "Level 3": 30,
+  "Level 4": 30,
 };
 
 export function groupClassRate(level: string | null): number {

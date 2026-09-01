@@ -19,7 +19,9 @@ export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
   const prevMonth = formatMonthISO(addMonths(monthStart, -1));
   const nextMonth = formatMonthISO(addMonths(monthStart, 1));
 
-  const [coaches, instances, planningWeeks] = await Promise.all([
+  const today = toDateOnly(new Date());
+
+  const [coaches, instances, planningWeeks, monthReviews, upcomingClasses] = await Promise.all([
     prisma.coach.findMany({ orderBy: { name: "asc" } }),
     prisma.classInstance.findMany({
       where: { date: { gte: monthStart, lt: monthEnd } },
@@ -29,6 +31,19 @@ export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
     // validated week rather than just ones inside [monthStart, monthEnd)
     // means each class is still checked against its own actual week.
     prisma.planningWeek.findMany({ select: { weekStart: true } }),
+    // Scoped to this month, same as Faits/Prévus below.
+    prisma.classReview.findMany({
+      where: { classInstance: { date: { gte: monthStart, lt: monthEnd } } },
+      select: { id: true, classInstance: { select: { coachId: true, date: true } } },
+      orderBy: { classInstance: { date: "desc" } },
+    }),
+    // A coach with no review this month links to their next scheduled class
+    // instead — which can easily fall in a later month.
+    prisma.classInstance.findMany({
+      where: { coachId: { not: null }, status: "PLANNED", date: { gte: today } },
+      orderBy: [{ date: "asc" }, { startTime: "asc" }],
+      select: { id: true, coachId: true, date: true, startTime: true, label: true },
+    }),
   ]);
   const validatedWeekStarts = new Set(planningWeeks.map((w) => formatDateISO(w.weekStart)));
 
@@ -49,7 +64,6 @@ export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
     const privateDone = coachInstances.filter(
       (i) => i.status === "DONE" && i.isPrivate
     ).length;
-    const substituted = instances.filter((i) => i.substituteCoachId === coach.id).length;
     const hasMissed = missed > 0;
     // Each DONE group class only pays out if the admin validated *its own*
     // week (see validateWeek) — a month can mix validated and
@@ -61,6 +75,13 @@ export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
     }, 0);
     const privateCost = privateDone * PRIVATE_CLASS_COST_EUR;
     const netAmount = groupAmount - privateCost;
+    // This coach's reviews this month, most recent first.
+    const coachReviews = monthReviews.filter((r) => r.classInstance.coachId === coach.id);
+    const reviewCount = coachReviews.length;
+    const lastReviewId = coachReviews[0]?.id ?? null;
+    // No review yet this month — point at their next scheduled class.
+    const nextClass = reviewCount === 0 ? (upcomingClasses.find((i) => i.coachId === coach.id) ?? null) : null;
+    const nextClassWeekStart = nextClass ? formatDateISO(startOfWeekMonday(nextClass.date)) : null;
     return {
       coach,
       assigned,
@@ -68,7 +89,10 @@ export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
       missed,
       planned,
       privateDone,
-      substituted,
+      reviewCount,
+      lastReviewId,
+      nextClass,
+      nextClassWeekStart,
       hasMissed,
       netAmount,
     };
@@ -79,12 +103,12 @@ export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
       assigned: acc.assigned + r.assigned,
       done: acc.done + r.done,
       missed: acc.missed + r.missed,
-      substituted: acc.substituted + r.substituted,
       planned: acc.planned + r.planned,
       privateDone: acc.privateDone + r.privateDone,
+      reviewCount: acc.reviewCount + r.reviewCount,
       netAmount: acc.netAmount + r.netAmount,
     }),
-    { assigned: 0, done: 0, missed: 0, substituted: 0, planned: 0, privateDone: 0, netAmount: 0 }
+    { assigned: 0, done: 0, missed: 0, planned: 0, privateDone: 0, reviewCount: 0, netAmount: 0 }
   );
 
   return (
@@ -149,9 +173,10 @@ export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
                 Assignés (collectif)
               </th>
               <th className="px-4 py-2 font-medium">Faits</th>
-              <th className="px-4 py-2 font-medium">Manqués</th>
-              <th className="px-4 py-2 font-medium">Remplacés</th>
               <th className="px-4 py-2 font-medium">Prévus</th>
+              <th className="px-4 py-2 font-medium" title="Reviews de coaching ce mois-ci — clic sur le nombre pour voir la dernière, ou le prochain cours à observer">
+                Review
+              </th>
               <th className="px-4 py-2 font-medium">Alerte</th>
               <th className="px-4 py-2 font-medium">Privés</th>
               <th
@@ -170,7 +195,10 @@ export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
               missed,
               planned,
               privateDone,
-              substituted,
+              reviewCount,
+              lastReviewId,
+              nextClass,
+              nextClassWeekStart,
               hasMissed,
               netAmount,
             }) => (
@@ -178,9 +206,28 @@ export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
                 <td className="px-4 py-2 text-white">{coach.name}</td>
                 <td className="px-4 py-2">{assigned}</td>
                 <td className="px-4 py-2 text-emerald-400">{done}</td>
-                <td className="px-4 py-2 text-red-400">{missed}</td>
-                <td className="px-4 py-2 text-sky-400">{substituted}</td>
                 <td className="px-4 py-2 text-neutral-400">{planned}</td>
+                <td className="px-4 py-2">
+                  {reviewCount > 0 ? (
+                    <Link
+                      href={`/admin/reviews/${lastReviewId}`}
+                      title="Voir la dernière review de ce coach ce mois-ci"
+                      className="font-medium text-emerald-400 underline decoration-emerald-400/40 underline-offset-4 hover:text-emerald-300"
+                    >
+                      {reviewCount}
+                    </Link>
+                  ) : nextClass && nextClassWeekStart ? (
+                    <Link
+                      href={`/admin/planning?week=${nextClassWeekStart}&highlight=${nextClass.id}`}
+                      title="Aucune review ce mois-ci — voir le prochain cours de ce coach"
+                      className="font-medium text-amber-400 underline decoration-amber-400/40 underline-offset-4 hover:text-amber-300"
+                    >
+                      0
+                    </Link>
+                  ) : (
+                    <span className="text-neutral-500">0</span>
+                  )}
+                </td>
                 <td className="px-4 py-2">
                   {hasMissed && (
                     <span className="rounded-full bg-red-900/40 px-2 py-0.5 text-xs text-red-300">
@@ -196,7 +243,7 @@ export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-6 text-center text-neutral-500">
+                <td colSpan={8} className="px-4 py-6 text-center text-neutral-500">
                   Aucun coach pour l&apos;instant.
                 </td>
               </tr>
@@ -208,9 +255,8 @@ export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
                 <td className="px-4 py-2 text-white">Total</td>
                 <td className="px-4 py-2 text-white">{totals.assigned}</td>
                 <td className="px-4 py-2 text-emerald-400">{totals.done}</td>
-                <td className="px-4 py-2 text-red-400">{totals.missed}</td>
-                <td className="px-4 py-2 text-sky-400">{totals.substituted}</td>
                 <td className="px-4 py-2 text-neutral-400">{totals.planned}</td>
+                <td className="px-4 py-2 text-neutral-400">{totals.reviewCount}</td>
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2 text-neutral-400">{totals.privateDone}</td>
                 <td

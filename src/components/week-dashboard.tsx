@@ -28,7 +28,9 @@ export async function WeekDashboard({
   const nextWeek = formatDateISO(addDays(weekStart, 7));
   const weekStartStr = formatDateISO(weekStart);
 
-  const [coaches, instances, quotas, planningWeek] = await Promise.all([
+  const today = toDateOnly(new Date());
+
+  const [coaches, instances, quotas, planningWeek, weekReviews, upcomingClasses] = await Promise.all([
     prisma.coach.findMany({ orderBy: { name: "asc" } }),
     // Unfiltered by coach on purpose — the box-wide summary below needs
     // unassigned classes too, not just ones already claimed by someone.
@@ -37,6 +39,20 @@ export async function WeekDashboard({
     }),
     prisma.coachWeeklyQuota.findMany({ where: { weekStart } }),
     prisma.planningWeek.findUnique({ where: { weekStart } }),
+    // Scoped to this week, same as Faits/Prévus below — the count in the
+    // Review column and the "last review" it links to both come from here.
+    prisma.classReview.findMany({
+      where: { classInstance: { date: { gte: weekStart, lt: weekEnd } } },
+      select: { id: true, classInstance: { select: { coachId: true, date: true } } },
+      orderBy: { classInstance: { date: "desc" } },
+    }),
+    // A coach with no review this week links to their next scheduled class
+    // instead — which can easily fall in a different, later week.
+    prisma.classInstance.findMany({
+      where: { coachId: { not: null }, status: "PLANNED", date: { gte: today } },
+      orderBy: [{ date: "asc" }, { startTime: "asc" }],
+      select: { id: true, coachId: true, date: true, startTime: true, label: true },
+    }),
   ]);
   const weekValidated = planningWeek !== null;
 
@@ -62,10 +78,16 @@ export async function WeekDashboard({
     const privateDone = coachInstances.filter(
       (i) => i.status === "DONE" && i.isPrivate
     ).length;
-    // Classes this coach covered for someone else who missed theirs — not
-    // counted in `done` above, since that's scoped to this coach's own
-    // assigned classes (see the coachInstances filter above).
-    const substituted = instances.filter((i) => i.substituteCoachId === coach.id).length;
+    // This coach's reviews this week, most recent first (see the
+    // orderBy above) — the count is the cell's value, the first entry is
+    // what "voir la dernière" links to.
+    const coachReviews = weekReviews.filter((r) => r.classInstance.coachId === coach.id);
+    const reviewCount = coachReviews.length;
+    const lastReviewId = coachReviews[0]?.id ?? null;
+    // No review yet this week — point at their next scheduled class instead
+    // (upcomingClasses is sorted soonest-first, so the first match is it).
+    const nextClass = reviewCount === 0 ? (upcomingClasses.find((i) => i.coachId === coach.id) ?? null) : null;
+    const nextClassWeekStart = nextClass ? formatDateISO(startOfWeekMonday(nextClass.date)) : null;
     // A week-specific override always wins; otherwise fall back to the
     // coach's standard weekly quota set on their Id card (see
     // /admin/coaches) — so a coach's usual quota applies automatically
@@ -90,7 +112,10 @@ export async function WeekDashboard({
       missed,
       planned,
       privateDone,
-      substituted,
+      reviewCount,
+      lastReviewId,
+      nextClass,
+      nextClassWeekStart,
       quota,
       isStandardQuota,
       overQuota,
@@ -108,9 +133,9 @@ export async function WeekDashboard({
       assigned: acc.assigned + r.assigned,
       done: acc.done + r.done,
       missed: acc.missed + r.missed,
-      substituted: acc.substituted + r.substituted,
       planned: acc.planned + r.planned,
       privateDone: acc.privateDone + r.privateDone,
+      reviewCount: acc.reviewCount + r.reviewCount,
       netAmount: acc.netAmount + r.netAmount,
     }),
     {
@@ -119,9 +144,9 @@ export async function WeekDashboard({
       assigned: 0,
       done: 0,
       missed: 0,
-      substituted: 0,
       planned: 0,
       privateDone: 0,
+      reviewCount: 0,
       netAmount: 0,
     }
   );
@@ -187,9 +212,10 @@ export async function WeekDashboard({
                 Assignés (collectif)
               </th>
               <th className="px-4 py-2 font-medium">Faits</th>
-              <th className="px-4 py-2 font-medium">Manqués</th>
-              <th className="px-4 py-2 font-medium">Remplacés</th>
               <th className="px-4 py-2 font-medium">Prévus</th>
+              <th className="px-4 py-2 font-medium" title="Reviews de coaching cette semaine — clic sur le nombre pour voir la dernière, ou le prochain cours à observer">
+                Review
+              </th>
               <th className="px-4 py-2 font-medium">Alerte</th>
               <th className="px-4 py-2 font-medium">Privés</th>
               <th
@@ -212,7 +238,10 @@ export async function WeekDashboard({
               missed,
               planned,
               privateDone,
-              substituted,
+              reviewCount,
+              lastReviewId,
+              nextClass,
+              nextClassWeekStart,
               quota,
               isStandardQuota,
               overQuota,
@@ -256,9 +285,28 @@ export async function WeekDashboard({
                   {quota !== null && <span className="text-neutral-500">/{quota}</span>}
                 </td>
                 <td className="px-4 py-2 text-emerald-400">{done}</td>
-                <td className="px-4 py-2 text-red-400">{missed}</td>
-                <td className="px-4 py-2 text-sky-400">{substituted}</td>
                 <td className="px-4 py-2 text-neutral-400">{planned}</td>
+                <td className="px-4 py-2">
+                  {reviewCount > 0 ? (
+                    <Link
+                      href={`/admin/reviews/${lastReviewId}`}
+                      title="Voir la dernière review de ce coach cette semaine"
+                      className="font-medium text-emerald-400 underline decoration-emerald-400/40 underline-offset-4 hover:text-emerald-300"
+                    >
+                      {reviewCount}
+                    </Link>
+                  ) : nextClass && nextClassWeekStart ? (
+                    <Link
+                      href={`/admin/planning?week=${nextClassWeekStart}&highlight=${nextClass.id}`}
+                      title="Aucune review cette semaine — voir le prochain cours de ce coach"
+                      className="font-medium text-amber-400 underline decoration-amber-400/40 underline-offset-4 hover:text-amber-300"
+                    >
+                      0
+                    </Link>
+                  ) : (
+                    <span className="text-neutral-500">0</span>
+                  )}
+                </td>
                 <td className="px-4 py-2">
                   <div className="flex flex-col items-start gap-1">
                     {overQuota && (
@@ -291,7 +339,7 @@ export async function WeekDashboard({
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-4 py-6 text-center text-neutral-500">
+                <td colSpan={9} className="px-4 py-6 text-center text-neutral-500">
                   Aucun coach pour l&apos;instant.
                 </td>
               </tr>
@@ -313,9 +361,8 @@ export async function WeekDashboard({
                   {totals.hasQuota && <span className="text-neutral-500">/{totals.quota}</span>}
                 </td>
                 <td className="px-4 py-2 text-emerald-400">{totals.done}</td>
-                <td className="px-4 py-2 text-red-400">{totals.missed}</td>
-                <td className="px-4 py-2 text-sky-400">{totals.substituted}</td>
                 <td className="px-4 py-2 text-neutral-400">{totals.planned}</td>
+                <td className="px-4 py-2 text-neutral-400">{totals.reviewCount}</td>
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2 text-neutral-400">{totals.privateDone}</td>
                 <td

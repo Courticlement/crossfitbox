@@ -16,6 +16,7 @@ import { DeleteClassButton } from "@/components/delete-class-button";
 import { PlanningFilters } from "@/components/planning-filters";
 import { ReviewButton } from "@/components/review-button";
 import { PrevWeekBanner } from "@/components/prev-week-banner";
+import { ScrollToHighlight } from "@/components/scroll-to-highlight";
 import { UnavailabilityAlert } from "@/components/unavailability-alert";
 import { ResetWeekButton } from "@/components/reset-week-button";
 import { SubstituteSelect } from "@/components/substitute-select";
@@ -39,6 +40,10 @@ export default async function PlanningPage({
   const coachIdFilter = typeof params?.coachId === "string" ? params.coachId : "";
   const typeFilter = typeof params?.type === "string" ? params.type : "";
   const roomFilter = typeof params?.room === "string" ? params.room : "";
+  // Set by the Dashboard's "no review yet" link into a coach's next class
+  // (see WeekDashboard/MonthDashboard) — rings that one block and scrolls
+  // to it, since it can land anywhere in the week.
+  const highlightInstanceId = typeof params?.highlight === "string" ? params.highlight : undefined;
 
   const [instances, coaches, doneSubmissions, planningWeek, unavailabilities, weekClosures, upcomingClosures] =
     await Promise.all([
@@ -276,10 +281,13 @@ export default async function PlanningPage({
         </div>
       )}
 
+      {highlightInstanceId && <ScrollToHighlight instanceId={highlightInstanceId} />}
+
       <BulkAssignProvider coaches={coaches}>
         <WeekGrid
           weekStart={weekStart}
           instances={filteredInstances}
+          highlightInstanceId={highlightInstanceId}
           unavailableInstanceIds={unavailableInstanceIds}
           closedDates={closedDates}
           selectionAction={(inst) => <SelectClassCheckbox id={inst.id} />}
