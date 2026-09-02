@@ -389,6 +389,46 @@ export async function assignSubstitute(
   return { error: null };
 }
 
+export type UpdateClassState = { error: string | null };
+
+const TIME_RE = /^\d{2}:\d{2}$/;
+
+// Edits a single class instance's own name/time in place — the admin's
+// alternative to deleting a misconfigured class and re-adding it from
+// scratch. Deliberately narrow: only label/startTime/endTime change here,
+// and templateId is never touched, so this never writes back to the
+// ClassTemplate this instance may have been generated from (see
+// ClassInstance.templateId) — editing one week's 18h class to 18h30 doesn't
+// shift every future week generated from that template.
+export async function updateClassInstance(
+  _prevState: UpdateClassState,
+  formData: FormData
+): Promise<UpdateClassState> {
+  const id = String(formData.get("id") ?? "");
+  const label = String(formData.get("label") ?? "").trim();
+  const startTime = String(formData.get("startTime") ?? "");
+  const endTime = String(formData.get("endTime") ?? "");
+  if (!id) return { error: null };
+
+  if (!label) return { error: "Intitulé requis." };
+  if (!TIME_RE.test(startTime) || !TIME_RE.test(endTime)) {
+    return { error: "Horaires invalides." };
+  }
+  if (endTime <= startTime) {
+    return { error: "L'heure de fin doit être après l'heure de début." };
+  }
+
+  const instance = await prisma.classInstance.findUnique({ where: { id } });
+  if (!instance) return { error: null };
+
+  await prisma.classInstance.update({
+    where: { id },
+    data: { label, startTime, endTime },
+  });
+  revalidateAll();
+  return { error: null };
+}
+
 export async function addAdHocClass(formData: FormData) {
   const dateStr = String(formData.get("date") ?? "");
   const startTime = String(formData.get("startTime") ?? "");

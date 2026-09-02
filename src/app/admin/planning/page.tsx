@@ -15,6 +15,7 @@ import { CoachSelect } from "@/components/coach-select";
 import { ConflictsPanel, type ConflictInstance } from "@/components/conflicts-panel";
 import { DayAgenda } from "@/components/day-agenda";
 import { DeleteClassButton } from "@/components/delete-class-button";
+import { EditClassButton } from "@/components/edit-class-button";
 import { PlanningFilters } from "@/components/planning-filters";
 import { ReviewButton } from "@/components/review-button";
 import { PrevWeekBanner } from "@/components/prev-week-banner";
@@ -221,6 +222,12 @@ export default async function PlanningPage({
         classInstanceId={inst.id}
         review={inst.review ? { id: inst.review.id, pastille: inst.review.pastille } : null}
         weekParam={weekStartStr}
+      />
+      <EditClassButton
+        classInstanceId={inst.id}
+        label={inst.label}
+        startTime={inst.startTime}
+        endTime={inst.endTime}
       />
       <DeleteClassButton
         id={inst.id}
