@@ -13,7 +13,7 @@ const links = [
 
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {
   return (
-    <div className="flex min-h-screen flex-col bg-neutral-950">
+    <div className="flex flex-1 flex-col bg-neutral-950">
       <Nav links={links} />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
         {children}
