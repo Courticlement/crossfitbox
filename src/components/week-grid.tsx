@@ -237,36 +237,43 @@ export function WeekGrid<T extends WeekGridInstance>({
                   ...(!inst.isTeamEvent && coachBg ? { backgroundColor: coachBg } : {}),
                 }}
               >
-                <div className="flex items-center justify-between gap-1">
-                  <div className="flex min-w-0 items-center gap-1">
+                <div className="flex items-center gap-1">
+                  <div className="flex min-w-0 shrink items-center gap-1">
                     {selectionAction?.(inst)}
                     <span className="truncate font-mono text-[10px] font-semibold text-neutral-300">
                       {inst.startTime}–{inst.endTime}
                     </span>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
+                  {/* Badges shrink and clip first — headerAction (review/delete)
+                      sits in its own shrink-0 group pinned to the right edge
+                      (ml-auto) so it never gets pushed past the block's edge
+                      and silently clipped by overflow-hidden, which happened
+                      on narrow side-by-side blocks (e.g. two classes at the
+                      same time) once the team-event badge alone was wider
+                      than the column. */}
+                  <div className="flex min-w-0 shrink items-center gap-1 overflow-hidden">
                     {inst.isTeamEvent && (
-                      <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[8px] font-bold uppercase leading-none tracking-wide text-amber-950">
+                      <span className="shrink-0 rounded-full bg-amber-400 px-1.5 py-0.5 text-[8px] font-bold uppercase leading-none tracking-wide text-amber-950">
                         🎉 Équipe
                       </span>
                     )}
                     {isHighlighted && (
-                      <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-amber-300">
+                      <span className="shrink-0 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-amber-300">
                         Prochain
                       </span>
                     )}
                     {coachUnavailable && (
-                      <span className="rounded-full bg-red-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-red-300">
+                      <span className="shrink-0 rounded-full bg-red-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-red-300">
                         Indisponible
                       </span>
                     )}
                     {inst.isPrivate && (
-                      <span className="rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-violet-300">
+                      <span className="shrink-0 rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-violet-300">
                         Privé
                       </span>
                     )}
-                    {headerAction?.(inst)}
                   </div>
+                  <div className="ml-auto flex shrink-0 items-center gap-1">{headerAction?.(inst)}</div>
                 </div>
                 <div
                   className={`line-clamp-2 text-[12px] font-semibold leading-tight ${
