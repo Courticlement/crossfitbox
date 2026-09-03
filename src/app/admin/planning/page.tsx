@@ -22,6 +22,7 @@ import { PrevWeekBanner } from "@/components/prev-week-banner";
 import { ScrollToHighlight } from "@/components/scroll-to-highlight";
 import { UnavailabilityAlert } from "@/components/unavailability-alert";
 import { ResetWeekButton } from "@/components/reset-week-button";
+import { CopyLastWeekButton } from "@/components/copy-last-week-button";
 import { SubstituteSelect } from "@/components/substitute-select";
 import { TimeConflictsPanel, type TimeConflictGroup } from "@/components/time-conflicts-panel";
 import { WeekGrid } from "@/components/week-grid";
@@ -38,6 +39,10 @@ export default async function PlanningPage({
   const prevWeek = formatDateISO(addDays(weekStart, -7));
   const nextWeek = formatDateISO(addDays(weekStart, 7));
   const weekStartStr = formatDateISO(weekStart);
+  // Drives the "Cette semaine" badge next to the date range — the admin
+  // flips back and forth between weeks via Préc./Suivant a lot, and without
+  // this the header always looks the same regardless of which week it is.
+  const isCurrentWeek = weekStartStr === formatDateISO(startOfWeekMonday(toDateOnly(new Date())));
 
   const coachIdFilter = typeof params?.coachId === "string" ? params.coachId : "";
   const typeFilter = typeof params?.type === "string" ? params.type : "";
@@ -136,8 +141,15 @@ export default async function PlanningPage({
       // A team event has no coachId by design (see ClassInstance.isTeamEvent)
       // but involves every coach — filtering Planning down to one coach
       // shouldn't hide it, the same way it wouldn't hide a class that
-      // coach is actually assigned to.
-      if (coachIdFilter && inst.coachId !== coachIdFilter && !inst.isTeamEvent) return false;
+      // coach is actually assigned to. The "Non assigné" filter is the one
+      // exception: it's specifically about classes still missing a coach,
+      // so team events (never assigned by design, not actually a gap) stay
+      // excluded from it too.
+      if (coachIdFilter === "unassigned") {
+        if (inst.coachId || inst.isTeamEvent) return false;
+      } else if (coachIdFilter && inst.coachId !== coachIdFilter && !inst.isTeamEvent) {
+        return false;
+      }
       if (typeFilter === "private" && !inst.isPrivate) return false;
       if (typeFilter === "group" && inst.isPrivate) return false;
       if (roomFilter && inst.room !== roomFilter) return false;
@@ -263,19 +275,32 @@ export default async function PlanningPage({
     <div className="text-neutral-300">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-white">Planning hebdomadaire</h1>
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex items-center gap-3">
           <Link
             href={`/admin/planning?week=${prevWeek}`}
-            className="text-neutral-400 hover:text-white"
+            className="text-sm text-neutral-400 hover:text-white"
           >
             ← Préc.
           </Link>
-          <span className="text-neutral-500">
-            {formatDayLabel(weekStart)} – {formatDayLabel(addDays(weekStart, 6))}
+          <span
+            className={`flex items-center gap-2 rounded-md border px-3 py-1.5 ${
+              isCurrentWeek
+                ? "border-emerald-800 bg-emerald-950/40"
+                : "border-neutral-800 bg-neutral-900"
+            }`}
+          >
+            <span className="text-sm font-semibold text-white">
+              {formatDayLabel(weekStart)} – {formatDayLabel(addDays(weekStart, 6))}
+            </span>
+            {isCurrentWeek && (
+              <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-emerald-300">
+                Cette semaine
+              </span>
+            )}
           </span>
           <Link
             href={`/admin/planning?week=${nextWeek}`}
-            className="text-neutral-400 hover:text-white"
+            className="text-sm text-neutral-400 hover:text-white"
           >
             Suivant →
           </Link>
@@ -295,6 +320,7 @@ export default async function PlanningPage({
             Générer cette semaine depuis les modèles
           </button>
         </form>
+        <CopyLastWeekButton weekStart={formatDateISO(weekStart)} />
         <ResetWeekButton weekStart={formatDateISO(weekStart)} />
         <div className="ml-auto flex items-center gap-2">
           {validated ? (

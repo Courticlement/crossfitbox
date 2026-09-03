@@ -178,6 +178,125 @@ export async function generateWeek(formData: FormData) {
   revalidateAll();
 }
 
+// Duplicates last week's classes (coach, timing, room, label, private/team
+// flags) onto this week — an alternative to Generate for a week that
+// shouldn't follow the standing ClassTemplate schedule, e.g. a one-off week
+// that itself deviated from the templates and should just repeat as-is.
+// Follows the same shape as generateWeek: closed dates are skipped, a slot
+// already generated (matched here by date+startTime+room, since a copied
+// instance may carry no templateId) is synced only while still PLANNED, and
+// the coach is only carried over if they're not already busy that slot.
+// Cancelled source classes aren't copied — cancelling wasn't a scheduling
+// choice worth repeating.
+export async function copyLastWeek(formData: FormData) {
+  const weekStartStr = String(formData.get("weekStart") ?? "");
+  const weekStart = parseDateOnly(weekStartStr);
+  if (!weekStart) return;
+
+  const prevWeekStart = addDays(weekStart, -7);
+  const sourceInstances = await prisma.classInstance.findMany({
+    where: {
+      date: { gte: prevWeekStart, lt: weekStart },
+      status: { not: "CANCELLED" },
+    },
+  });
+  if (sourceInstances.length === 0) return;
+
+  const closures = await prisma.boxClosure.findMany({
+    where: { date: { gte: weekStart, lt: addDays(weekStart, 7) } },
+    select: { date: true },
+  });
+  const closedDates = new Set(closures.map((c) => formatDateISO(c.date)));
+
+  const existing = await prisma.classInstance.findMany({
+    where: { date: { gte: weekStart, lt: addDays(weekStart, 7) } },
+  });
+  const existingByDateTimeRoom = new Map(
+    existing.map((e) => [`${formatDateISO(e.date)}-${e.startTime}-${e.room}`, e])
+  );
+
+  // Same double-booking guard as generateWeek.
+  const busy = existing
+    .filter((e) => e.coachId)
+    .map((e) => ({
+      coachId: e.coachId as string,
+      date: formatDateISO(e.date),
+      startTime: e.startTime,
+      endTime: e.endTime,
+    }));
+  const isBusy = (coachId: string, date: string, startTime: string, endTime: string) =>
+    busy.some(
+      (b) =>
+        b.coachId === coachId &&
+        b.date === date &&
+        b.startTime < endTime &&
+        b.endTime > startTime
+    );
+
+  for (const src of sourceInstances) {
+    const date = addDays(src.date, 7);
+    const dateStr = formatDateISO(date);
+    if (closedDates.has(dateStr)) continue; // box closed that day — nothing to copy
+    const key = `${dateStr}-${src.startTime}-${src.room}`;
+    const existingInstance = existingByDateTimeRoom.get(key);
+
+    if (!existingInstance) {
+      let coachId = src.isTeamEvent ? null : src.coachId;
+      if (coachId && isBusy(coachId, dateStr, src.startTime, src.endTime)) coachId = null;
+
+      const created = await prisma.classInstance.create({
+        data: {
+          templateId: src.templateId,
+          date,
+          startTime: src.startTime,
+          endTime: src.endTime,
+          label: src.label,
+          room: src.room,
+          isPrivate: src.isPrivate,
+          isTeamEvent: src.isTeamEvent,
+          coachId,
+        },
+      });
+      existingByDateTimeRoom.set(key, created);
+      if (coachId) busy.push({ coachId, date: dateStr, startTime: src.startTime, endTime: src.endTime });
+      continue;
+    }
+
+    // Already present this week (e.g. a prior Generate/Copy run). Leave
+    // resolved (Fait/Manqué/Annulé) classes untouched; for a still-PLANNED
+    // one, sync it to last week's version — filling in the coach only if
+    // it's currently unassigned, so a manual reassignment made this week
+    // isn't clobbered.
+    if (existingInstance.status !== "PLANNED") continue;
+
+    let coachId = existingInstance.coachId;
+    if (
+      !coachId &&
+      !src.isTeamEvent &&
+      src.coachId &&
+      !isBusy(src.coachId, dateStr, src.startTime, src.endTime)
+    ) {
+      coachId = src.coachId;
+    }
+
+    await prisma.classInstance.update({
+      where: { id: existingInstance.id },
+      data: {
+        label: src.label,
+        room: src.room,
+        isPrivate: src.isPrivate,
+        isTeamEvent: src.isTeamEvent,
+        coachId,
+      },
+    });
+    if (coachId && coachId !== existingInstance.coachId) {
+      busy.push({ coachId, date: dateStr, startTime: src.startTime, endTime: src.endTime });
+    }
+  }
+
+  revalidateAll();
+}
+
 // Locks the week: from this point, coaches can no longer submit or change
 // self-reports for it on My Classes (see lib/planning-lock.ts). The admin's
 // own edits here on the Planning page are never blocked by this.

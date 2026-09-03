@@ -123,7 +123,15 @@ export function WeekGrid<T extends WeekGridInstance>({
   const rangeStartMinutes = rangeStartHour * 60;
 
   return (
-    <div className="mb-8 overflow-x-auto rounded-lg border border-neutral-800">
+    // Bounding this to the viewport (max-h) and scrolling internally
+    // (overflow-auto on both axes) is what makes the sticky day header below
+    // actually stick: a plain overflow-x-auto wrapper already becomes a
+    // scroll container on the y-axis too (browsers force overflow-y to
+    // "auto" the moment overflow-x isn't "visible"), but without a height
+    // constraint it never scrolls internally — so instead of sticking, its
+    // position:sticky children silently just track the page's scroll and
+    // scroll away with everything else.
+    <div className="mb-8 max-h-[75vh] overflow-auto rounded-lg border border-neutral-800">
       <div
         style={{
           display: "grid",
@@ -132,9 +140,13 @@ export function WeekGrid<T extends WeekGridInstance>({
           minWidth: 64 + 7 * 130,
         }}
       >
-        {/* Header row */}
+        {/* Header row — sticky so the day/date labels stay visible while
+            scrolling down through the hour grid below (the page itself
+            scrolls; nothing above this sticks, so top-0 pins it right under
+            the viewport's edge). z-20 keeps it above the event blocks
+            (z-10), which would otherwise scroll up underneath it. */}
         <div
-          className="border-b border-neutral-800 bg-neutral-900"
+          className="sticky top-0 z-20 border-b border-neutral-800 bg-neutral-900"
           style={{ gridColumn: 1, gridRow: 1 }}
         />
         {days.map((day, dayIdx) => {
@@ -142,7 +154,7 @@ export function WeekGrid<T extends WeekGridInstance>({
           return (
             <div
               key={formatDateISO(day)}
-              className={`flex items-center justify-between gap-1 border-b border-l border-neutral-800 p-2 text-xs font-medium ${closed ? "bg-red-950/40 text-red-300" : "bg-neutral-900 text-white"}`}
+              className={`sticky top-0 z-20 flex items-center justify-between gap-1 border-b border-l border-neutral-800 p-2 text-xs font-medium ${closed ? "bg-red-950/40 text-red-300" : "bg-neutral-900 text-white"}`}
               style={{ gridColumn: dayIdx + 2, gridRow: 1 }}
             >
               <span>{formatDayLabel(day)}</span>
@@ -218,16 +230,21 @@ export function WeekGrid<T extends WeekGridInstance>({
               : (coachBg ? "" : (statusBg ?? (ROOM_BG[inst.room] ?? "bg-neutral-900")));
             // A team event overrides every other border/background rule —
             // it has no coach and no status story to tell, just "everyone
-            // needs to see this" (see ClassInstance.isTeamEvent).
+            // needs to see this" (see ClassInstance.isTeamEvent). A still-
+            // unassigned class gets the same loud treatment (in red instead
+            // of amber) since it's the other case that needs the admin's
+            // attention before the week is ready.
             const border = inst.isTeamEvent
               ? "border-2 border-amber-400"
-              : `border-l-4 ${STATUS_BORDER[inst.status] ?? "border-l-neutral-600"}`;
+              : needsCoach
+                ? "border-2 border-red-400"
+                : `border-l-4 ${STATUS_BORDER[inst.status] ?? "border-l-neutral-600"}`;
             return (
               <div
                 key={inst.id}
                 id={isHighlighted ? `class-instance-${inst.id}` : undefined}
                 title={`${inst.isTeamEvent ? "Événement d'équipe · " : ""}${inst.label} · ${inst.room} · ${inst.startTime}–${inst.endTime} · ${statusLabel(inst.status)}${coachUnavailable ? " · le coach assigné est indisponible" : ""}`}
-                className={`group relative z-10 flex flex-col gap-1 overflow-hidden rounded-md p-1.5 transition-opacity ${border} ${inst.isTeamEvent ? "bg-gradient-to-br from-amber-500/30 via-amber-600/15 to-neutral-900" : bg} ${needsCoach ? "ring-1 ring-inset ring-amber-600/60" : ""} ${coachUnavailable ? "ring-2 ring-inset ring-red-500" : ""} ${isMineGroup ? "ring-2 ring-inset ring-white/80" : ""} ${isHighlighted ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-neutral-950" : ""} ${faded ? "opacity-40" : ""}`}
+                className={`group relative z-10 flex flex-col gap-1 overflow-hidden rounded-md p-1.5 transition-opacity ${border} ${inst.isTeamEvent ? "bg-gradient-to-br from-amber-500/30 via-amber-600/15 to-neutral-900" : needsCoach ? "bg-gradient-to-br from-red-500/30 via-red-600/15 to-neutral-900" : bg} ${coachUnavailable ? "ring-2 ring-inset ring-red-500" : ""} ${isMineGroup ? "ring-2 ring-inset ring-white/80" : ""} ${isHighlighted ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-neutral-950" : ""} ${faded ? "opacity-40" : ""}`}
                 style={{
                   gridColumn: dayIdx + 2,
                   gridRow: `${1 + rowStart} / ${1 + rowEnd}`,
@@ -257,6 +274,11 @@ export function WeekGrid<T extends WeekGridInstance>({
                         🎉 Équipe
                       </span>
                     )}
+                    {needsCoach && (
+                      <span className="shrink-0 rounded-full bg-red-400 px-1.5 py-0.5 text-[8px] font-bold uppercase leading-none tracking-wide text-red-950">
+                        Non assigné
+                      </span>
+                    )}
                     {isHighlighted && (
                       <span className="shrink-0 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-amber-300">
                         Prochain
@@ -277,7 +299,7 @@ export function WeekGrid<T extends WeekGridInstance>({
                 </div>
                 <div
                   className={`line-clamp-2 text-[12px] font-semibold leading-tight ${
-                    inst.isTeamEvent ? "text-amber-100" : "text-white"
+                    inst.isTeamEvent ? "text-amber-100" : needsCoach ? "text-red-100" : "text-white"
                   }`}
                 >
                   {inst.label}

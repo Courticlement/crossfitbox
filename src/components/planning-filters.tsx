@@ -27,6 +27,7 @@ export function PlanningFilters({
           className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
         >
           <option value="">Tous les coachs</option>
+          <option value="unassigned">Non assigné</option>
           {coaches.map((coach) => (
             <option key={coach.id} value={coach.id}>
               {coach.name}
