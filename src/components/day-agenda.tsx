@@ -87,16 +87,24 @@ export function DayAgenda<T extends WeekGridInstance>({
           {dayInstances.map((inst) => {
             const isHighlighted = highlightInstanceId != null && inst.id === highlightInstanceId;
             const coachUnavailable = unavailableInstanceIds?.has(inst.id) ?? false;
+            // Same "still needs a coach" definition as WeekGrid — still
+            // PLANNED, nobody assigned, and not a team event (which has no
+            // coachId by design, not an actual gap).
+            const needsCoach = !inst.coachId && inst.status === "PLANNED" && !inst.isTeamEvent;
             // Same coach-color tint as WeekGrid, so a coach's classes read
             // the same way whether the head coach is looking at the full
             // week grid or this one-day mobile view — the status color
             // still carries the outcome via the left border regardless.
             const coachBg = !coachUnavailable && inst.coachColor ? hexToRgba(inst.coachColor, 0.35) : null;
-            // Same override as WeekGrid — a team event drowns out every
-            // other border/background rule, coach color included.
+            // Same overrides as WeekGrid — a team event or a still-unassigned
+            // class each drown out every other border/background rule
+            // (coach color included), amber for the former, red for the
+            // latter.
             const border = inst.isTeamEvent
               ? "border-2 border-amber-400"
-              : `border-l-4 border-neutral-800 ${STATUS_BORDER[inst.status] ?? "border-l-neutral-600"}`;
+              : needsCoach
+                ? "border-2 border-red-400"
+                : `border-l-4 border-neutral-800 ${STATUS_BORDER[inst.status] ?? "border-l-neutral-600"}`;
             return (
               <div
                 key={inst.id}
@@ -109,11 +117,13 @@ export function DayAgenda<T extends WeekGridInstance>({
                 className={`rounded-lg p-3 ${border} ${
                   inst.isTeamEvent
                     ? "bg-gradient-to-br from-amber-500/25 via-amber-600/10 to-neutral-900"
-                    : coachUnavailable
-                      ? "bg-red-950/60"
-                      : coachBg
-                        ? ""
-                        : "bg-neutral-900"
+                    : needsCoach
+                      ? "bg-gradient-to-br from-red-500/25 via-red-600/10 to-neutral-900"
+                      : coachUnavailable
+                        ? "bg-red-950/60"
+                        : coachBg
+                          ? ""
+                          : "bg-neutral-900"
                 } ${isHighlighted ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-neutral-950" : ""} ${
                   coachUnavailable ? "ring-2 ring-red-500" : ""
                 }`}
@@ -127,6 +137,11 @@ export function DayAgenda<T extends WeekGridInstance>({
                     {inst.isTeamEvent && (
                       <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-950">
                         🎉 Équipe
+                      </span>
+                    )}
+                    {needsCoach && (
+                      <span className="rounded-full bg-red-400 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-950">
+                        Non assigné
                       </span>
                     )}
                     {isHighlighted && (
@@ -148,7 +163,9 @@ export function DayAgenda<T extends WeekGridInstance>({
                   </div>
                 </div>
                 <div
-                  className={`mb-1 text-[15px] font-semibold ${inst.isTeamEvent ? "text-amber-100" : "text-white"}`}
+                  className={`mb-1 text-[15px] font-semibold ${
+                    inst.isTeamEvent ? "text-amber-100" : needsCoach ? "text-red-100" : "text-white"
+                  }`}
                 >
                   {inst.label}
                 </div>
