@@ -3,17 +3,24 @@ import { addDays, formatDateISO, formatDayLabel } from "@/lib/dates";
 import { timeToMinutes, formatHourLabel, layoutDayEventsToGrid } from "@/lib/calendar-layout";
 import { hexToRgba } from "@/lib/coach-colors";
 import { statusLabel } from "@/lib/status-labels";
+import { ROOMS } from "@/lib/rooms";
 
 const SLOT_MINUTES = 5;
 const SLOTS_PER_HOUR = 60 / SLOT_MINUTES;
-const ROW_PX = 8; // SLOTS_PER_HOUR * ROW_PX = 96px per hour — kept as
-// compact as still comfortably fits a MISSED class's 4th row (the
-// substitute picker) on top of time/label/coach; see the overflow-hidden
-// event block below. Shrinking further starts clipping that case.
+const HOUR_PX = 70; // A 1-hour class block's rendered height — was 96px,
+// brought down to 70px now that the card face itself is down to
+// checkbox+time / label / coach-select (badges and header actions no longer
+// eat into that budget — see the event block's own comments below).
+const ROW_PX = HOUR_PX / SLOTS_PER_HOUR;
 const DEFAULT_START_HOUR = 7;
 const DEFAULT_END_HOUR = 21;
 const GUTTER_COL = "64px";
-const DAY_COL = "minmax(150px, 1fr)";
+// Each day splits into one lane per room (see ROOMS) — narrower than the old
+// single day column since there are now twice as many, side by side, so a
+// room's whole week reads as one vertical scan down its lane instead of a
+// background tint that only shows through when nothing else colors the card.
+const ROOM_COL = "minmax(90px, 1fr)";
+const ROOM_LABEL: Record<string, string> = { "Salle 1": "S1", "Salle 2": "S2" };
 
 export const STATUS_BORDER: Record<string, string> = {
   PLANNED: "border-l-neutral-600",
@@ -135,39 +142,59 @@ export function WeekGrid<T extends WeekGridInstance>({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `${GUTTER_COL} repeat(7, ${DAY_COL})`,
+          gridTemplateColumns: `${GUTTER_COL} repeat(${7 * ROOMS.length}, ${ROOM_COL})`,
           gridTemplateRows: `auto repeat(${totalRows}, ${ROW_PX}px)`,
-          minWidth: 64 + 7 * 130,
+          minWidth: 64 + 7 * ROOMS.length * 90,
         }}
       >
         {/* Header row — sticky so the day/date labels stay visible while
             scrolling down through the hour grid below (the page itself
             scrolls; nothing above this sticks, so top-0 pins it right under
             the viewport's edge). z-20 keeps it above the event blocks
-            (z-10), which would otherwise scroll up underneath it. */}
+            (z-10), which would otherwise scroll up underneath it. Each day
+            header spans that day's whole lane pair (2 columns), with a
+            room sub-row underneath so a lane's room is always readable
+            without having to remember left-vs-right. */}
         <div
           className="sticky top-0 z-20 border-b border-neutral-800 bg-neutral-900"
           style={{ gridColumn: 1, gridRow: 1 }}
         />
         {days.map((day, dayIdx) => {
           const closed = closedDates?.has(formatDateISO(day)) ?? false;
+          const firstCol = 2 + dayIdx * ROOMS.length;
           return (
             <div
               key={formatDateISO(day)}
-              className={`sticky top-0 z-20 flex items-center justify-between gap-1 border-b border-l border-neutral-800 p-2 text-xs font-medium ${closed ? "bg-red-950/40 text-red-300" : "bg-neutral-900 text-white"}`}
-              style={{ gridColumn: dayIdx + 2, gridRow: 1 }}
+              className={`sticky top-0 z-20 border-b border-l border-neutral-800 p-2 text-xs font-medium ${closed ? "bg-red-950/40 text-red-300" : "bg-neutral-900 text-white"}`}
+              style={{ gridColumn: `${firstCol} / ${firstCol + ROOMS.length}`, gridRow: 1 }}
             >
-              <span>{formatDayLabel(day)}</span>
-              {closed && (
-                <span className="rounded-full bg-red-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-red-300">
-                  Fermé
-                </span>
-              )}
+              <div className="flex items-center justify-between gap-1">
+                <span>{formatDayLabel(day)}</span>
+                {closed && (
+                  <span className="rounded-full bg-red-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-red-300">
+                    Fermé
+                  </span>
+                )}
+              </div>
+              <div className="mt-1 flex gap-0.5">
+                {ROOMS.map((room) => (
+                  <span
+                    key={room}
+                    className={`flex-1 truncate rounded px-1 text-center text-[9px] font-semibold ${
+                      room === "Salle 1" ? "bg-sky-500/10 text-sky-300" : "bg-violet-500/10 text-violet-300"
+                    }`}
+                  >
+                    {ROOM_LABEL[room] ?? room}
+                  </span>
+                ))}
+              </div>
             </div>
           );
         })}
 
-        {/* Hour labels + background hour cells (grid + separators) */}
+        {/* Hour labels + background hour cells (grid + separators) — one
+            background cell per room lane, not per day, now that each day
+            is two columns wide. */}
         {hours.map((hour, hourIdx) => {
           const rowStart = 2 + hourIdx * SLOTS_PER_HOUR;
           const rowEnd = rowStart + SLOTS_PER_HOUR;
@@ -181,27 +208,36 @@ export function WeekGrid<T extends WeekGridInstance>({
                   {formatHourLabel(hour)}
                 </span>
               </div>
-              {days.map((day, dayIdx) => (
-                <div
-                  key={`${formatDateISO(day)}-${hour}`}
-                  className={`border-t border-l border-neutral-800 ${closedDates?.has(formatDateISO(day)) ? "bg-red-950/10" : ""}`}
-                  style={{ gridColumn: dayIdx + 2, gridRow: `${rowStart} / ${rowEnd}` }}
-                />
-              ))}
+              {days.map((day, dayIdx) =>
+                ROOMS.map((room, roomIdx) => (
+                  <div
+                    key={`${formatDateISO(day)}-${room}-${hour}`}
+                    className={`border-t border-l border-neutral-800 ${closedDates?.has(formatDateISO(day)) ? "bg-red-950/10" : ""} ${roomIdx === 0 ? "border-l-neutral-700" : ""}`}
+                    style={{ gridColumn: 2 + dayIdx * ROOMS.length + roomIdx, gridRow: `${rowStart} / ${rowEnd}` }}
+                  />
+                ))
+              )}
             </div>
           );
         })}
 
-        {/* Events */}
-        {days.map((day, dayIdx) => {
-          const dayInstances = instances.filter(
-            (inst) => formatDateISO(inst.date) === formatDateISO(day)
+        {/* Events — laid out per room lane, not per day, so two classes
+            only get split side-by-side (see layoutDayEventsToGrid) when
+            they're in the *same* room at overlapping times; different
+            rooms already have their own column and never need to share. */}
+        {days.flatMap((day, dayIdx) =>
+          ROOMS.flatMap((room, roomIdx) => {
+          const laneInstances = instances.filter(
+            (inst) =>
+              formatDateISO(inst.date) === formatDateISO(day) &&
+              (inst.room === room || (!ROOMS.includes(inst.room as (typeof ROOMS)[number]) && roomIdx === 0))
           );
           const positioned = layoutDayEventsToGrid(
-            dayInstances,
+            laneInstances,
             rangeStartMinutes,
             SLOT_MINUTES
           );
+          const laneColumn = 2 + dayIdx * ROOMS.length + roomIdx;
 
           return positioned.map(({ item: inst, rowStart, rowEnd, left, width }) => {
             const needsCoach = !inst.coachId && inst.status === "PLANNED" && !inst.isTeamEvent;
@@ -244,9 +280,9 @@ export function WeekGrid<T extends WeekGridInstance>({
                 key={inst.id}
                 id={isHighlighted ? `class-instance-${inst.id}` : undefined}
                 title={`${inst.isTeamEvent ? "Événement d'équipe · " : ""}${inst.label} · ${inst.room} · ${inst.startTime}–${inst.endTime} · ${statusLabel(inst.status)}${coachUnavailable ? " · le coach assigné est indisponible" : ""}`}
-                className={`group relative z-10 flex flex-col gap-1 overflow-hidden rounded-md p-1.5 transition-opacity ${border} ${inst.isTeamEvent ? "bg-gradient-to-br from-amber-500/30 via-amber-600/15 to-neutral-900" : needsCoach ? "bg-gradient-to-br from-red-500/30 via-red-600/15 to-neutral-900" : bg} ${coachUnavailable ? "ring-2 ring-inset ring-red-500" : ""} ${isMineGroup ? "ring-2 ring-inset ring-white/80" : ""} ${isHighlighted ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-neutral-950" : ""} ${faded ? "opacity-40" : ""}`}
+                className={`group relative z-10 flex flex-col gap-0.5 overflow-hidden rounded-md p-1 transition-opacity ${border} ${inst.isTeamEvent ? "bg-gradient-to-br from-amber-500/30 via-amber-600/15 to-neutral-900" : needsCoach ? "bg-gradient-to-br from-red-500/30 via-red-600/15 to-neutral-900" : bg} ${coachUnavailable ? "ring-2 ring-inset ring-red-500" : ""} ${isMineGroup ? "ring-2 ring-inset ring-white/80" : ""} ${isHighlighted ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-neutral-950" : ""} ${faded ? "opacity-40" : ""}`}
                 style={{
-                  gridColumn: dayIdx + 2,
+                  gridColumn: laneColumn,
                   gridRow: `${1 + rowStart} / ${1 + rowEnd}`,
                   justifySelf: "start",
                   marginLeft: `${left}%`,
@@ -254,11 +290,16 @@ export function WeekGrid<T extends WeekGridInstance>({
                   ...(!inst.isTeamEvent && coachBg ? { backgroundColor: coachBg } : {}),
                 }}
               >
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5">
                   <div className="flex min-w-0 shrink items-center gap-1">
                     {selectionAction?.(inst)}
-                    <span className="truncate font-mono text-[10px] font-semibold text-neutral-300">
-                      {inst.startTime}–{inst.endTime}
+                    {/* Start time only — the end time is already visible as
+                        the card's own height on the time axis, and the full
+                        range is still in the title tooltip on hover; showing
+                        both here was the single biggest thing forcing an
+                        early truncation once lanes got this narrow. */}
+                    <span className="truncate font-mono text-[9px] font-semibold text-neutral-300">
+                      {inst.startTime}
                     </span>
                   </div>
                   {/* Badges shrink and clip first — headerAction (review/delete)
@@ -267,38 +308,44 @@ export function WeekGrid<T extends WeekGridInstance>({
                       and silently clipped by overflow-hidden, which happened
                       on narrow side-by-side blocks (e.g. two classes at the
                       same time) once the team-event badge alone was wider
-                      than the column. */}
-                  <div className="flex min-w-0 shrink items-center gap-1 overflow-hidden">
+                      than the column. "Non assigné" isn't among these — the
+                      red border/background already says that, and the coach
+                      select below repeats it as its own placeholder, so a
+                      third copy of the same word was just clutter once lanes
+                      got narrow. */}
+                  <div className="flex min-w-0 shrink items-center gap-0.5 overflow-hidden">
                     {inst.isTeamEvent && (
-                      <span className="shrink-0 rounded-full bg-amber-400 px-1.5 py-0.5 text-[8px] font-bold uppercase leading-none tracking-wide text-amber-950">
-                        🎉 Équipe
-                      </span>
-                    )}
-                    {needsCoach && (
-                      <span className="shrink-0 rounded-full bg-red-400 px-1.5 py-0.5 text-[8px] font-bold uppercase leading-none tracking-wide text-red-950">
-                        Non assigné
+                      <span className="shrink-0 rounded-full bg-amber-400 px-1 py-0.5 text-[9px] leading-none" title="Événement d'équipe">
+                        🎉
                       </span>
                     )}
                     {isHighlighted && (
-                      <span className="shrink-0 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-amber-300">
+                      <span className="shrink-0 rounded-full bg-amber-500/20 px-1 py-0.5 text-[7px] font-semibold uppercase leading-none tracking-wide text-amber-300">
                         Prochain
                       </span>
                     )}
                     {coachUnavailable && (
-                      <span className="shrink-0 rounded-full bg-red-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-red-300">
-                        Indisponible
+                      <span className="shrink-0 rounded-full bg-red-500/20 px-1 py-0.5 text-[7px] font-semibold uppercase leading-none tracking-wide text-red-300">
+                        Indispo
                       </span>
                     )}
                     {inst.isPrivate && (
-                      <span className="shrink-0 rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-violet-300">
+                      <span className="shrink-0 rounded-full bg-violet-500/20 px-1 py-0.5 text-[7px] font-semibold uppercase leading-none tracking-wide text-violet-300">
                         Privé
                       </span>
                     )}
                   </div>
-                  <div className="ml-auto flex shrink-0 items-center gap-1">{headerAction?.(inst)}</div>
+                  {/* Absolutely positioned (not ml-auto in the flow) so
+                      these — invisible until hover — stop permanently
+                      reserving width in lanes this narrow; they only ever
+                      overlap the time/badges on hover, when that's exactly
+                      the card being acted on anyway. */}
+                  <div className="absolute right-0.5 top-0.5 flex items-center gap-0.5 rounded px-0.5 group-hover:bg-neutral-950/70">
+                    {headerAction?.(inst)}
+                  </div>
                 </div>
                 <div
-                  className={`line-clamp-2 text-[12px] font-semibold leading-tight ${
+                  className={`line-clamp-2 text-[10.5px] font-semibold leading-tight ${
                     inst.isTeamEvent ? "text-amber-100" : needsCoach ? "text-red-100" : "text-white"
                   }`}
                 >
@@ -308,7 +355,8 @@ export function WeekGrid<T extends WeekGridInstance>({
               </div>
             );
           });
-        })}
+        })
+        )}
       </div>
     </div>
   );

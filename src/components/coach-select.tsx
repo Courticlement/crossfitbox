@@ -45,7 +45,7 @@ export function CoachSelect({
           setValue(e.target.value);
           formRef.current?.requestSubmit();
         }}
-        className={`w-full truncate rounded px-1.5 py-1 text-[11px] font-medium focus:outline-none ${
+        className={`w-full truncate rounded px-1 py-0.5 text-[10px] font-medium focus:outline-none ${
           value
             ? "border border-neutral-700 bg-neutral-950 text-white focus:border-neutral-500"
             : "border border-amber-700/70 bg-amber-950/30 text-amber-300 focus:border-amber-500"
