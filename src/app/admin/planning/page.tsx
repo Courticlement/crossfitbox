@@ -5,6 +5,7 @@ import {
   addDays,
   formatDateISO,
   formatDayLabel,
+  formatDayShort,
   parseDateOnly,
   toDateOnly,
 } from "@/lib/dates";
@@ -283,17 +284,25 @@ export default async function PlanningPage({
             ← Préc.
           </Link>
           <span
-            className={`flex items-center gap-2 rounded-md border px-3 py-1.5 ${
+            className={`flex flex-col items-center gap-0.5 rounded-md border px-3 py-1.5 sm:flex-row sm:gap-2 ${
               isCurrentWeek
                 ? "border-emerald-800 bg-emerald-950/40"
                 : "border-neutral-800 bg-neutral-900"
             }`}
           >
-            <span className="text-sm font-semibold text-white">
-              {formatDayLabel(weekStart)} – {formatDayLabel(addDays(weekStart, 6))}
+            {/* order-* only reorders on mobile (badge on top, date below) —
+                sm:order-* restores the desktop date-then-badge reading
+                order once the row layout kicks in. */}
+            <span className="order-2 text-sm font-semibold text-white sm:order-1">
+              <span className="sm:hidden">
+                {formatDayShort(weekStart)} – {formatDayShort(addDays(weekStart, 6))}
+              </span>
+              <span className="hidden sm:inline">
+                {formatDayLabel(weekStart)} – {formatDayLabel(addDays(weekStart, 6))}
+              </span>
             </span>
             {isCurrentWeek && (
-              <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-emerald-300">
+              <span className="order-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-emerald-300 sm:order-2">
                 Cette semaine
               </span>
             )}
@@ -317,7 +326,8 @@ export default async function PlanningPage({
             type="submit"
             className="rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
           >
-            Générer cette semaine depuis les modèles
+            <span className="sm:hidden">Générer</span>
+            <span className="hidden sm:inline">Générer cette semaine depuis les modèles</span>
           </button>
         </form>
         <CopyLastWeekButton weekStart={formatDateISO(weekStart)} />
@@ -345,7 +355,8 @@ export default async function PlanningPage({
                 type="submit"
                 className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-500"
               >
-                Valider le planning
+                <span className="sm:hidden">Valider</span>
+                <span className="hidden sm:inline">Valider le planning</span>
               </button>
             </form>
           )}

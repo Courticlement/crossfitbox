@@ -130,9 +130,24 @@ export function DayAgenda<T extends WeekGridInstance>({
                 style={!inst.isTeamEvent && coachBg ? { backgroundColor: coachBg } : undefined}
               >
                 <div className="mb-1.5 flex items-center justify-between gap-2">
-                  <span className="font-mono text-sm font-semibold text-white">
-                    {inst.startTime}–{inst.endTime}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-sm font-semibold text-white">
+                      {inst.startTime}–{inst.endTime}
+                    </span>
+                    {/* Room badge — colored the same as WeekGrid's own
+                        sky/violet lanes, so "which room" reads at a glance
+                        here too instead of being buried in the small gray
+                        meta line below the label. */}
+                    <span
+                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                        inst.room === "Salle 1"
+                          ? "bg-sky-500/20 text-sky-300"
+                          : "bg-violet-500/20 text-violet-300"
+                      }`}
+                    >
+                      {inst.room}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-1.5">
                     {inst.isTeamEvent && (
                       <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-950">
@@ -169,9 +184,7 @@ export function DayAgenda<T extends WeekGridInstance>({
                 >
                   {inst.label}
                 </div>
-                <div className="mb-2 text-xs text-neutral-500">
-                  {inst.room} · {statusLabel(inst.status)}
-                </div>
+                <div className="mb-2 text-xs text-neutral-500">{statusLabel(inst.status)}</div>
                 {control?.(inst)}
               </div>
             );

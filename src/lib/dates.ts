@@ -69,6 +69,16 @@ export function formatDayLabel(date: Date): string {
   });
 }
 
+// Compact "DD/MM/YY" form of formatDayLabel — used where space is tight
+// (the mobile Planning header) and a numeric date reads faster than a
+// weekday+month name pair anyway.
+export function formatDayShort(date: Date): string {
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const year = String(date.getUTCFullYear()).slice(-2);
+  return `${day}/${month}/${year}`;
+}
+
 export function startOfMonth(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 }

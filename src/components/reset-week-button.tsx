@@ -21,7 +21,8 @@ export function ResetWeekButton({ weekStart }: { weekStart: string }) {
         type="submit"
         className="rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm font-medium text-red-300 hover:bg-red-950/60"
       >
-        Réinitialiser cette semaine
+        <span className="sm:hidden">Réinitialiser</span>
+        <span className="hidden sm:inline">Réinitialiser cette semaine</span>
       </button>
     </form>
   );
