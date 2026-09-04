@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { DashboardCoachCards } from "@/components/dashboard-coach-cards";
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
 import {
   startOfWeekMonday,
   addMonths,
@@ -13,7 +13,14 @@ import {
 } from "@/lib/dates";
 import { groupClassRate, PRIVATE_CLASS_COST_EUR } from "@/lib/coach-levels";
 
-export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
+export async function MonthDashboard({
+  organizationId,
+  monthParam,
+}: {
+  organizationId: string;
+  monthParam?: string;
+}) {
+  const prisma = tenantPrisma(organizationId);
   const requested = (monthParam && parseMonthOnly(monthParam)) || toDateOnly(new Date());
   const monthStart = startOfMonth(requested);
   const monthEnd = addMonths(monthStart, 1);
@@ -34,14 +41,20 @@ export async function MonthDashboard({ monthParam }: { monthParam?: string }) {
     prisma.planningWeek.findMany({ select: { weekStart: true } }),
     // Scoped to this month, same as Faits/Prévus below.
     prisma.classReview.findMany({
-      where: { classInstance: { date: { gte: monthStart, lt: monthEnd } } },
+      where: {
+        classInstance: { date: { gte: monthStart, lt: monthEnd } },
+      },
       select: { id: true, classInstance: { select: { coachId: true, date: true } } },
       orderBy: { classInstance: { date: "desc" } },
     }),
     // A coach with no review this month links to their next scheduled class
     // instead — which can easily fall in a later month.
     prisma.classInstance.findMany({
-      where: { coachId: { not: null }, status: "PLANNED", date: { gte: today } },
+      where: {
+        coachId: { not: null },
+        status: "PLANNED",
+        date: { gte: today },
+      },
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
       select: { id: true, coachId: true, date: true, startTime: true, label: true },
     }),

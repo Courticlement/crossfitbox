@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
 import { addDays, formatDateISO, formatDayLabel, parseDateOnly, toDateOnly } from "@/lib/dates";
 import { DataFilters } from "@/components/data-filters";
 import { DataClassesTable } from "@/components/data-classes-table";
 import { DataSubmissionsTable } from "@/components/data-submissions-table";
 import { PrevWeekBanner } from "@/components/prev-week-banner";
 import { statusLabel } from "@/lib/status-labels";
+import { requireOrgAdmin } from "@/lib/auth-context";
 
 const STATUS_COLOR: Record<string, string> = {
   DONE: "text-emerald-400",
@@ -17,6 +18,8 @@ const STATUS_COLOR: Record<string, string> = {
 export default async function DataPage({
   searchParams,
 }: PageProps<"/admin/data">) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
   const params = await searchParams;
   const fromParam = typeof params?.from === "string" ? params.from : undefined;
   const toParam = typeof params?.to === "string" ? params.to : undefined;
@@ -42,11 +45,13 @@ export default async function DataPage({
     prisma.coach.findMany({ orderBy: { name: "asc" } }),
     prisma.classInstance.findMany({
       where: instanceWhere,
-      include: { coach: true, substituteCoach: true },
+      include: { coach: true, substituteCoach: true, room: true },
       orderBy: [{ date: "desc" }, { startTime: "asc" }],
     }),
     prisma.classSubmission.findMany({
-      where: { classInstance: { date: { gte: from, lt: toExclusive } } },
+      where: {
+        classInstance: { date: { gte: from, lt: toExclusive } },
+      },
       include: { coach: true, classInstance: true },
       orderBy: { updatedAt: "desc" },
     }),
@@ -59,7 +64,7 @@ export default async function DataPage({
     id: inst.id,
     dateLabel: formatDayLabel(inst.date),
     time: `${inst.startTime}–${inst.endTime}`,
-    room: inst.room,
+    room: inst.room.name,
     label: inst.label,
     type: inst.isPrivate ? "Privé" : "Collectif",
     coachName: inst.coach?.name ?? "—",
@@ -81,7 +86,7 @@ export default async function DataPage({
   return (
     <div className="text-neutral-300">
       <h1 className="mb-1 text-lg font-semibold text-white">Données</h1>
-      <PrevWeekBanner />
+      <PrevWeekBanner organizationId={organizationId} />
       <p className="mb-4 text-sm text-neutral-500">
         Parcourez tous les cours enregistrés et les déclarations, et exportez
         la période ci-dessous en fichier Excel. Le mois dernier est

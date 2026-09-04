@@ -3,9 +3,10 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
+import type { PrismaClient } from "@/generated/prisma/client";
 import { parseDateOnly, formatDayLabel, dayName } from "@/lib/dates";
-import { requireCoachId } from "@/lib/auth-context";
+import { requireCoachSession, requireOrgAdmin } from "@/lib/auth-context";
 
 function revalidateAll() {
   revalidatePath("/admin");
@@ -16,8 +17,8 @@ function revalidateAll() {
 // Mirrors the guard in lib/actions/submissions.ts — an archived coach's
 // bookmarked link shouldn't be able to flag time off any more than it can
 // report a class.
-async function assertCoachActive(coachId: string): Promise<boolean> {
-  const coach = await prisma.coach.findUnique({ where: { id: coachId }, select: { archived: true } });
+async function assertCoachActive(db: PrismaClient, coachId: string): Promise<boolean> {
+  const coach = await db.coach.findUnique({ where: { id: coachId }, select: { archived: true } });
   return coach !== null && !coach.archived;
 }
 
@@ -91,8 +92,10 @@ const UnavailabilitySchema = z.object({
 // immediately and the record itself powers the onsite banner (see
 // getPendingUnavailability) until an admin acknowledges it.
 export async function submitUnavailability(formData: FormData) {
-  const coachId = await requireCoachId();
-  if (!coachId) return;
+  const session = await requireCoachSession();
+  if (!session) return;
+  const { coachId, organizationId } = session;
+  const prisma = tenantPrisma(organizationId);
 
   const parsed = UnavailabilitySchema.safeParse({
     startDate: formData.get("startDate"),
@@ -131,9 +134,11 @@ export async function submitUnavailability(formData: FormData) {
 // deletePrivateClass — a forged coachId just fails to match any row.
 export async function deleteUnavailability(formData: FormData) {
   const id = String(formData.get("id") ?? "");
-  const coachId = await requireCoachId();
-  if (!id || !coachId) return;
-  if (!(await assertCoachActive(coachId))) return;
+  const session = await requireCoachSession();
+  if (!id || !session) return;
+  const { coachId, organizationId } = session;
+  const prisma = tenantPrisma(organizationId);
+  if (!(await assertCoachActive(prisma, coachId))) return;
 
   await prisma.unavailability.deleteMany({ where: { id, coachId } });
   revalidateAll();
@@ -142,10 +147,12 @@ export async function deleteUnavailability(formData: FormData) {
 // Admin-side: dismisses one entry off the onsite banner without deleting
 // the underlying record, so there's still a history of who flagged what.
 export async function acknowledgeUnavailability(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
-  await prisma.unavailability.update({
+  await prisma.unavailability.updateMany({
     where: { id },
     data: { acknowledgedAt: new Date() },
   });

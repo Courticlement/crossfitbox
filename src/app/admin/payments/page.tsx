@@ -1,9 +1,10 @@
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
 import { addDays, parseDateOnly } from "@/lib/dates";
 import { PaymentsFilters } from "@/components/payments-filters";
 import { DeletePaymentButton } from "@/components/delete-payment-button";
 import { PrevWeekBanner } from "@/components/prev-week-banner";
 import { PrivatePaymentAlert } from "@/components/private-payment-alert";
+import { requireOrgAdmin } from "@/lib/auth-context";
 
 // See DataPage (admin/data) for why this is forced dynamic rather than
 // statically prerendered — same reasoning: payment history changes whenever
@@ -13,6 +14,8 @@ export const dynamic = "force-dynamic";
 export default async function PaymentsPage({
   searchParams,
 }: PageProps<"/admin/payments">) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
   const params = await searchParams;
   const fromParam = typeof params?.from === "string" ? params.from : undefined;
   const toParam = typeof params?.to === "string" ? params.to : undefined;
@@ -43,8 +46,8 @@ export default async function PaymentsPage({
   return (
     <div className="text-neutral-300">
       <h1 className="mb-1 text-lg font-semibold text-white">Paiements</h1>
-      <PrevWeekBanner />
-      <PrivatePaymentAlert />
+      <PrevWeekBanner organizationId={organizationId} />
+      <PrivatePaymentAlert organizationId={organizationId} />
       <p className="mb-4 text-sm text-neutral-500">
         Historique des règlements de cours privés — chaque ligne est créée
         automatiquement quand un coach est marqué payé depuis la page{" "}

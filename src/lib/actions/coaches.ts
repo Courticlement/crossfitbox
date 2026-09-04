@@ -2,11 +2,12 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { isCoachLevel } from "@/lib/coach-levels";
 import { hashPassword } from "@/lib/password";
 import { isCoachColor } from "@/lib/coach-colors";
+import { requireOrgAdmin } from "@/lib/auth-context";
 
 function revalidateUploadPaths() {
   revalidatePath("/admin/coaches");
@@ -33,6 +34,9 @@ function parseRate(formData: FormData): number | undefined {
 }
 
 export async function createCoach(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+
   const parsed = CoachSchema.safeParse({
     name: formData.get("name"),
     level: formData.get("level") || undefined,
@@ -43,15 +47,23 @@ export async function createCoach(formData: FormData) {
   const level = parsed.data.level && isCoachLevel(parsed.data.level) ? parsed.data.level : null;
 
   await prisma.coach.upsert({
-    where: { name: parsed.data.name },
+    where: { organizationId_name: { organizationId, name: parsed.data.name } },
     update: {},
-    create: { name: parsed.data.name, level, weeklyQuota: parsed.data.weeklyQuota ?? null },
+    create: {
+      organizationId,
+      name: parsed.data.name,
+      level,
+      weeklyQuota: parsed.data.weeklyQuota ?? null,
+    },
   });
 
   revalidateUploadPaths();
 }
 
 export async function renameCoach(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+
   const id = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const levelRaw = String(formData.get("level") ?? "").trim();
@@ -63,6 +75,9 @@ export async function renameCoach(formData: FormData) {
   if (!id || !name) return;
   if (weeklyQuota !== undefined && (!Number.isInteger(weeklyQuota) || weeklyQuota < 0)) return;
   if (rate !== undefined && (!Number.isInteger(rate) || rate < 0)) return;
+
+  const coach = await prisma.coach.findFirst({ where: { id }, select: { id: true } });
+  if (!coach) return;
 
   try {
     await prisma.coach.update({
@@ -87,21 +102,30 @@ export async function renameCoach(formData: FormData) {
 }
 
 export async function deleteCoach(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
-  await prisma.coach.delete({ where: { id } });
+  await prisma.coach.deleteMany({ where: { id } });
   revalidateUploadPaths();
 }
 
 // Sets (or resets) a coach's /upload login password — coaches can't
 // self-register, so this is how the admin hands out or rotates credentials.
 export async function setCoachPassword(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+
   const id = String(formData.get("id") ?? "");
   const password = String(formData.get("password") ?? "");
   if (!id || password.length < 6) return;
 
-  await prisma.coach.update({ where: { id }, data: { passwordHash: hashPassword(password) } });
+  await prisma.coach.updateMany({
+    where: { id },
+    data: { passwordHash: hashPassword(password) },
+  });
   revalidateUploadPaths();
 }
 
@@ -111,18 +135,24 @@ export async function setCoachPassword(formData: FormData) {
 // lib/actions/submissions.ts, which every coach self-service action checks.
 // Reversible via unarchiveCoach, unlike deleteCoach.
 export async function archiveCoach(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
-  await prisma.coach.update({ where: { id }, data: { archived: true } });
+  await prisma.coach.updateMany({ where: { id }, data: { archived: true } });
   revalidateUploadPaths();
 }
 
 export async function unarchiveCoach(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
-  await prisma.coach.update({ where: { id }, data: { archived: false } });
+  await prisma.coach.updateMany({ where: { id }, data: { archived: false } });
   revalidateUploadPaths();
 }
 
@@ -133,9 +163,15 @@ export async function unarchiveCoach(formData: FormData) {
 // PrivatePayment row with the settled amount, so the Paiements page can show
 // proof of what was paid and when even after the running balance resets.
 export async function markPrivateBalancePaid(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+
   const id = String(formData.get("id") ?? "");
   const amount = Number(formData.get("amount") ?? "");
   if (!id || !Number.isInteger(amount) || amount <= 0) return;
+
+  const coach = await prisma.coach.findFirst({ where: { id }, select: { id: true } });
+  if (!coach) return;
 
   const now = new Date();
   await prisma.$transaction([
@@ -152,11 +188,16 @@ export async function markPrivateBalancePaid(formData: FormData) {
 // latest payment reopens their balance from that point, while deleting an
 // older one only removes the historical row.
 export async function deletePrivatePayment(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
   await prisma.$transaction(async (tx) => {
-    const payment = await tx.privatePayment.delete({ where: { id } });
+    const payment = await tx.privatePayment.findFirst({ where: { id } });
+    if (!payment) return;
+    await tx.privatePayment.delete({ where: { id: payment.id } });
     const latest = await tx.privatePayment.findFirst({
       where: { coachId: payment.coachId },
       orderBy: { paidAt: "desc" },

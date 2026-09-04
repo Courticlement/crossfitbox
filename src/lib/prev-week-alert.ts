@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
 import { startOfWeekMonday, addDays, toDateOnly } from "@/lib/dates";
 
 export type PrevWeekAlert = {
@@ -14,12 +14,15 @@ export type PrevWeekAlert = {
 // reminder, not tied to navigation. `show` is false when that week was
 // never planned at all (e.g. the box was closed) — nothing to validate,
 // so no need to nag.
-export async function getPrevWeekAlert(): Promise<PrevWeekAlert> {
+export async function getPrevWeekAlert(organizationId: string): Promise<PrevWeekAlert> {
+  const prisma = tenantPrisma(organizationId);
   const thisWeekStart = startOfWeekMonday(toDateOnly(new Date()));
   const prevWeekStart = addDays(thisWeekStart, -7);
 
   const [planningWeek, instances] = await Promise.all([
-    prisma.planningWeek.findUnique({ where: { weekStart: prevWeekStart } }),
+    prisma.planningWeek.findUnique({
+      where: { organizationId_weekStart: { organizationId, weekStart: prevWeekStart } },
+    }),
     prisma.classInstance.findMany({
       where: {
         date: { gte: prevWeekStart, lt: thisWeekStart },
@@ -52,12 +55,18 @@ export type CoachPrevWeekAlert = {
 // still something this specific coach can do about it — the admin hasn't
 // validated (and thus locked) last week yet, and this coach still has
 // classes assigned to them with no Done/Missed report against their name.
-export async function getCoachPrevWeekAlert(coachId: string): Promise<CoachPrevWeekAlert> {
+export async function getCoachPrevWeekAlert(
+  organizationId: string,
+  coachId: string
+): Promise<CoachPrevWeekAlert> {
+  const prisma = tenantPrisma(organizationId);
   const thisWeekStart = startOfWeekMonday(toDateOnly(new Date()));
   const prevWeekStart = addDays(thisWeekStart, -7);
 
   const [planningWeek, unreportedMine] = await Promise.all([
-    prisma.planningWeek.findUnique({ where: { weekStart: prevWeekStart } }),
+    prisma.planningWeek.findUnique({
+      where: { organizationId_weekStart: { organizationId, weekStart: prevWeekStart } },
+    }),
     prisma.classInstance.count({
       where: {
         date: { gte: prevWeekStart, lt: thisWeekStart },

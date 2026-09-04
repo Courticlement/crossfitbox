@@ -1,4 +1,4 @@
-import { WeekGrid, type WeekGridInstance } from "@/components/week-grid";
+import { WeekGrid, type WeekGridInstance, type WeekGridRoom } from "@/components/week-grid";
 import { DayAgenda } from "@/components/day-agenda";
 import { SubstituteSelect } from "@/components/substitute-select";
 import { statusLabel } from "@/lib/status-labels";
@@ -25,6 +25,7 @@ export function MyClassesGrid({
   selectedDay,
   dayHrefs,
   instances,
+  rooms,
   coachId,
   coaches,
   locked,
@@ -35,6 +36,7 @@ export function MyClassesGrid({
   selectedDay: Date;
   dayHrefs: Record<string, string>;
   instances: Instance[];
+  rooms: WeekGridRoom[];
   coachId: string;
   coaches: { id: string; name: string }[];
   locked: boolean;
@@ -67,6 +69,7 @@ export function MyClassesGrid({
         <WeekGrid
           weekStart={weekStart}
           instances={instances}
+          rooms={rooms}
           highlightCoachId={coachId}
           control={renderControl}
         />
@@ -76,6 +79,7 @@ export function MyClassesGrid({
         selectedDay={selectedDay}
         dayHrefs={dayHrefs}
         instances={instances}
+        rooms={rooms}
         control={renderControl}
         emptyLabel="Aucun cours ce jour-là."
       />

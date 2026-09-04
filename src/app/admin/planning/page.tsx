@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
 import {
   startOfWeekMonday,
   addDays,
@@ -28,10 +28,13 @@ import { SubstituteSelect } from "@/components/substitute-select";
 import { TimeConflictsPanel, type TimeConflictGroup } from "@/components/time-conflicts-panel";
 import { WeekGrid } from "@/components/week-grid";
 import { generateWeek, validateWeek, unlockWeek } from "@/lib/actions/planning";
+import { requireOrgAdmin } from "@/lib/auth-context";
 
 export default async function PlanningPage({
   searchParams,
 }: PageProps<"/admin/planning">) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
   const params = await searchParams;
   const weekParam = typeof params?.week === "string" ? params.week : undefined;
   const requested = (weekParam && parseDateOnly(weekParam)) || toDateOnly(new Date());
@@ -53,20 +56,29 @@ export default async function PlanningPage({
   // to it, since it can land anywhere in the week.
   const highlightInstanceId = typeof params?.highlight === "string" ? params.highlight : undefined;
 
-  const [instances, coaches, doneSubmissions, planningWeek, unavailabilities, weekClosures, upcomingClosures] =
+  const [instances, coaches, rooms, doneSubmissions, planningWeek, unavailabilities, weekClosures, upcomingClosures] =
     await Promise.all([
       prisma.classInstance.findMany({
         where: { date: { gte: weekStart, lt: weekEnd } },
-        include: { coach: true, template: { include: { coach: true } }, review: true },
-        orderBy: [{ date: "asc" }, { startTime: "asc" }, { room: "asc" }],
+        include: { coach: true, template: { include: { coach: true } }, review: true, room: true },
+        orderBy: [{ date: "asc" }, { startTime: "asc" }, { room: { name: "asc" } }],
       }),
       prisma.coach.findMany({ orderBy: { name: "asc" } }),
+      prisma.room.findMany({
+        where: { archived: false },
+        orderBy: { createdAt: "asc" },
+      }),
       prisma.classSubmission.findMany({
-        where: { classInstance: { date: { gte: weekStart, lt: weekEnd } }, status: "DONE" },
+        where: {
+          classInstance: { date: { gte: weekStart, lt: weekEnd } },
+          status: "DONE",
+        },
         include: { coach: true },
         orderBy: { createdAt: "asc" },
       }),
-      prisma.planningWeek.findUnique({ where: { weekStart } }),
+      prisma.planningWeek.findUnique({
+        where: { organizationId_weekStart: { organizationId, weekStart } },
+      }),
       prisma.unavailability.findMany({
         where: {
           OR: [
@@ -77,11 +89,11 @@ export default async function PlanningPage({
         select: { coachId: true, startDate: true, endDate: true, recurring: true },
       }),
       prisma.boxClosure.findMany({
-        where: { date: { gte: weekStart, lt: weekEnd } },
+        where: { organizationId, date: { gte: weekStart, lt: weekEnd } },
         select: { date: true },
       }),
       prisma.boxClosure.findMany({
-        where: { date: { gte: toDateOnly(new Date()) } },
+        where: { organizationId, date: { gte: toDateOnly(new Date()) } },
         orderBy: { date: "asc" },
       }),
     ]);
@@ -153,7 +165,7 @@ export default async function PlanningPage({
       }
       if (typeFilter === "private" && !inst.isPrivate) return false;
       if (typeFilter === "group" && inst.isPrivate) return false;
-      if (roomFilter && inst.room !== roomFilter) return false;
+      if (roomFilter && inst.roomId !== roomFilter) return false;
       return true;
     })
     .map((inst) => ({ ...inst, coachColor: inst.coach?.color ?? null }));
@@ -172,7 +184,7 @@ export default async function PlanningPage({
       startTime: inst.startTime,
       endTime: inst.endTime,
       label: inst.label,
-      room: inst.room,
+      room: inst.room.name,
       officialCoachId: inst.substituteCoachId ?? inst.coachId,
       submissions: (submissionsByInstance.get(inst.id) ?? []).map((sub) => ({
         id: sub.id,
@@ -218,7 +230,7 @@ export default async function PlanningPage({
         return {
           submissionId: s.id,
           label: inst.label,
-          room: inst.room,
+          room: inst.room.name,
           date: inst.date,
           startTime: inst.startTime,
           endTime: inst.endTime,
@@ -316,8 +328,8 @@ export default async function PlanningPage({
         </div>
       </div>
 
-      <PrevWeekBanner />
-      <UnavailabilityAlert />
+      <PrevWeekBanner organizationId={organizationId} />
+      <UnavailabilityAlert organizationId={organizationId} />
 
       <div className="mb-6 flex items-center gap-3">
         <form action={generateWeek}>
@@ -378,6 +390,7 @@ export default async function PlanningPage({
         type={typeFilter}
         room={roomFilter}
         coaches={coaches}
+        rooms={rooms}
       />
 
       {coaches.some((c) => c.color) && (
@@ -403,6 +416,7 @@ export default async function PlanningPage({
           <WeekGrid
             weekStart={weekStart}
             instances={filteredInstances}
+            rooms={rooms}
             highlightInstanceId={highlightInstanceId}
             unavailableInstanceIds={unavailableInstanceIds}
             closedDates={closedDates}
@@ -417,6 +431,7 @@ export default async function PlanningPage({
         selectedDay={selectedDay}
         dayHrefs={dayHrefs}
         instances={filteredInstances}
+        rooms={rooms}
         highlightInstanceId={highlightInstanceId}
         unavailableInstanceIds={unavailableInstanceIds}
         closedDates={closedDates}
@@ -426,7 +441,7 @@ export default async function PlanningPage({
 
       <div className="flex flex-wrap gap-4">
         <BoxClosuresCard entries={upcomingClosures} />
-        <AddAdHocClassForm weekStart={weekStart} coaches={coaches} />
+        <AddAdHocClassForm weekStart={weekStart} coaches={coaches} rooms={rooms} />
       </div>
     </div>
   );

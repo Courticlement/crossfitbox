@@ -11,12 +11,21 @@ export function AdminLoginForm() {
   return (
     <form action={formAction} className="flex w-full max-w-xs flex-col gap-3">
       <div>
+        <label className="mb-1 block text-xs text-neutral-500">Email admin</label>
+        <input
+          type="email"
+          name="email"
+          required
+          autoFocus
+          className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
+        />
+      </div>
+      <div>
         <label className="mb-1 block text-xs text-neutral-500">Mot de passe admin</label>
         <input
           type="password"
           name="password"
           required
-          autoFocus
           className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
         />
       </div>

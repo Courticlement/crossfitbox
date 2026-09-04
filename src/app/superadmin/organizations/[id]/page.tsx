@@ -1,0 +1,316 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { prisma, tenantPrisma } from "@/lib/prisma";
+import { formatDateISO } from "@/lib/dates";
+import {
+  renameOrganization,
+  platformCreateRoom,
+  platformRenameRoom,
+  platformArchiveRoom,
+  platformUnarchiveRoom,
+  platformCreateAdmin,
+  impersonateOrganization,
+} from "@/lib/actions/organizations";
+
+// Without this, Next would statically prerender the page and freeze this
+// organization's room list until the next deploy — same reasoning as every
+// other admin list page (see /admin/coaches, /admin/rooms).
+export const dynamic = "force-dynamic";
+
+type RoomRow = {
+  id: string;
+  name: string;
+  shortLabel: string | null;
+  color: string | null;
+  archived: boolean;
+};
+
+function RoomCard({ organizationId, room }: { organizationId: string; room: RoomRow }) {
+  return (
+    <div
+      className={`flex flex-col rounded-lg border p-4 ${
+        room.archived
+          ? "border-neutral-800 bg-neutral-900/50 opacity-70"
+          : "border-neutral-800 bg-neutral-900"
+      }`}
+    >
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 text-base font-semibold text-white">
+          {room.color && (
+            <span
+              style={{ backgroundColor: room.color }}
+              className="h-2.5 w-2.5 shrink-0 rounded-full"
+            />
+          )}
+          {room.name}
+          {room.archived && (
+            <span className="rounded border border-neutral-700 px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-neutral-500">
+              Archivée
+            </span>
+          )}
+        </div>
+        {room.archived ? (
+          <form action={platformUnarchiveRoom}>
+            <input type="hidden" name="organizationId" value={organizationId} />
+            <input type="hidden" name="id" value={room.id} />
+            <button
+              type="submit"
+              className="rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-400 hover:border-neutral-500 hover:text-white"
+            >
+              Désarchiver
+            </button>
+          </form>
+        ) : (
+          <form action={platformArchiveRoom}>
+            <input type="hidden" name="organizationId" value={organizationId} />
+            <input type="hidden" name="id" value={room.id} />
+            <button
+              type="submit"
+              className="rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-400 hover:border-neutral-500 hover:text-white"
+            >
+              Archiver
+            </button>
+          </form>
+        )}
+      </div>
+
+      {!room.archived && (
+        <form action={platformRenameRoom} className="border-t border-neutral-800 pt-3">
+          <input type="hidden" name="organizationId" value={organizationId} />
+          <input type="hidden" name="id" value={room.id} />
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <span className="mb-1 block text-xs text-neutral-500">Nom</span>
+              <input
+                type="text"
+                name="name"
+                defaultValue={room.name}
+                className="w-full rounded border border-neutral-800 bg-transparent px-1.5 py-1 text-xs text-white hover:border-neutral-700 focus:border-neutral-500 focus:outline-none"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs text-neutral-500">Abréviation</span>
+              <input
+                type="text"
+                name="shortLabel"
+                defaultValue={room.shortLabel ?? ""}
+                placeholder={room.name.slice(0, 2)}
+                maxLength={4}
+                className="w-full rounded border border-neutral-800 bg-transparent px-1.5 py-1 text-xs text-white hover:border-neutral-700 focus:border-neutral-500 focus:outline-none"
+              />
+            </label>
+            <label className="col-span-2 block">
+              <span className="mb-1 block text-xs text-neutral-500">Couleur</span>
+              <input
+                type="color"
+                name="color"
+                defaultValue={room.color ?? "#525252"}
+                className="h-8 w-full rounded border border-neutral-800 bg-transparent px-1 py-1"
+              />
+            </label>
+          </div>
+          <button
+            type="submit"
+            className="mt-3 w-full rounded-md bg-white px-3 py-1.5 text-xs font-medium text-neutral-950 hover:bg-neutral-200"
+          >
+            Enregistrer
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+export default async function SuperadminOrganizationPage({
+  params,
+}: PageProps<"/superadmin/organizations/[id]">) {
+  // Access to every organization is already gated one level up by
+  // /superadmin/layout.tsx (PLATFORM_SUPERADMIN-only) — no per-organization
+  // scoping check is meaningful here, unlike a box's own /admin/rooms: a
+  // platform superadmin has access to every box by design.
+  const { id } = await params;
+  const organization = await prisma.organization.findUnique({
+    where: { id },
+    include: {
+      admins: { orderBy: [{ archived: "asc" }, { createdAt: "asc" }] },
+    },
+  });
+  if (!organization) notFound();
+
+  // Room lives in this organization's own Postgres schema (see tenantPrisma
+  // in lib/prisma.ts), not the shared control-plane schema Organization
+  // itself is in — so this can't come from a Prisma `include` above.
+  const rooms = await tenantPrisma(id).room.findMany({
+    orderBy: [{ archived: "asc" }, { createdAt: "asc" }],
+  });
+
+  const activeRooms = rooms.filter((r) => !r.archived);
+  const archivedRooms = rooms.filter((r) => r.archived);
+
+  return (
+    <div className="text-neutral-300">
+      <Link href="/superadmin" className="mb-4 inline-block text-sm text-neutral-500 hover:text-white">
+        ‹ Retour aux organisations
+      </Link>
+
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <h1 className="text-lg font-semibold text-white">{organization.name}</h1>
+        <form action={impersonateOrganization}>
+          <input type="hidden" name="organizationId" value={organization.id} />
+          <button
+            type="submit"
+            className="rounded-md border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 hover:border-neutral-500 hover:text-white"
+          >
+            Se connecter en tant qu&apos;admin
+          </button>
+        </form>
+      </div>
+      <p className="mb-6 text-sm text-neutral-500">
+        Créée le {formatDateISO(organization.createdAt)}
+      </p>
+
+      <div className="mb-8 max-w-sm rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+        <h2 className="mb-3 text-sm font-medium text-white">Nom de la box</h2>
+        <form action={renameOrganization} className="flex flex-col gap-2">
+          <input type="hidden" name="id" value={organization.id} />
+          <input
+            type="text"
+            name="name"
+            required
+            defaultValue={organization.name}
+            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
+          />
+          <button
+            type="submit"
+            className="rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
+          >
+            Enregistrer
+          </button>
+        </form>
+      </div>
+
+      <h2 className="mb-3 text-sm font-medium text-white">Salles</h2>
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {activeRooms.map((room) => (
+          <RoomCard key={room.id} organizationId={organization.id} room={room} />
+        ))}
+        {activeRooms.length === 0 && (
+          <p className="col-span-full py-6 text-center text-neutral-500">Aucune salle active.</p>
+        )}
+      </div>
+
+      {archivedRooms.length > 0 && (
+        <div className="mb-8">
+          <h3 className="mb-3 text-sm font-medium text-neutral-500">
+            Archivées ({archivedRooms.length})
+          </h3>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {archivedRooms.map((room) => (
+              <RoomCard key={room.id} organizationId={organization.id} room={room} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="max-w-sm rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+        <h2 className="mb-3 text-sm font-medium text-white">Ajouter une salle</h2>
+        <form action={platformCreateRoom} className="flex flex-col gap-2">
+          <input type="hidden" name="organizationId" value={organization.id} />
+          <input
+            type="text"
+            name="name"
+            required
+            placeholder="Nom de la salle"
+            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
+          />
+          <input
+            type="text"
+            name="shortLabel"
+            maxLength={4}
+            placeholder="Abréviation (ex. S1)"
+            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
+          />
+          <label className="flex items-center gap-2 text-xs text-neutral-500">
+            Couleur
+            <input type="color" name="color" defaultValue="#525252" className="h-8 flex-1" />
+          </label>
+          <button
+            type="submit"
+            className="mt-1 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
+          >
+            Ajouter la salle
+          </button>
+        </form>
+      </div>
+
+      <h2 className="mb-3 text-sm font-medium text-white">Administrateurs</h2>
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {organization.admins.map((admin) => (
+          <div
+            key={admin.id}
+            className={`flex flex-col rounded-lg border p-4 ${
+              admin.archived
+                ? "border-neutral-800 bg-neutral-900/50 opacity-70"
+                : "border-neutral-800 bg-neutral-900"
+            }`}
+          >
+            <div className="flex items-center gap-2 text-sm font-semibold text-white">
+              {admin.email}
+              {admin.archived && (
+                <span className="rounded border border-neutral-700 px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-neutral-500">
+                  Archivé
+                </span>
+              )}
+            </div>
+            <div className="mt-1 text-xs text-neutral-500">
+              {admin.role === "SUPERADMIN" ? "Superadmin" : "Admin"} · Créé le{" "}
+              {formatDateISO(admin.createdAt)}
+            </div>
+          </div>
+        ))}
+        {organization.admins.length === 0 && (
+          <p className="col-span-full py-6 text-center text-neutral-500">Aucun administrateur.</p>
+        )}
+      </div>
+
+      <div className="max-w-sm rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+        <h2 className="mb-3 text-sm font-medium text-white">Ajouter un administrateur</h2>
+        <form action={platformCreateAdmin} className="flex flex-col gap-2">
+          <input type="hidden" name="organizationId" value={organization.id} />
+          <input
+            type="email"
+            name="email"
+            required
+            placeholder="Email"
+            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
+          />
+          <input
+            type="password"
+            name="password"
+            required
+            minLength={6}
+            placeholder="Mot de passe"
+            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
+          />
+          <div>
+            <span className="mb-1 block text-xs text-neutral-500">Rôle</span>
+            <select
+              name="role"
+              defaultValue="ADMIN"
+              className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
+            >
+              <option value="ADMIN">Admin</option>
+              <option value="SUPERADMIN">Superadmin</option>
+            </select>
+          </div>
+          <button
+            type="submit"
+            className="mt-1 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
+          >
+            Ajouter l&apos;administrateur
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}

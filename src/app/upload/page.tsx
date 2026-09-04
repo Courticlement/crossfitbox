@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
 import {
   startOfWeekMonday,
   addDays,
@@ -29,10 +29,16 @@ export default async function UploadPage({
 
   // middleware.ts already redirects an unauthenticated request to /login
   // before this ever renders — this re-check just satisfies TypeScript
-  // (coachId isn't threaded through as a prop) and guards the narrow window
-  // where a session is revoked between the middleware check and this render.
-  const coachId = await verifyCoachSessionToken((await cookies()).get(COACH_COOKIE)?.value);
-  if (!coachId) redirect("/login");
+  // (the session isn't threaded through as a prop) and guards the narrow
+  // window where a session is revoked between the middleware check and this
+  // render. organizationId comes straight from the signed token, not a DB
+  // lookup — Coach lives in that organization's own Postgres schema (see
+  // tenantPrisma in lib/prisma.ts), so there'd be no way to find the coach's
+  // own row without already knowing which schema to query.
+  const session = await verifyCoachSessionToken((await cookies()).get(COACH_COOKIE)?.value);
+  if (!session) redirect("/login");
+  const { coachId, organizationId } = session;
+  const prisma = tenantPrisma(organizationId);
 
   const coach = await prisma.coach.findUnique({ where: { id: coachId } });
   if (!coach || coach.archived) redirect("/login");
@@ -74,10 +80,14 @@ export default async function UploadPage({
     where: { archived: false },
     orderBy: { name: "asc" },
   });
+  const rooms = await prisma.room.findMany({
+    where: { archived: false },
+    orderBy: { createdAt: "asc" },
+  });
 
   const [{ instances, myPrivateClasses, locked }, myUnavailability, lastFocus] =
     await Promise.all([
-      loadCoachWeekData(coach.id, weekStart, weekEnd),
+      loadCoachWeekData(organizationId, coach.id, weekStart, weekEnd),
       prisma.unavailability.findMany({
         where: {
           coachId: coach.id,
@@ -86,7 +96,7 @@ export default async function UploadPage({
         select: { id: true, startDate: true, endDate: true, recurring: true, note: true },
         orderBy: { startDate: "asc" },
       }),
-      getLastFocus(coach.id),
+      getLastFocus(organizationId, coach.id),
     ]);
 
   return (
@@ -144,7 +154,7 @@ export default async function UploadPage({
           )}
         </div>
 
-        <CoachPrevWeekBanner coachId={coach.id} />
+        <CoachPrevWeekBanner organizationId={organizationId} coachId={coach.id} />
 
         <UnavailabilityForm coachId={coach.id} entries={myUnavailability} />
 
@@ -169,6 +179,7 @@ export default async function UploadPage({
             selectedDay={selectedDay}
             dayHrefs={dayHrefs}
             instances={instances}
+            rooms={rooms}
             coachId={coach.id}
             coaches={coaches}
             locked={locked}

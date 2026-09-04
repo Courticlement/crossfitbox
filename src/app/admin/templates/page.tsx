@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
 import { dayName } from "@/lib/dates";
-import { ROOMS } from "@/lib/rooms";
+import { requireOrgAdmin } from "@/lib/auth-context";
 import { PrevWeekBanner } from "@/components/prev-week-banner";
 import { TemplateFilters } from "@/components/template-filters";
 import {
@@ -27,17 +27,19 @@ const BULK_FORM_ID = "templates-bulk-form";
 export default async function ClassTemplatesPage({
   searchParams,
 }: PageProps<"/admin/templates">) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
   const params = await searchParams;
   const dayOfWeekFilter = typeof params?.dayOfWeek === "string" ? params.dayOfWeek : "";
   const roomFilter = typeof params?.room === "string" ? params.room : "";
   const coachIdFilter = typeof params?.coachId === "string" ? params.coachId : "";
   const statusFilter = typeof params?.status === "string" ? params.status : "";
 
-  const [templates, coaches] = await Promise.all([
+  const [templates, coaches, rooms] = await Promise.all([
     prisma.classTemplate.findMany({
       where: {
         ...(dayOfWeekFilter ? { dayOfWeek: Number(dayOfWeekFilter) } : {}),
-        ...(roomFilter ? { room: roomFilter } : {}),
+        ...(roomFilter ? { roomId: roomFilter } : {}),
         ...(coachIdFilter === "none"
           ? { coachId: null }
           : coachIdFilter
@@ -45,10 +47,14 @@ export default async function ClassTemplatesPage({
             : {}),
         ...(statusFilter ? { active: statusFilter === "active" } : {}),
       },
-      include: { coach: true },
+      include: { coach: true, room: true },
       orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
     }),
     prisma.coach.findMany({ orderBy: { name: "asc" } }),
+    prisma.room.findMany({
+      where: { archived: false },
+      orderBy: { createdAt: "asc" },
+    }),
   ]);
 
   return (
@@ -56,7 +62,7 @@ export default async function ClassTemplatesPage({
       <h1 className="mb-1 text-lg font-semibold text-white">
         Modèles de cours
       </h1>
-      <PrevWeekBanner />
+      <PrevWeekBanner organizationId={organizationId} />
       <UnsavedChangesGuard formId={BULK_FORM_ID} />
       <p className="mb-4 text-sm text-neutral-500">
         L&apos;emploi du temps hebdomadaire récurrent de la box. Utilisé pour
@@ -71,6 +77,7 @@ export default async function ClassTemplatesPage({
         coachId={coachIdFilter}
         status={statusFilter}
         coaches={coaches}
+        rooms={rooms}
       />
 
       <div className="mb-8 max-w-sm rounded-lg border border-neutral-800 bg-neutral-900 p-4">
@@ -102,18 +109,18 @@ export default async function ClassTemplatesPage({
           <div>
             <span className="mb-1 block text-xs text-neutral-500">Salle(s)</span>
             <div className="flex flex-wrap gap-3">
-              {ROOMS.map((room) => (
+              {rooms.map((room) => (
                 <label
-                  key={room}
+                  key={room.id}
                   className="flex items-center gap-1.5 text-sm text-neutral-300"
                 >
                   <input
                     type="checkbox"
-                    name="room"
-                    value={room}
+                    name="roomId"
+                    value={room.id}
                     className="accent-white"
                   />
-                  {room}
+                  {room.name}
                 </label>
               ))}
             </div>
@@ -210,7 +217,7 @@ export default async function ClassTemplatesPage({
                   tpl.dayOfWeek,
                   tpl.startTime,
                   tpl.endTime,
-                  tpl.room,
+                  tpl.roomId,
                   tpl.label,
                   tpl.coachId ?? "",
                 ].join(":");
@@ -254,14 +261,14 @@ export default async function ClassTemplatesPage({
                     </td>
                     <td className="px-1 py-1">
                       <select
-                        name={`room:${tpl.id}`}
+                        name={`roomId:${tpl.id}`}
                         form={BULK_FORM_ID}
-                        defaultValue={tpl.room}
+                        defaultValue={tpl.roomId}
                         className={FIELD_CLASS}
                       >
-                        {ROOMS.map((room) => (
-                          <option key={room} value={room}>
-                            {room}
+                        {rooms.map((room) => (
+                          <option key={room.id} value={room.id}>
+                            {room.name}
                           </option>
                         ))}
                       </select>

@@ -3,7 +3,12 @@ import { addDays, formatDateISO, formatDayLabel } from "@/lib/dates";
 import { timeToMinutes, formatHourLabel, layoutDayEventsToGrid } from "@/lib/calendar-layout";
 import { hexToRgba } from "@/lib/coach-colors";
 import { statusLabel } from "@/lib/status-labels";
-import { ROOMS } from "@/lib/rooms";
+
+export type WeekGridRoom = { id: string; name: string; shortLabel: string | null; color: string | null };
+
+// Falls back to when a room has no color set — same neutral tint regardless
+// of which lane it is, unlike the old hardcoded 2-room sky/violet split.
+const DEFAULT_ROOM_COLOR = "#525252";
 
 const SLOT_MINUTES = 5;
 const SLOTS_PER_HOUR = 60 / SLOT_MINUTES;
@@ -15,12 +20,11 @@ const ROW_PX = HOUR_PX / SLOTS_PER_HOUR;
 const DEFAULT_START_HOUR = 7;
 const DEFAULT_END_HOUR = 21;
 const GUTTER_COL = "64px";
-// Each day splits into one lane per room (see ROOMS) — narrower than the old
-// single day column since there are now twice as many, side by side, so a
+// Each day splits into one lane per room (see the `rooms` prop) — narrower
+// than a single day column since there can be several, side by side, so a
 // room's whole week reads as one vertical scan down its lane instead of a
 // background tint that only shows through when nothing else colors the card.
 const ROOM_COL = "minmax(90px, 1fr)";
-const ROOM_LABEL: Record<string, string> = { "Salle 1": "S1", "Salle 2": "S2" };
 
 export const STATUS_BORDER: Record<string, string> = {
   PLANNED: "border-l-neutral-600",
@@ -40,18 +44,13 @@ const STATUS_BG: Record<string, string> = {
   CANCELLED: "bg-neutral-900/40",
 };
 
-const ROOM_BG: Record<string, string> = {
-  "Salle 1": "bg-sky-950/60",
-  "Salle 2": "bg-violet-950/60",
-};
-
 export type WeekGridInstance = {
   id: string;
   date: Date;
   startTime: string;
   endTime: string;
   label: string;
-  room: string;
+  roomId: string;
   status: string;
   isPrivate: boolean;
   // A whole-team event (see ClassInstance.isTeamEvent) — rendered with a
@@ -71,6 +70,7 @@ export type WeekGridInstance = {
 export function WeekGrid<T extends WeekGridInstance>({
   weekStart,
   instances,
+  rooms,
   headerAction,
   control,
   selectionAction,
@@ -81,6 +81,9 @@ export function WeekGrid<T extends WeekGridInstance>({
 }: {
   weekStart: Date;
   instances: T[];
+  // This organization's active rooms, in display order — one lane per room,
+  // per day (see ROOM_COL above).
+  rooms: WeekGridRoom[];
   headerAction?: (inst: T) => ReactNode;
   control: (inst: T) => ReactNode;
   // Rendered at the very start of each block's header row (before the time
@@ -109,6 +112,7 @@ export function WeekGrid<T extends WeekGridInstance>({
   closedDates?: Set<string>;
 }) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const roomById = new Map(rooms.map((r) => [r.id, r]));
 
   const allMinutes = instances.flatMap((i) => [
     timeToMinutes(i.startTime),
@@ -142,9 +146,9 @@ export function WeekGrid<T extends WeekGridInstance>({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `${GUTTER_COL} repeat(${7 * ROOMS.length}, ${ROOM_COL})`,
+          gridTemplateColumns: `${GUTTER_COL} repeat(${7 * rooms.length}, ${ROOM_COL})`,
           gridTemplateRows: `auto repeat(${totalRows}, ${ROW_PX}px)`,
-          minWidth: 64 + 7 * ROOMS.length * 90,
+          minWidth: 64 + 7 * rooms.length * 90,
         }}
       >
         {/* Header row — sticky so the day/date labels stay visible while
@@ -161,12 +165,12 @@ export function WeekGrid<T extends WeekGridInstance>({
         />
         {days.map((day, dayIdx) => {
           const closed = closedDates?.has(formatDateISO(day)) ?? false;
-          const firstCol = 2 + dayIdx * ROOMS.length;
+          const firstCol = 2 + dayIdx * rooms.length;
           return (
             <div
               key={formatDateISO(day)}
               className={`sticky top-0 z-20 border-b border-l border-neutral-800 p-2 text-xs font-medium ${closed ? "bg-red-950/40 text-red-300" : "bg-neutral-900 text-white"}`}
-              style={{ gridColumn: `${firstCol} / ${firstCol + ROOMS.length}`, gridRow: 1 }}
+              style={{ gridColumn: `${firstCol} / ${firstCol + rooms.length}`, gridRow: 1 }}
             >
               <div className="flex items-center justify-between gap-1">
                 <span>{formatDayLabel(day)}</span>
@@ -177,14 +181,16 @@ export function WeekGrid<T extends WeekGridInstance>({
                 )}
               </div>
               <div className="mt-1 flex gap-0.5">
-                {ROOMS.map((room) => (
+                {rooms.map((room) => (
                   <span
-                    key={room}
-                    className={`flex-1 truncate rounded px-1 text-center text-[9px] font-semibold ${
-                      room === "Salle 1" ? "bg-sky-500/10 text-sky-300" : "bg-violet-500/10 text-violet-300"
-                    }`}
+                    key={room.id}
+                    className="flex-1 truncate rounded px-1 text-center text-[9px] font-semibold"
+                    style={{
+                      backgroundColor: hexToRgba(room.color ?? DEFAULT_ROOM_COLOR, 0.1) ?? undefined,
+                      color: room.color ?? DEFAULT_ROOM_COLOR,
+                    }}
                   >
-                    {ROOM_LABEL[room] ?? room}
+                    {room.shortLabel || room.name}
                   </span>
                 ))}
               </div>
@@ -209,11 +215,11 @@ export function WeekGrid<T extends WeekGridInstance>({
                 </span>
               </div>
               {days.map((day, dayIdx) =>
-                ROOMS.map((room, roomIdx) => (
+                rooms.map((room, roomIdx) => (
                   <div
-                    key={`${formatDateISO(day)}-${room}-${hour}`}
+                    key={`${formatDateISO(day)}-${room.id}-${hour}`}
                     className={`border-t border-l border-neutral-800 ${closedDates?.has(formatDateISO(day)) ? "bg-red-950/10" : ""} ${roomIdx === 0 ? "border-l-neutral-700" : ""}`}
-                    style={{ gridColumn: 2 + dayIdx * ROOMS.length + roomIdx, gridRow: `${rowStart} / ${rowEnd}` }}
+                    style={{ gridColumn: 2 + dayIdx * rooms.length + roomIdx, gridRow: `${rowStart} / ${rowEnd}` }}
                   />
                 ))
               )}
@@ -226,18 +232,24 @@ export function WeekGrid<T extends WeekGridInstance>({
             they're in the *same* room at overlapping times; different
             rooms already have their own column and never need to share. */}
         {days.flatMap((day, dayIdx) =>
-          ROOMS.flatMap((room, roomIdx) => {
+          rooms.flatMap((room, roomIdx) => {
           const laneInstances = instances.filter(
             (inst) =>
               formatDateISO(inst.date) === formatDateISO(day) &&
-              (inst.room === room || (!ROOMS.includes(inst.room as (typeof ROOMS)[number]) && roomIdx === 0))
+              // The fallback (an instance whose roomId doesn't match any of
+              // this organization's current rooms, placed in lane 0) is now
+              // only reachable if a room was archived out from under
+              // historical instances that still reference it — roomId is a
+              // real FK, so an unrecognized value should be rare.
+              (inst.roomId === room.id ||
+                (!rooms.some((r) => r.id === inst.roomId) && roomIdx === 0))
           );
           const positioned = layoutDayEventsToGrid(
             laneInstances,
             rangeStartMinutes,
             SLOT_MINUTES
           );
-          const laneColumn = 2 + dayIdx * ROOMS.length + roomIdx;
+          const laneColumn = 2 + dayIdx * rooms.length + roomIdx;
 
           return positioned.map(({ item: inst, rowStart, rowEnd, left, width }) => {
             const needsCoach = !inst.coachId && inst.status === "PLANNED" && !inst.isTeamEvent;
@@ -251,6 +263,7 @@ export function WeekGrid<T extends WeekGridInstance>({
             const faded = highlightCoachId != null && !isMine && !inst.isTeamEvent;
             const coachUnavailable = unavailableInstanceIds?.has(inst.id) ?? false;
             const statusBg = STATUS_BG[inst.status];
+            const room = roomById.get(inst.roomId);
             // The coach's color now always wins the background, DONE/MISSED
             // included, so a class visually stays "theirs" no matter its
             // outcome — the outcome itself still reads from the border-left
@@ -261,9 +274,10 @@ export function WeekGrid<T extends WeekGridInstance>({
             const coachBg = !coachUnavailable && inst.coachColor
               ? hexToRgba(inst.coachColor, 0.35)
               : null;
+            const roomBg = !coachBg && room?.color ? hexToRgba(room.color, 0.2) : null;
             const bg = coachUnavailable
               ? "bg-red-950/60"
-              : (coachBg ? "" : (statusBg ?? (ROOM_BG[inst.room] ?? "bg-neutral-900")));
+              : (coachBg || roomBg ? "" : (statusBg ?? "bg-neutral-900"));
             // A team event overrides every other border/background rule —
             // it has no coach and no status story to tell, just "everyone
             // needs to see this" (see ClassInstance.isTeamEvent). A still-
@@ -279,7 +293,7 @@ export function WeekGrid<T extends WeekGridInstance>({
               <div
                 key={inst.id}
                 id={isHighlighted ? `class-instance-${inst.id}` : undefined}
-                title={`${inst.isTeamEvent ? "Événement d'équipe · " : ""}${inst.label} · ${inst.room} · ${inst.startTime}–${inst.endTime} · ${statusLabel(inst.status)}${coachUnavailable ? " · le coach assigné est indisponible" : ""}`}
+                title={`${inst.isTeamEvent ? "Événement d'équipe · " : ""}${inst.label} · ${room?.name ?? ""} · ${inst.startTime}–${inst.endTime} · ${statusLabel(inst.status)}${coachUnavailable ? " · le coach assigné est indisponible" : ""}`}
                 className={`group relative z-10 flex flex-col gap-0.5 overflow-hidden rounded-md p-1 transition-opacity ${border} ${inst.isTeamEvent ? "bg-gradient-to-br from-amber-500/30 via-amber-600/15 to-neutral-900" : needsCoach ? "bg-gradient-to-br from-red-500/30 via-red-600/15 to-neutral-900" : bg} ${coachUnavailable ? "ring-2 ring-inset ring-red-500" : ""} ${isMineGroup ? "ring-2 ring-inset ring-white/80" : ""} ${isHighlighted ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-neutral-950" : ""} ${faded ? "opacity-40" : ""}`}
                 style={{
                   gridColumn: laneColumn,
@@ -287,7 +301,9 @@ export function WeekGrid<T extends WeekGridInstance>({
                   justifySelf: "start",
                   marginLeft: `${left}%`,
                   width: `calc(${width}% - 2px)`,
-                  ...(!inst.isTeamEvent && coachBg ? { backgroundColor: coachBg } : {}),
+                  ...(!inst.isTeamEvent && (coachBg || roomBg)
+                    ? { backgroundColor: coachBg ?? roomBg ?? undefined }
+                    : {}),
                 }}
               >
                 <div className="flex items-center gap-0.5">

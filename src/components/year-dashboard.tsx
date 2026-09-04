@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
 import { computeMonthlyHoursByCoach } from "@/lib/coach-stats";
 import { chartSeriesColor } from "@/lib/chart-palette";
 import { CoachHoursChart, type CoachHoursSeries } from "@/components/coach-hours-chart";
@@ -13,18 +13,28 @@ function monthLabels(year: number): string[] {
   );
 }
 
-export async function YearDashboard({ yearParam }: { yearParam?: string }) {
+export async function YearDashboard({
+  organizationId,
+  yearParam,
+}: {
+  organizationId: string;
+  yearParam?: string;
+}) {
   const currentYear = new Date().getUTCFullYear();
   const parsedYear = yearParam ? Number.parseInt(yearParam, 10) : NaN;
   const year = Number.isInteger(parsedYear) ? parsedYear : currentYear;
 
+  const prisma = tenantPrisma(organizationId);
   const yearStart = new Date(Date.UTC(year, 0, 1));
   const yearEnd = new Date(Date.UTC(year + 1, 0, 1));
 
   const [coaches, instances] = await Promise.all([
     prisma.coach.findMany({ where: { archived: false }, orderBy: { name: "asc" } }),
     prisma.classInstance.findMany({
-      where: { date: { gte: yearStart, lt: yearEnd }, status: { in: ["DONE", "MISSED"] } },
+      where: {
+        date: { gte: yearStart, lt: yearEnd },
+        status: { in: ["DONE", "MISSED"] },
+      },
       select: {
         date: true,
         startTime: true,

@@ -5,8 +5,14 @@ import { getCoachPrevWeekAlert } from "@/lib/prev-week-alert";
 // Nudges a coach to go report last week's classes before the admin
 // validates (and locks) that week — see getCoachPrevWeekAlert for exactly
 // when this fires.
-export async function CoachPrevWeekBanner({ coachId }: { coachId: string }) {
-  const { show, prevWeekStart, unreportedMine } = await getCoachPrevWeekAlert(coachId);
+export async function CoachPrevWeekBanner({
+  organizationId,
+  coachId,
+}: {
+  organizationId: string;
+  coachId: string;
+}) {
+  const { show, prevWeekStart, unreportedMine } = await getCoachPrevWeekAlert(organizationId, coachId);
   if (!show) return null;
 
   return (

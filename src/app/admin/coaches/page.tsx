@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
 import {
   createCoach,
   renameCoach,
@@ -14,6 +14,7 @@ import { PrevWeekBanner } from "@/components/prev-week-banner";
 import { CoachPasswordForm } from "@/components/coach-password-form";
 import { MarkPrivatePaidButton } from "@/components/mark-private-paid-button";
 import { formatDateISO } from "@/lib/dates";
+import { requireOrgAdmin } from "@/lib/auth-context";
 
 // No searchParams/cookies() here to otherwise force dynamic rendering — left
 // to itself, Next statically prerenders this page at build time, freezing
@@ -268,10 +269,16 @@ function CoachCard({
 }
 
 export default async function CoachesPage() {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
   const [coaches, instances, planningWeeks] = await Promise.all([
-    prisma.coach.findMany({ orderBy: [{ archived: "asc" }, { name: "asc" }] }),
+    prisma.coach.findMany({
+      orderBy: [{ archived: "asc" }, { name: "asc" }],
+    }),
     prisma.classInstance.findMany({
-      where: { OR: [{ coachId: { not: null } }, { substituteCoachId: { not: null } }] },
+      where: {
+        OR: [{ coachId: { not: null } }, { substituteCoachId: { not: null } }],
+      },
       select: {
         coachId: true,
         substituteCoachId: true,
@@ -305,7 +312,7 @@ export default async function CoachesPage() {
   return (
     <div className="text-neutral-300">
       <h1 className="mb-4 text-lg font-semibold text-white">Coachs</h1>
-      <PrevWeekBanner />
+      <PrevWeekBanner organizationId={organizationId} />
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {activeCoaches.map((coach) => (

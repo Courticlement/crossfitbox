@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
 
 // The one thing a coaching review is supposed to leave behind: the standing
 // focus until the *next* observation. Surfaced on the coach's own page and
@@ -11,8 +11,11 @@ export type LastFocus = {
   classLabel: string;
 };
 
-export async function getLastFocus(coachId: string): Promise<LastFocus | null> {
-  const review = await prisma.classReview.findFirst({
+export async function getLastFocus(
+  organizationId: string,
+  coachId: string
+): Promise<LastFocus | null> {
+  const review = await tenantPrisma(organizationId).classReview.findFirst({
     where: { classInstance: { coachId } },
     orderBy: { classInstance: { date: "desc" } },
     include: { classInstance: { select: { date: true, label: true } } },
@@ -29,8 +32,11 @@ export async function getLastFocus(coachId: string): Promise<LastFocus | null> {
 // One query for every coach at once (for the Suivi coaching summary) rather
 // than one findFirst per coach — reviews are already sorted soonest-last so
 // the first one seen per coach is their most recent.
-export async function getLastFocusByCoach(coachIds: string[]): Promise<Map<string, LastFocus>> {
-  const reviews = await prisma.classReview.findMany({
+export async function getLastFocusByCoach(
+  organizationId: string,
+  coachIds: string[]
+): Promise<Map<string, LastFocus>> {
+  const reviews = await tenantPrisma(organizationId).classReview.findMany({
     where: { classInstance: { coachId: { in: coachIds } } },
     orderBy: { classInstance: { date: "desc" } },
     include: { classInstance: { select: { coachId: true, date: true, label: true } } },

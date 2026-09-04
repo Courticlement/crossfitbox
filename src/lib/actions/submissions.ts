@@ -2,10 +2,11 @@
 
 import { z } from "zod";
 import { refresh, revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
+import type { PrismaClient } from "@/generated/prisma/client";
 import { addDays, parseDateOnly } from "@/lib/dates";
 import { isDateInValidatedWeek, isWeekValidated } from "@/lib/planning-lock";
-import { requireCoachId } from "@/lib/auth-context";
+import { requireCoachSession, requireOrgAdmin } from "@/lib/auth-context";
 
 function revalidateAll() {
   revalidatePath("/admin/planning");
@@ -19,8 +20,8 @@ function revalidateAll() {
 // they're no longer a coach at the box. Admin-side conflict resolution
 // (useSubmission/dismissSubmission) isn't gated by this, since that's the
 // admin acting on old history, not the coach uploading.
-async function assertCoachActive(coachId: string): Promise<boolean> {
-  const coach = await prisma.coach.findUnique({ where: { id: coachId }, select: { archived: true } });
+async function assertCoachActive(db: PrismaClient, coachId: string): Promise<boolean> {
+  const coach = await db.coach.findUnique({ where: { id: coachId }, select: { archived: true } });
   return coach !== null && !coach.archived;
 }
 
@@ -49,20 +50,25 @@ type OfficialSubmission = {
 // undoing a self-report shouldn't also erase the Planning assignment (or a
 // previous coach's claim) that had nothing to do with it. An admin can
 // always explicitly unassign a class from the Planning tab if that's really
-// what's needed.
-async function applyOfficial(classInstanceId: string, submission: OfficialSubmission) {
-  const instance = await prisma.classInstance.findUnique({ where: { id: classInstanceId } });
+// what's needed. classInstanceId is assumed already ownership-checked by
+// the caller (useSubmission/dismissSubmission/dismissSubmissions).
+async function applyOfficial(
+  db: PrismaClient,
+  classInstanceId: string,
+  submission: OfficialSubmission
+) {
+  const instance = await db.classInstance.findUnique({ where: { id: classInstanceId } });
   if (!instance) return;
 
   if (!submission) {
-    await prisma.classInstance.update({
+    await db.classInstance.update({
       where: { id: classInstanceId },
       data: { status: "PLANNED", substituteCoachId: null },
     });
     return;
   }
 
-  await prisma.classInstance.update({
+  await db.classInstance.update({
     where: { id: classInstanceId },
     data: {
       status: submission.status,
@@ -76,16 +82,18 @@ async function applyOfficial(classInstanceId: string, submission: OfficialSubmis
 // record (even if it's not the most recent one), then drop the other DONE
 // submissions for that class since the conflict is now settled.
 export async function useSubmission(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
   const classInstanceId = String(formData.get("classInstanceId") ?? "");
   const coachId = String(formData.get("coachId") ?? "");
   if (!classInstanceId || !coachId) return;
 
-  const submission = await prisma.classSubmission.findUnique({
-    where: { classInstanceId_coachId: { classInstanceId, coachId } },
+  const submission = await prisma.classSubmission.findFirst({
+    where: { classInstanceId, coachId },
   });
   if (!submission) return;
 
-  await applyOfficial(classInstanceId, submission);
+  await applyOfficial(prisma, classInstanceId, submission);
   await prisma.classSubmission.deleteMany({
     where: { classInstanceId, coachId: { not: coachId }, status: "DONE" },
   });
@@ -99,10 +107,12 @@ export async function useSubmission(formData: FormData) {
 // things correct whether the dismissed claim was the official one or just a
 // competing one.
 export async function dismissSubmission(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
   const submissionId = String(formData.get("submissionId") ?? "");
   if (!submissionId) return;
 
-  const submission = await prisma.classSubmission.findUnique({ where: { id: submissionId } });
+  const submission = await prisma.classSubmission.findFirst({ where: { id: submissionId } });
   if (!submission) return;
   const { classInstanceId } = submission;
 
@@ -113,7 +123,7 @@ export async function dismissSubmission(formData: FormData) {
     orderBy: { updatedAt: "desc" },
   });
 
-  await applyOfficial(classInstanceId, remaining);
+  await applyOfficial(prisma, classInstanceId, remaining);
   revalidateAll();
 }
 
@@ -122,11 +132,13 @@ export async function dismissSubmission(formData: FormData) {
 // (not Promise.all) since submissions for the same classInstanceId would
 // otherwise race on applyOfficial's re-derivation.
 export async function dismissSubmissions(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
   const ids = Array.from(new Set(formData.getAll("submissionIds").map(String).filter(Boolean)));
   if (ids.length === 0) return;
 
   for (const submissionId of ids) {
-    const submission = await prisma.classSubmission.findUnique({ where: { id: submissionId } });
+    const submission = await prisma.classSubmission.findFirst({ where: { id: submissionId } });
     if (!submission) continue;
     const { classInstanceId } = submission;
 
@@ -136,7 +148,7 @@ export async function dismissSubmissions(formData: FormData) {
       where: { classInstanceId },
       orderBy: { updatedAt: "desc" },
     });
-    await applyOfficial(classInstanceId, remaining);
+    await applyOfficial(prisma, classInstanceId, remaining);
   }
 
   revalidateAll();
@@ -157,10 +169,15 @@ const PrivateClassSchema = z
 // Coach self-report of a private (1:1 or small-group) lesson they gave that
 // week — these typically aren't on the fixed weekly template grid, so there's
 // no existing ClassInstance to mark DONE against. This creates one directly,
-// already DONE since the coach is reporting it after the fact.
+// already DONE since the coach is reporting it after the fact. roomId isn't
+// meaningful for a 1:1 session — it's set to the org's default (oldest
+// active) room purely so ClassInstance's required roomId is satisfied and
+// the class still renders somewhere reasonable on the Planning grid.
 export async function addPrivateClass(formData: FormData) {
-  const coachId = await requireCoachId();
-  if (!coachId) return;
+  const session = await requireCoachSession();
+  if (!session) return;
+  const { coachId, organizationId } = session;
+  const prisma = tenantPrisma(organizationId);
 
   const parsed = PrivateClassSchema.safeParse({
     weekStart: formData.get("weekStart"),
@@ -177,7 +194,13 @@ export async function addPrivateClass(formData: FormData) {
 
   const weekStartDate = parseDateOnly(weekStart);
   if (!weekStartDate) return;
-  if (await isWeekValidated(weekStartDate)) return;
+  if (await isWeekValidated(organizationId, weekStartDate)) return;
+
+  const defaultRoom = await prisma.room.findFirst({
+    where: { archived: false },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!defaultRoom) return;
 
   await prisma.classInstance.create({
     data: {
@@ -185,6 +208,7 @@ export async function addPrivateClass(formData: FormData) {
       startTime,
       endTime,
       label: "Cours privé",
+      roomId: defaultRoom.id,
       isPrivate: true,
       status: "DONE",
       coachId,
@@ -197,16 +221,19 @@ export async function addPrivateClass(formData: FormData) {
 // Scoped to the reporting coach's own private classes — a forged coachId
 // just fails the ownership check instead of deleting someone else's record.
 export async function deletePrivateClass(formData: FormData) {
+  const session = await requireCoachSession();
   const id = String(formData.get("id") ?? "");
-  const coachId = await requireCoachId();
-  if (!id || !coachId) return;
-  if (!(await assertCoachActive(coachId))) return;
+  if (!id || !session) return;
+  const { coachId, organizationId } = session;
+  const prisma = tenantPrisma(organizationId);
+
+  if (!(await assertCoachActive(prisma, coachId))) return;
 
   const instance = await prisma.classInstance.findFirst({
     where: { id, coachId, isPrivate: true },
   });
   if (!instance) return;
-  if (await isDateInValidatedWeek(instance.date)) return;
+  if (await isDateInValidatedWeek(organizationId, instance.date)) return;
 
   await prisma.classInstance.delete({ where: { id: instance.id } });
 

@@ -18,8 +18,8 @@ function formatRange(startDate: Date, endDate: Date, recurring: boolean): string
 // for the emailed half) — shown on the admin Dashboard and Planning pages
 // so it's visible wherever the admin would actually act on it. Each entry
 // stays until acknowledged, even across page visits.
-export async function UnavailabilityAlert() {
-  const entries = await getPendingUnavailability();
+export async function UnavailabilityAlert({ organizationId }: { organizationId: string }) {
+  const entries = await getPendingUnavailability(organizationId);
   if (entries.length === 0) return null;
 
   return (

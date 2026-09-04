@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
 import { computeCoachStats, type ClassInstanceForStats } from "@/lib/coach-stats";
 
 // Shown on the Paiements page: coaches who still owe money for private
@@ -7,7 +7,8 @@ import { computeCoachStats, type ClassInstanceForStats } from "@/lib/coach-stats
 // monthly nudge to actually go collect, as opposed to the running "Solde
 // privé dû" on each coach's card, which doesn't call out that it's overdue
 // by a full month.
-export async function PrivatePaymentAlert() {
+export async function PrivatePaymentAlert({ organizationId }: { organizationId: string }) {
+  const prisma = tenantPrisma(organizationId);
   const [coaches, instances] = await Promise.all([
     prisma.coach.findMany({ where: { archived: false } }),
     prisma.classInstance.findMany({

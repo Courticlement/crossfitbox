@@ -9,21 +9,92 @@ datasource db {
 
 // --- App models ---
 
+// One CrossFit box. Created by a PLATFORM_SUPERADMIN Admin (organizationId
+// null — see Admin.role below and lib/actions/organizations.ts). Every
+// operational model (Coach, Room, ClassTemplate, ClassInstance,
+// PlanningWeek, BoxClosure, ...) lives in this Organization's own Postgres
+// schema — see tenantPrisma in lib/prisma.ts — not the shared control-plane
+// schema Organization/Admin live in. Those models' organizationId column is
+// therefore a plain scalar here, deliberately NOT declared as a Prisma
+// @relation: Prisma's relational query features (include, _count, nested
+// select) assume a relation's two sides share one schema/connection, which
+// isn't true across the control-plane/tenant-schema boundary — attempting
+// it fails at runtime with "table does not exist" (Coach/Room aren't
+// reachable from the connection Organization queries run on). Admin is the
+// one exception below: it stays in the control-plane schema alongside
+// Organization, so that relation is real and usable.
+model Organization {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  admins Admin[]
+}
+
+// A room/physical space at a box, used to lane out ClassTemplate/
+// ClassInstance on the Planning grid (see WeekGrid) — replaces the old
+// hardcoded ROOMS const now that each Organization defines its own. Never
+// hard-deleted (see archived) since historical classes reference it.
+// organizationId is a plain column, not a Prisma relation — see
+// Organization's comment above for why.
+model Room {
+  id             String @id @default(cuid())
+  organizationId String
+  name           String
+  // Short header abbreviation on the Planning grid (e.g. "S1"); falls back
+  // to name when unset.
+  shortLabel     String?
+  // Hex tint for this room's lane/header chip on the Planning grid; falls
+  // back to a neutral tint when unset.
+  color          String?
+  archived       Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  templates ClassTemplate[]
+  instances ClassInstance[]
+
+  @@unique([organizationId, name])
+}
+
+// A person with a login to /admin. Replaces the old single shared
+// ADMIN_PASSWORD gate so access can be granted or revoked per person — a
+// SUPERADMIN can additionally manage other Admin accounts within their own
+// Organization (see lib/actions/admins.ts and /admin/admins), while a plain
+// ADMIN has the same access to the rest of /admin (including managing
+// coaches) as before. A PLATFORM_SUPERADMIN sits outside every Organization
+// (organizationId null) and only manages the list of Organizations itself
+// (see lib/actions/organizations.ts and /superadmin) — see auth-context.ts's
+// requireOrgAdmin vs requirePlatformSuperadmin in organizations.ts.
+model Admin {
+  id             String        @id @default(cuid())
+  email          String        @unique
+  passwordHash   String
+  role           String        @default("ADMIN") // "ADMIN" | "SUPERADMIN" | "PLATFORM_SUPERADMIN"
+  organizationId String? // null only for PLATFORM_SUPERADMIN
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  // Soft-delete, mirroring Coach.archived: revokes login without losing the
+  // account (e.g. who created it, when) — reversible, unlike deleting it.
+  archived       Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+}
+
 model Coach {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  level       String? // free-text CrossFit level, e.g. "Level 1"
+  id                   String @id @default(cuid())
+  // Plain column, not a Prisma relation — see Organization's comment above.
+  organizationId       String
+  name                 String
+  level                String? // free-text CrossFit level, e.g. "Level 1"
   // Standard weekly quota of group classes, used on the Dashboard whenever
   // that week has no explicit CoachWeeklyQuota override — lets the admin
   // set it once instead of every week. A week-specific override in
   // CoachWeeklyQuota always wins over this.
-  weeklyQuota Int?
+  weeklyQuota          Int?
   // € paid per validated group class this coach delivers (see
   // computeCoachStats). Null falls back to the CrossFit-level default (see
   // groupClassRate) — set once the admin edits it on the Coaches page, at
   // which point it's a plain per-coach number and no longer follows level
   // changes automatically.
-  rate        Int?
+  rate                 Int?
   // Hex color (e.g. "#3b82f6") tinting this coach's classes on the admin
   // Planning grid, so the head coach can see who's teaching what at a
   // glance — see WeekGrid. Null falls back to the room-based tint. Unique
@@ -31,13 +102,14 @@ model Coach {
   // only actually restricts non-null values) so two coaches never end up
   // sharing a color — see renameCoach's takenColors check, which is the
   // primary guard; this is the backstop against a race between two saves.
-  color       String?  @unique
+  // Unique per-organization (Coach.name is too — see @@unique below).
+  color                String?
   // Login credential for /upload — the coach's unique `name` doubles as
   // their username. Null until the admin sets one (see setCoachPassword on
   // the Coaches page); a coach with no password set can't log in yet.
   // Replaces the old unguessable-link (accessToken) system now that /upload
   // is gated by real auth (see middleware.ts).
-  passwordHash String?
+  passwordHash         String?
   // Set when the admin marks this coach's private-class debt as settled
   // (see markPrivateBalancePaid) — only private classes delivered after
   // this date count toward the outstanding balance shown on the Coaches
@@ -49,8 +121,8 @@ model Coach {
   // their private upload access (see /upload/[token] and the coach-active
   // guard in lib/actions/submissions.ts) — reversible via unarchiveCoach,
   // unlike Remove which permanently deletes the row.
-  archived    Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  archived             Boolean      @default(false)
+  createdAt            DateTime     @default(now())
 
   classInstances    ClassInstance[]    @relation("PrimaryCoach")
   substituteClasses ClassInstance[]    @relation("SubstituteCoach")
@@ -59,6 +131,9 @@ model Coach {
   submissions       ClassSubmission[]
   unavailabilities  Unavailability[]
   privatePayments   PrivatePayment[]
+
+  @@unique([organizationId, name])
+  @@unique([organizationId, color])
 }
 
 // A record of a coach's private-class debt being settled — created by
@@ -85,7 +160,8 @@ model ClassTemplate {
   startTime String // "HH:mm"
   endTime   String // "HH:mm"
   label     String
-  room      String   @default("Salle 1")
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id])
   isPrivate Boolean  @default(false)
   active    Boolean  @default(true)
   coachId   String? // default coach applied when a week is generated from this slot
@@ -93,6 +169,8 @@ model ClassTemplate {
   createdAt DateTime @default(now())
 
   instances ClassInstance[]
+
+  @@index([roomId])
 }
 
 model ClassInstance {
@@ -103,7 +181,8 @@ model ClassInstance {
   startTime         String // "HH:mm"
   endTime           String // "HH:mm"
   label             String
-  room              String         @default("Salle 1")
+  roomId            String
+  room              Room           @relation(fields: [roomId], references: [id])
   isPrivate         Boolean        @default(false)
   // A whole-team event (staff meeting, seminar, box party…) rather than a
   // class taught by one coach — created with coachId left null (see
@@ -135,6 +214,7 @@ model ClassInstance {
   @@index([date])
   @@index([coachId])
   @@index([substituteCoachId])
+  @@index([roomId])
 }
 
 // The head coach's structured observation of a delivered class — walks
@@ -192,9 +272,13 @@ model CoachWeeklyQuota {
 // src/lib/planning-lock.ts). The admin's own Planning page is unaffected;
 // deleting the row (via the Unlock action) re-opens the week.
 model PlanningWeek {
-  id          String   @id @default(cuid())
-  weekStart   DateTime @unique // Monday 00:00 of the validated week
-  validatedAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  // Plain column, not a Prisma relation — see Organization's comment above.
+  organizationId String
+  weekStart      DateTime // Monday 00:00 of the validated week
+  validatedAt    DateTime @default(now())
+
+  @@unique([organizationId, weekStart])
 }
 
 // A coach's self-report that they taught (or missed) a given class. Any
@@ -223,10 +307,14 @@ model ClassSubmission {
 // reopenDay reverses both (see lib/actions/planning.ts). Mirrors resetWeek's
 // "only touch PLANNED, leave resolved records alone" precedent.
 model BoxClosure {
-  id        String   @id @default(cuid())
-  date      DateTime @unique // date only
-  note      String?
-  createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  // Plain column, not a Prisma relation — see Organization's comment above.
+  organizationId String
+  date           DateTime // date only
+  note           String?
+  createdAt      DateTime @default(now())
+
+  @@unique([organizationId, date])
 }
 
 // A coach self-flagging that they won't be able to coach during a date

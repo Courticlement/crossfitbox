@@ -2,11 +2,13 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
+import { requireOrgAdmin } from "@/lib/auth-context";
+import type { PrismaClient } from "@/generated/prisma/client";
 
 const TemplateSchema = z.object({
   dayOfWeek: z.array(z.coerce.number().int().min(1).max(7)).min(1, "Pick at least one day"),
-  room: z.array(z.string().trim().min(1)).min(1, "Pick at least one room"),
+  roomId: z.array(z.string().trim().min(1)).min(1, "Pick at least one room"),
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
   label: z.string().trim().min(1, "Label is required"),
@@ -14,10 +16,27 @@ const TemplateSchema = z.object({
   coachId: z.string().trim().optional(),
 });
 
+// A submitted roomId/coachId is client-supplied and must never be trusted
+// without checking — a forged id from another box either fails this lookup
+// (Room/Coach both live in this organization's own Postgres schema) or, in
+// the worst case, is simply not found there at all.
+async function orgRoomIds(db: PrismaClient): Promise<Set<string>> {
+  const rooms = await db.room.findMany({ select: { id: true } });
+  return new Set(rooms.map((r) => r.id));
+}
+
+async function isOrgCoach(db: PrismaClient, coachId: string): Promise<boolean> {
+  const coach = await db.coach.findFirst({ where: { id: coachId } });
+  return coach !== null;
+}
+
 export async function createTemplate(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+
   const parsed = TemplateSchema.safeParse({
     dayOfWeek: formData.getAll("dayOfWeek"),
-    room: formData.getAll("room"),
+    roomId: formData.getAll("roomId"),
     startTime: formData.get("startTime"),
     endTime: formData.get("endTime"),
     label: formData.get("label"),
@@ -25,11 +44,14 @@ export async function createTemplate(formData: FormData) {
     coachId: formData.get("coachId") || undefined,
   });
   if (!parsed.success) return;
+  if (parsed.data.coachId && !(await isOrgCoach(prisma, parsed.data.coachId))) return;
 
-  const { dayOfWeek, room, ...rest } = parsed.data;
-  const data = dayOfWeek.flatMap((day) =>
-    room.map((r) => ({ ...rest, dayOfWeek: day, room: r }))
-  );
+  const validRoomIds = await orgRoomIds(prisma);
+  const { dayOfWeek, roomId, ...rest } = parsed.data;
+  const rooms = roomId.filter((r) => validRoomIds.has(r));
+  if (rooms.length === 0) return;
+
+  const data = dayOfWeek.flatMap((day) => rooms.map((r) => ({ ...rest, dayOfWeek: day, roomId: r })));
   await prisma.classTemplate.createMany({ data });
   revalidatePath("/admin/templates");
 }
@@ -37,7 +59,7 @@ export async function createTemplate(formData: FormData) {
 const UpdateTemplateSchema = z.object({
   id: z.string().min(1),
   dayOfWeek: z.coerce.number().int().min(1).max(7),
-  room: z.string().trim().min(1),
+  roomId: z.string().trim().min(1),
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
   label: z.string().trim().min(1, "Label is required"),
@@ -51,6 +73,9 @@ const UpdateTemplateSchema = z.object({
 // skipped rather than aborting the whole save, so one bad row doesn't block
 // the rest.
 export async function updateTemplates(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+  const validRoomIds = await orgRoomIds(prisma);
   const ids = Array.from(new Set(formData.getAll("ids").map(String)));
 
   await Promise.all(
@@ -58,16 +83,18 @@ export async function updateTemplates(formData: FormData) {
       const parsed = UpdateTemplateSchema.safeParse({
         id,
         dayOfWeek: formData.get(`dayOfWeek:${id}`),
-        room: formData.get(`room:${id}`),
+        roomId: formData.get(`roomId:${id}`),
         startTime: formData.get(`startTime:${id}`),
         endTime: formData.get(`endTime:${id}`),
         label: formData.get(`label:${id}`),
         coachId: formData.get(`coachId:${id}`) || undefined,
       });
       if (!parsed.success) return;
+      if (!validRoomIds.has(parsed.data.roomId)) return;
+      if (parsed.data.coachId && !(await isOrgCoach(prisma, parsed.data.coachId))) return;
 
       const { id: templateId, coachId, ...rest } = parsed.data;
-      await prisma.classTemplate.update({
+      await prisma.classTemplate.updateMany({
         where: { id: templateId },
         data: { ...rest, coachId: coachId || null },
       });
@@ -84,7 +111,11 @@ export async function updateTemplates(formData: FormData) {
 // touch anything already generated on the Planning page; that's a separate
 // per-week assignment (see assignCoach in actions/planning.ts).
 export async function resetAllTemplateCoaches() {
-  await prisma.classTemplate.updateMany({ data: { coachId: null } });
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+  await prisma.classTemplate.updateMany({
+    data: { coachId: null },
+  });
   revalidatePath("/admin/templates");
 }
 
@@ -100,9 +131,12 @@ export async function bulkAssignTemplateCoach(
   _prevState: BulkAssignTemplateCoachState,
   formData: FormData
 ): Promise<BulkAssignTemplateCoachState> {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
   const ids = formData.getAll("ids").map(String).filter(Boolean);
   const coachId = String(formData.get("coachId") ?? "").trim() || null;
   if (ids.length === 0) return { assigned: 0 };
+  if (coachId && !(await isOrgCoach(prisma, coachId))) return { assigned: 0 };
 
   const { count } = await prisma.classTemplate.updateMany({
     where: { id: { in: ids } },
@@ -114,11 +148,13 @@ export async function bulkAssignTemplateCoach(
 }
 
 export async function toggleTemplateActive(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
   const id = String(formData.get("id") ?? "");
   const active = formData.get("active") === "true";
   if (!id) return;
 
-  await prisma.classTemplate.update({
+  await prisma.classTemplate.updateMany({
     where: { id },
     data: { active: !active },
   });
@@ -126,9 +162,11 @@ export async function toggleTemplateActive(formData: FormData) {
 }
 
 export async function deleteTemplate(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
-  await prisma.classTemplate.delete({ where: { id } });
+  await prisma.classTemplate.deleteMany({ where: { id } });
   revalidatePath("/admin/templates");
 }

@@ -3,7 +3,9 @@ import Link from "next/link";
 import { addDays, formatDateISO } from "@/lib/dates";
 import { hexToRgba } from "@/lib/coach-colors";
 import { statusLabel } from "@/lib/status-labels";
-import { STATUS_BORDER, type WeekGridInstance } from "@/components/week-grid";
+import { STATUS_BORDER, type WeekGridInstance, type WeekGridRoom } from "@/components/week-grid";
+
+const DEFAULT_ROOM_COLOR = "#525252";
 
 // getUTCDay(): 0 = Sunday ... 6 = Saturday.
 const DAY_LETTERS = ["D", "L", "M", "M", "J", "V", "S"];
@@ -19,6 +21,7 @@ export function DayAgenda<T extends WeekGridInstance>({
   selectedDay,
   dayHrefs,
   instances,
+  rooms,
   headerAction,
   control,
   highlightInstanceId,
@@ -35,6 +38,7 @@ export function DayAgenda<T extends WeekGridInstance>({
   // preserve whatever other filters/params are already on the page.
   dayHrefs: Record<string, string>;
   instances: T[];
+  rooms: WeekGridRoom[];
   headerAction?: (inst: T) => ReactNode;
   control?: (inst: T) => ReactNode;
   highlightInstanceId?: string | null;
@@ -43,6 +47,7 @@ export function DayAgenda<T extends WeekGridInstance>({
   emptyLabel?: string;
 }) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const roomById = new Map(rooms.map((r) => [r.id, r]));
   const selectedISO = formatDateISO(selectedDay);
   const dayInstances = instances
     .filter((inst) => formatDateISO(inst.date) === selectedISO)
@@ -85,6 +90,7 @@ export function DayAgenda<T extends WeekGridInstance>({
       ) : (
         <div className="flex flex-col gap-2.5">
           {dayInstances.map((inst) => {
+            const room = roomById.get(inst.roomId);
             const isHighlighted = highlightInstanceId != null && inst.id === highlightInstanceId;
             const coachUnavailable = unavailableInstanceIds?.has(inst.id) ?? false;
             // Same "still needs a coach" definition as WeekGrid — still
@@ -134,18 +140,18 @@ export function DayAgenda<T extends WeekGridInstance>({
                     <span className="font-mono text-sm font-semibold text-white">
                       {inst.startTime}–{inst.endTime}
                     </span>
-                    {/* Room badge — colored the same as WeekGrid's own
-                        sky/violet lanes, so "which room" reads at a glance
-                        here too instead of being buried in the small gray
-                        meta line below the label. */}
+                    {/* Room badge — colored to match this room's own
+                        WeekGrid lane tint, so "which room" reads at a
+                        glance here too instead of being buried in the small
+                        gray meta line below the label. */}
                     <span
-                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                        inst.room === "Salle 1"
-                          ? "bg-sky-500/20 text-sky-300"
-                          : "bg-violet-500/20 text-violet-300"
-                      }`}
+                      className="rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                      style={{
+                        backgroundColor: hexToRgba(room?.color ?? DEFAULT_ROOM_COLOR, 0.2) ?? undefined,
+                        color: room?.color ?? DEFAULT_ROOM_COLOR,
+                      }}
                     >
-                      {inst.room}
+                      {room?.name ?? ""}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">

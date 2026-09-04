@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
 import { toDateOnly } from "@/lib/dates";
 
 export type PendingUnavailability = {
@@ -16,10 +16,15 @@ export type PendingUnavailability = {
 // the admin to plan around, so it just ages off instead of needing a
 // manual dismiss. Recurring entries never age off this way since they're
 // standing weekly time off with no end.
-export async function getPendingUnavailability(): Promise<PendingUnavailability[]> {
+export async function getPendingUnavailability(
+  organizationId: string
+): Promise<PendingUnavailability[]> {
   const today = toDateOnly(new Date());
-  return prisma.unavailability.findMany({
-    where: { acknowledgedAt: null, OR: [{ recurring: true }, { endDate: { gte: today } }] },
+  return tenantPrisma(organizationId).unavailability.findMany({
+    where: {
+      acknowledgedAt: null,
+      OR: [{ recurring: true }, { endDate: { gte: today } }],
+    },
     select: {
       id: true,
       startDate: true,

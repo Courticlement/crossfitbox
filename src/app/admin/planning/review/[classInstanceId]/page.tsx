@@ -1,17 +1,19 @@
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
 import { formatDayLabel } from "@/lib/dates";
 import { ReviewWizard } from "@/components/review-wizard";
+import { requireOrgAdmin } from "@/lib/auth-context";
 
 export default async function NewClassReviewPage({
   params,
   searchParams,
 }: PageProps<"/admin/planning/review/[classInstanceId]">) {
+  const { organizationId } = await requireOrgAdmin();
   const { classInstanceId } = await params;
   const search = await searchParams;
   const week = typeof search?.week === "string" ? search.week : "";
 
-  const instance = await prisma.classInstance.findUnique({
+  const instance = await tenantPrisma(organizationId).classInstance.findFirst({
     where: { id: classInstanceId },
     include: { coach: true, review: true },
   });

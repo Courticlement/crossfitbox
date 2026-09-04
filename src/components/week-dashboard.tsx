@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { DashboardCoachCards } from "@/components/dashboard-coach-cards";
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
 import {
   startOfWeekMonday,
   addDays,
@@ -16,12 +16,15 @@ import { groupClassRate, PRIVATE_CLASS_COST_EUR } from "@/lib/coach-levels";
 const PRIVATE_CLASS_WEEKLY_LIMIT = 10;
 
 export async function WeekDashboard({
+  organizationId,
   weekParam,
   digestStatus,
 }: {
+  organizationId: string;
   weekParam?: string;
   digestStatus?: string;
 }) {
+  const prisma = tenantPrisma(organizationId);
   const requested = (weekParam && parseDateOnly(weekParam)) || toDateOnly(new Date());
   const weekStart = startOfWeekMonday(requested);
   const weekEnd = addDays(weekStart, 7);
@@ -39,18 +42,24 @@ export async function WeekDashboard({
       where: { date: { gte: weekStart, lt: weekEnd } },
     }),
     prisma.coachWeeklyQuota.findMany({ where: { weekStart } }),
-    prisma.planningWeek.findUnique({ where: { weekStart } }),
+    prisma.planningWeek.findUnique({ where: { organizationId_weekStart: { organizationId, weekStart } } }),
     // Scoped to this week, same as Faits/Prévus below — the count in the
     // Review column and the "last review" it links to both come from here.
     prisma.classReview.findMany({
-      where: { classInstance: { date: { gte: weekStart, lt: weekEnd } } },
+      where: {
+        classInstance: { date: { gte: weekStart, lt: weekEnd } },
+      },
       select: { id: true, classInstance: { select: { coachId: true, date: true } } },
       orderBy: { classInstance: { date: "desc" } },
     }),
     // A coach with no review this week links to their next scheduled class
     // instead — which can easily fall in a different, later week.
     prisma.classInstance.findMany({
-      where: { coachId: { not: null }, status: "PLANNED", date: { gte: today } },
+      where: {
+        coachId: { not: null },
+        status: "PLANNED",
+        date: { gte: today },
+      },
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
       select: { id: true, coachId: true, date: true, startTime: true, label: true },
     }),

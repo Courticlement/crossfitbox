@@ -5,8 +5,8 @@ import { getPrevWeekAlert } from "@/lib/prev-week-alert";
 // Standing reminder shown near the top of every admin tab (besides the
 // Dashboard, which gets a more prominent version of the same alert — see
 // PrevWeekAlertCard) when last week's planning still hasn't been validated.
-export async function PrevWeekBanner() {
-  const { show, prevWeekStart, unreported } = await getPrevWeekAlert();
+export async function PrevWeekBanner({ organizationId }: { organizationId: string }) {
+  const { show, prevWeekStart, unreported } = await getPrevWeekAlert(organizationId);
   if (!show) return null;
 
   return (

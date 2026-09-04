@@ -3,7 +3,8 @@
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
+import { requireOrgAdmin } from "@/lib/auth-context";
 
 const PillarValue = z.enum(["ok", "mid", "bad"]);
 const PastilleValue = z.enum(["green", "yellow", "orange", "red"]);
@@ -40,6 +41,9 @@ export type CreateClassReviewResult = { error?: string };
 export async function createClassReview(
   formData: FormData
 ): Promise<CreateClassReviewResult> {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+
   const raw = Object.fromEntries(formData.entries());
   const parsed = ClassReviewSchema.safeParse(raw);
   if (!parsed.success) {
@@ -48,7 +52,7 @@ export async function createClassReview(
 
   const { classInstanceId, ...data } = parsed.data;
 
-  const instance = await prisma.classInstance.findUnique({
+  const instance = await prisma.classInstance.findFirst({
     where: { id: classInstanceId },
     select: { id: true, review: { select: { id: true } } },
   });
@@ -70,12 +74,17 @@ export async function createClassReview(
 // review detail page too, which passes redirectTo since there's no list to
 // stay on afterward.
 export async function deleteClassReviews(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+
   const ids = formData
     .getAll("ids")
     .filter((v): v is string => typeof v === "string" && v.length > 0);
 
   if (ids.length > 0) {
-    await prisma.classReview.deleteMany({ where: { id: { in: ids } } });
+    await prisma.classReview.deleteMany({
+      where: { id: { in: ids } },
+    });
   }
 
   revalidatePath("/admin/planning");

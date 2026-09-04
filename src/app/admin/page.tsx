@@ -6,6 +6,7 @@ import { WeekDashboard } from "@/components/week-dashboard";
 import { MonthDashboard } from "@/components/month-dashboard";
 import { YearDashboard } from "@/components/year-dashboard";
 import { UnavailabilityAlert } from "@/components/unavailability-alert";
+import { requireOrgAdmin } from "@/lib/auth-context";
 
 function tabClass(active: boolean): string {
   return `rounded px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -24,7 +25,8 @@ export default async function AdminDashboardPage({
   const yearParam = typeof params?.year === "string" ? params.year : undefined;
   const digestStatus = typeof params?.digest === "string" ? params.digest : undefined;
 
-  const prevWeekAlert = await getPrevWeekAlert();
+  const { organizationId } = await requireOrgAdmin();
+  const prevWeekAlert = await getPrevWeekAlert(organizationId);
 
   return (
     <div className="text-neutral-300">
@@ -76,7 +78,7 @@ export default async function AdminDashboardPage({
         </div>
       )}
 
-      <UnavailabilityAlert />
+      <UnavailabilityAlert organizationId={organizationId} />
 
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-white">Tableau de bord</h1>
@@ -94,11 +96,15 @@ export default async function AdminDashboardPage({
       </div>
 
       {view === "week" ? (
-        <WeekDashboard weekParam={weekParam} digestStatus={digestStatus} />
+        <WeekDashboard
+          organizationId={organizationId}
+          weekParam={weekParam}
+          digestStatus={digestStatus}
+        />
       ) : view === "month" ? (
-        <MonthDashboard monthParam={monthParam} />
+        <MonthDashboard organizationId={organizationId} monthParam={monthParam} />
       ) : (
-        <YearDashboard yearParam={yearParam} />
+        <YearDashboard organizationId={organizationId} yearParam={yearParam} />
       )}
     </div>
   );

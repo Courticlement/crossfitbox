@@ -5,13 +5,26 @@ export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (pathname.startsWith("/admin")) {
-    const ok = await verifyAdminSessionToken(req.cookies.get(ADMIN_COOKIE)?.value);
-    if (!ok) return redirectTo(req, "/admin-login");
+    const session = await verifyAdminSessionToken(req.cookies.get(ADMIN_COOKIE)?.value);
+    if (!session) return redirectTo(req, "/admin-login");
+    // A PLATFORM_SUPERADMIN belongs to no box — they manage Organizations
+    // from /superadmin instead and never see a box's own /admin.
+    if (session.organizationId === null) return redirectTo(req, "/superadmin");
+    if (pathname.startsWith("/admin/admins") && session.role !== "SUPERADMIN") {
+      return redirectTo(req, "/admin");
+    }
+  }
+
+  if (pathname.startsWith("/superadmin")) {
+    const session = await verifyAdminSessionToken(req.cookies.get(ADMIN_COOKIE)?.value);
+    if (!session) return redirectTo(req, "/admin-login");
+    // An org admin has nothing to do on the platform-level screen.
+    if (session.organizationId !== null) return redirectTo(req, "/admin");
   }
 
   if (pathname.startsWith("/upload")) {
-    const coachId = await verifyCoachSessionToken(req.cookies.get(COACH_COOKIE)?.value);
-    if (!coachId) return redirectTo(req, "/login");
+    const coachSession = await verifyCoachSessionToken(req.cookies.get(COACH_COOKIE)?.value);
+    if (!coachSession) return redirectTo(req, "/login");
   }
 
   return NextResponse.next();
@@ -25,5 +38,5 @@ function redirectTo(req: NextRequest, path: string) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/upload/:path*"],
+  matcher: ["/admin/:path*", "/superadmin/:path*", "/upload/:path*"],
 };

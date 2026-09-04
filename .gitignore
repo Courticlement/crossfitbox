@@ -48,6 +48,9 @@ next-env.d.ts
 /dev.db.bak-*
 .prisma/
 
+# database backups — contain real data (password hashes etc.), never commit
+/backups/
+
 # Prisma Compute — local build/deploy state, never committed
 .prisma-composer/
 

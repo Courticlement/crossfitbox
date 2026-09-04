@@ -1,9 +1,16 @@
 import ExcelJS from "exceljs";
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
 import { addDays, formatDateISO, parseDateOnly, toDateOnly } from "@/lib/dates";
 import { statusLabel } from "@/lib/status-labels";
+import { requireOrgAdmin } from "@/lib/auth-context";
 
 export async function GET(request: Request) {
+  // A Route Handler is just a GET endpoint — proxy.ts gates the /admin/*
+  // page, not this route directly, so it re-checks like every other
+  // org-scoped action/page.
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+
   const url = new URL(request.url);
   const coachIdFilter = url.searchParams.get("coachId") ?? "";
   const statusFilter = url.searchParams.get("status") ?? "";
@@ -26,11 +33,13 @@ export async function GET(request: Request) {
   const [instances, submissions] = await Promise.all([
     prisma.classInstance.findMany({
       where: instanceWhere,
-      include: { coach: true, substituteCoach: true },
+      include: { coach: true, substituteCoach: true, room: true },
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
     }),
     prisma.classSubmission.findMany({
-      where: { classInstance: { date: { gte: from, lt: toExclusive } } },
+      where: {
+        classInstance: { date: { gte: from, lt: toExclusive } },
+      },
       include: { coach: true, classInstance: true },
       orderBy: [{ classInstance: { date: "asc" } }, { updatedAt: "asc" }],
     }),
@@ -57,7 +66,7 @@ export async function GET(request: Request) {
       date: inst.date,
       start: inst.startTime,
       end: inst.endTime,
-      room: inst.room,
+      room: inst.room.name,
       label: inst.label,
       type: inst.isPrivate ? "Privé" : "Collectif",
       coach: inst.coach?.name ?? "",

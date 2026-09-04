@@ -2,8 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { Resend } from "resend";
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
 import { addDays, formatDayLabel, parseDateOnly } from "@/lib/dates";
+import { requireOrgAdmin } from "@/lib/auth-context";
 
 type DigestRow = {
   name: string;
@@ -60,6 +61,8 @@ function renderDigestHtml(rows: DigestRow[], weekStart: Date): string {
 }
 
 export async function sendWeeklyDigest(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
   const weekStartStr = String(formData.get("weekStart") ?? "");
   const weekStart = parseDateOnly(weekStartStr);
   if (!weekStart) return;

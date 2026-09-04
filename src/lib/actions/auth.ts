@@ -1,54 +1,54 @@
 "use server";
 
-import { createHash, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { prisma, tenantPrisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
 import {
   ADMIN_COOKIE,
   COACH_COOKIE,
+  IMPERSONATOR_COOKIE,
+  SESSION_COOKIE_OPTIONS,
   createAdminSessionToken,
   createCoachSessionToken,
 } from "@/lib/session";
 
 export type AuthActionState = { error: string | null };
 
-// Mirrors SESSION_MAX_AGE_MS in lib/session.ts — the cookie's own expiry and
-// the signed token's embedded expiry should agree.
-const SESSION_COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
-  path: "/",
-  maxAge: 60 * 60 * 24 * 30, // 30 days, in seconds
-};
-
-// Constant-time string comparison (via digest, so unequal-length inputs
-// don't throw or short-circuit) — the admin password is a single shared
-// secret, worth the same care as a per-user password.
-function safeEqual(a: string, b: string): boolean {
-  const ah = createHash("sha256").update(a).digest();
-  const bh = createHash("sha256").update(b).digest();
-  return timingSafeEqual(ah, bh);
-}
-
 export async function adminLogin(
   _prevState: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
+  const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected || !password || !safeEqual(password, expected)) {
-    return { error: "Mot de passe incorrect" };
+  if (!email || !password) return { error: "Email ou mot de passe incorrect" };
+
+  const admin = await prisma.admin.findFirst({
+    where: { email: { equals: email, mode: "insensitive" } },
+  });
+  // Same generic error whether the email doesn't exist, is archived, or the
+  // password is wrong — never reveal which (mirrors coachLogin below).
+  if (!admin || admin.archived || !verifyPassword(password, admin.passwordHash)) {
+    return { error: "Email ou mot de passe incorrect" };
   }
 
-  (await cookies()).set(ADMIN_COOKIE, await createAdminSessionToken(), SESSION_COOKIE_OPTIONS);
-  redirect("/admin");
+  (await cookies()).set(
+    ADMIN_COOKIE,
+    await createAdminSessionToken(admin.id, admin.role, admin.organizationId),
+    SESSION_COOKIE_OPTIONS
+  );
+  // A PLATFORM_SUPERADMIN (organizationId null) belongs to no box — send
+  // them straight to the Organizations screen instead of a box dashboard.
+  redirect(admin.organizationId ? "/admin" : "/superadmin");
 }
 
 export async function adminLogout() {
-  (await cookies()).delete(ADMIN_COOKIE);
+  const jar = await cookies();
+  jar.delete(ADMIN_COOKIE);
+  // Logging out while impersonating (instead of using stopImpersonating)
+  // shouldn't leave the platform-superadmin's stashed token sitting in a
+  // cookie indefinitely.
+  jar.delete(IMPERSONATOR_COOKIE);
   redirect("/admin-login");
 }
 
@@ -56,15 +56,27 @@ export async function coachLogin(
   _prevState: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
+  const organizationId = String(formData.get("organizationId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  if (!name || !password) return { error: "Entrez votre nom et votre mot de passe" };
+  if (!organizationId || !name || !password) {
+    return { error: "Choisissez votre box, puis entrez votre nom et votre mot de passe" };
+  }
 
-  const coach = await prisma.coach.findFirst({
+  // Coach.name is only unique within an organization (two boxes can each
+  // have a coach with the same name) — organizationId (picked from the
+  // form's box selector) is required to find the right one, and to know
+  // which organization's own Postgres schema even has a Coach table to
+  // query (see tenantPrisma in lib/prisma.ts) — Coach doesn't live in the
+  // shared control-plane schema the way Organization/Admin do.
+  const org = await prisma.organization.findUnique({ where: { id: organizationId } });
+  if (!org) return { error: "Nom ou mot de passe incorrect" };
+
+  const coach = await tenantPrisma(organizationId).coach.findFirst({
     where: { name: { equals: name, mode: "insensitive" } },
   });
-  // Same generic error whether the name doesn't exist, is archived, has no
-  // password set yet, or the password is wrong — never reveal which.
+  // Same generic error whether the box/name doesn't match, is archived, has
+  // no password set yet, or the password is wrong — never reveal which.
   if (
     !coach ||
     coach.archived ||
@@ -76,7 +88,7 @@ export async function coachLogin(
 
   (await cookies()).set(
     COACH_COOKIE,
-    await createCoachSessionToken(coach.id),
+    await createCoachSessionToken(coach.id, organizationId),
     SESSION_COOKIE_OPTIONS
   );
   redirect("/upload");

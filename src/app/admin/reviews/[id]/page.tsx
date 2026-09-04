@@ -1,20 +1,22 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
 import { formatDayLabel } from "@/lib/dates";
 import { ReviewRecap } from "@/components/review-recap";
 import { DeleteReviewButton } from "@/components/delete-review-button";
 import { PILLARS, PILLAR_COLUMN, type PillarKey, type PillarRating } from "@/lib/review-constants";
+import { requireOrgAdmin } from "@/lib/auth-context";
 
 export default async function ReviewDetailPage({
   params,
   searchParams,
 }: PageProps<"/admin/reviews/[id]">) {
+  const { organizationId } = await requireOrgAdmin();
   const { id } = await params;
   const search = await searchParams;
   const justCreated = search?.created === "1";
 
-  const review = await prisma.classReview.findUnique({
+  const review = await tenantPrisma(organizationId).classReview.findFirst({
     where: { id },
     include: { classInstance: { include: { coach: true } } },
   });

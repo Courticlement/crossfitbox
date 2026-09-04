@@ -1,7 +1,6 @@
 "use client";
 
 import { dayName } from "@/lib/dates";
-import { ROOMS } from "@/lib/rooms";
 
 export function TemplateFilters({
   dayOfWeek,
@@ -9,12 +8,14 @@ export function TemplateFilters({
   coachId,
   status,
   coaches,
+  rooms,
 }: {
   dayOfWeek: string;
   room: string;
   coachId: string;
   status: string;
   coaches: { id: string; name: string }[];
+  rooms: { id: string; name: string }[];
 }) {
   const hasFilters = dayOfWeek || room || coachId || status;
 
@@ -45,9 +46,9 @@ export function TemplateFilters({
           className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
         >
           <option value="">Toutes les salles</option>
-          {ROOMS.map((r) => (
-            <option key={r} value={r}>
-              {r}
+          {rooms.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
             </option>
           ))}
         </select>

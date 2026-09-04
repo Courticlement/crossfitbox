@@ -1,19 +1,19 @@
 "use client";
 
-import { ROOMS } from "@/lib/rooms";
-
 export function PlanningFilters({
   week,
   coachId,
   type,
   room,
   coaches,
+  rooms,
 }: {
   week: string;
   coachId: string;
   type: string;
   room: string;
   coaches: { id: string; name: string }[];
+  rooms: { id: string; name: string }[];
 }) {
   return (
     <form method="get" className="mb-6 flex flex-wrap items-end gap-3">
@@ -57,9 +57,9 @@ export function PlanningFilters({
           className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
         >
           <option value="">Toutes les salles</option>
-          {ROOMS.map((r) => (
-            <option key={r} value={r}>
-              {r}
+          {rooms.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
             </option>
           ))}
         </select>

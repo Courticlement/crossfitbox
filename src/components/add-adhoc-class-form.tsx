@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { addAdHocClass } from "@/lib/actions/planning";
 import { addDays, formatDateISO } from "@/lib/dates";
-import { ROOMS } from "@/lib/rooms";
 
 // A team event has no single coach, so checking it disables (and visually
 // clears) the coach field instead of leaving a stale selection that looks
@@ -12,9 +11,11 @@ import { ROOMS } from "@/lib/rooms";
 export function AddAdHocClassForm({
   weekStart,
   coaches,
+  rooms,
 }: {
   weekStart: Date;
   coaches: { id: string; name: string; archived: boolean }[];
+  rooms: { id: string; name: string }[];
 }) {
   const [isTeamEvent, setIsTeamEvent] = useState(false);
 
@@ -46,7 +47,7 @@ export function AddAdHocClassForm({
           />
         </div>
         <select
-          name="room"
+          name="roomId"
           required
           defaultValue=""
           className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
@@ -54,9 +55,9 @@ export function AddAdHocClassForm({
           <option value="" disabled>
             Salle
           </option>
-          {ROOMS.map((room) => (
-            <option key={room} value={room}>
-              {room}
+          {rooms.map((room) => (
+            <option key={room.id} value={room.id}>
+              {room.name}
             </option>
           ))}
         </select>
