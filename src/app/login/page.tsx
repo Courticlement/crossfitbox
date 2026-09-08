@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { CoachLoginForm } from "@/components/coach-login-form";
 
+// Without this, Next would statically prerender the page and freeze the
+// box list at build time — same reasoning as every admin list page (see
+// /admin/coaches, /admin/rooms, /superadmin/organizations/[id]).
+export const dynamic = "force-dynamic";
+
 // Coach.name is only unique within an organization, not globally (two boxes
 // can each have a coach with the same name) — the login form needs the
 // coach to pick their box first. This list is just names, safe to expose
