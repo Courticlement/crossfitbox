@@ -1,4 +1,5 @@
 import { timeToMinutes } from "@/lib/calendar-layout";
+import { formatDateISO, startOfWeekMonday } from "@/lib/dates";
 import { PRIVATE_CLASS_COST_EUR } from "@/lib/coach-levels";
 
 export type ClassInstanceForStats = {
@@ -25,8 +26,9 @@ export type CoachStats = {
   averageHoursPerMonth: number | null;
   privateClassesDone: number;
   // € owed for group classes this coach delivered — hours the head coach
-  // has marked Fait (see bulkSetClassStatus), at the coach's hourly rate.
-  // Private classes are never paid through this rate.
+  // has marked Fait in a week that's been validated (see bulkSetClassStatus
+  // / validateWeek), at the coach's hourly rate. Private classes are never
+  // paid through this rate.
   amountThisMonth: number;
   amountLastMonth: number;
   // € the coach owes the box for private classes delivered this/last month
@@ -89,6 +91,7 @@ export function computeCoachStats(
   // groupClassRate) rather than this function looking it up itself. Used
   // whenever a class has no paidRate snapshot of its own.
   rate: number,
+  validatedWeekStarts: ReadonlySet<string>,
   // Only private classes delivered after this date count toward
   // privateBalance — null (never paid) counts the whole history.
   privateBalancePaidAt: Date | null,
@@ -154,18 +157,21 @@ export function computeCoachStats(
           }
         }
       } else {
-        // The snapshot taken when this class was validated (see
-        // ClassInstanceForStats.paidRate) wins over the coach's current
-        // rate — only a class with no snapshot (or a MISSED class credited
-        // to a substitute, which was never itself validated) falls back to
-        // the live rate passed in.
-        const effectiveRate = inst.status === "DONE" ? (inst.paidRate ?? rate) : rate;
-        const amount = effectiveRate * duration;
-        if (inst.date >= currentMonthStart && inst.date < nextMonthStart) {
-          amountThisMonth += amount;
-        }
-        if (inst.date >= lastMonthStart && inst.date < currentMonthStart) {
-          amountLastMonth += amount;
+        const weekStartStr = formatDateISO(startOfWeekMonday(inst.date));
+        if (validatedWeekStarts.has(weekStartStr)) {
+          // The snapshot taken when this class was validated (see
+          // ClassInstanceForStats.paidRate) wins over the coach's current
+          // rate — only a class with no snapshot (or a MISSED class
+          // credited to a substitute, which was never itself validated)
+          // falls back to the live rate passed in.
+          const effectiveRate = inst.status === "DONE" ? (inst.paidRate ?? rate) : rate;
+          const amount = effectiveRate * duration;
+          if (inst.date >= currentMonthStart && inst.date < nextMonthStart) {
+            amountThisMonth += amount;
+          }
+          if (inst.date >= lastMonthStart && inst.date < currentMonthStart) {
+            amountLastMonth += amount;
+          }
         }
       }
     }

@@ -42,12 +42,13 @@ export async function PrivatePaymentAlert({ organizationId }: { organizationId: 
   const owing = coaches
     .map((coach) => ({
       coach,
-      // rate is irrelevant here — only the private-class fields of the
-      // result are used.
+      // rate/validatedWeekStarts are irrelevant here — only the private-class
+      // fields of the result are used.
       amount: computeCoachStats(
         coach.id,
         instancesByCoach.get(coach.id) ?? [],
         0,
+        new Set<string>(),
         coach.privateBalancePaidAt
       ).privateBalanceLastMonth,
     }))

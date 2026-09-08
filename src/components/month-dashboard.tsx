@@ -55,11 +55,16 @@ export async function MonthDashboard({
 
   const today = toDateOnly(new Date());
 
-  const [coaches, instances, monthReviews, upcomingClasses] = await Promise.all([
+  const [coaches, instances, planningWeeks, monthReviews, upcomingClasses] = await Promise.all([
     prisma.coach.findMany({ orderBy: { name: "asc" } }),
     prisma.classInstance.findMany({
       where: { date: { gte: monthStart, lt: monthEnd } },
     }),
+    // A calendar month's edge weeks can straddle the month boundary (e.g. a
+    // week starting the last Monday of the prior month) — fetching every
+    // validated week rather than just ones inside [monthStart, monthEnd)
+    // means each class is still checked against its own actual week.
+    prisma.planningWeek.findMany({ select: { weekStart: true } }),
     // Scoped to this month, same as Faits/Prévus below.
     prisma.classReview.findMany({
       where: {
@@ -80,6 +85,7 @@ export async function MonthDashboard({
       select: { id: true, coachId: true, date: true, startTime: true, label: true },
     }),
   ]);
+  const validatedWeekStarts = new Set(planningWeeks.map((w) => formatDateISO(w.weekStart)));
 
   const activeInstances = instances.filter((i) => i.status !== "CANCELLED");
   const totalClasses = activeInstances.length;
@@ -108,13 +114,21 @@ export async function MonthDashboard({
     const privateDone = coachInstances.filter(
       (i) => i.status === "DONE" && i.isPrivate
     ).length;
-    // Group classes are paid on the hours the head coach has marked Fait
-    // (see bulkSetClassStatus/validateWeek), at the rate snapshotted on each
-    // class the moment it was validated (paidRate) — so a later change to
-    // Coach.rate never retroactively changes already-validated pay.
+    // Group classes are paid on hours marked Fait, only for a class whose
+    // own week the head coach has locked via "Valider le planning" — a
+    // month can mix locked and not-yet-locked weeks, so this is checked per
+    // class, not per month. Each hour is paid at the rate snapshotted on
+    // that class when it was validated (paidRate), not the coach's live
+    // rate, so a later Coach.rate change never retroactively changes
+    // already-validated pay.
     const fallbackRate = coach.rate ?? groupClassRate(coach.level);
     const groupAmount = coachInstances
-      .filter((i) => i.status === "DONE" && !i.isPrivate)
+      .filter(
+        (i) =>
+          i.status === "DONE" &&
+          !i.isPrivate &&
+          validatedWeekStarts.has(formatDateISO(startOfWeekMonday(i.date)))
+      )
       .reduce(
         (sum, i) => sum + classDurationHours(i.startTime, i.endTime) * (i.paidRate ?? fallbackRate),
         0
@@ -258,7 +272,7 @@ export async function MonthDashboard({
               <th className="px-4 py-2 font-medium">Privés</th>
               <th
                 className="px-4 py-2 font-medium"
-                title="Heures de cours collectifs marquées Fait, au tarif horaire du coach, moins le coût des cours privés"
+                title="Heures de cours collectifs marquées Fait dans une semaine validée (Valider le planning), au tarif horaire du coach, moins le coût des cours privés"
               >
                 Net €
               </th>
