@@ -214,6 +214,14 @@ model ClassInstance {
   substituteCoachId String?
   substituteCoach   Coach?         @relation("SubstituteCoach", fields: [substituteCoachId], references: [id], onDelete: SetNull)
   status            String         @default("PLANNED") // "PLANNED" | "DONE" | "MISSED" | "CANCELLED"
+  // € per hour this class was paid at, snapshotted the moment it was marked
+  // Fait (see bulkSetClassStatus/validateWeek in actions/planning.ts) — so
+  // a later change to Coach.rate (or the CrossFit-level default) never
+  // retroactively changes pay that's already been validated. Cleared
+  // whenever status moves off Fait; null also covers a class marked Fait
+  // before this field existed, in which case Net falls back to the coach's
+  // live rate (see coach-stats.ts).
+  paidRate          Int?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 

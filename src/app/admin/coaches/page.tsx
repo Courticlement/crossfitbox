@@ -287,6 +287,7 @@ export default async function CoachesPage() {
         endTime: true,
         status: true,
         isPrivate: true,
+        paidRate: true,
       },
     }),
   ]);

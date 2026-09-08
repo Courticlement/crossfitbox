@@ -105,16 +105,20 @@ export async function MonthDashboard({
     const heuresFixes = activeCoachInstances
       .filter((i) => isoWeekday(i.date) <= 5)
       .reduce((sum, i) => sum + classDurationHours(i.startTime, i.endTime), 0);
-    // Net € keys off delivered (DONE) classes, same as before — only the
-    // hours columns above count scheduled-but-not-yet-done classes too. Paid
-    // by the hour now (see Coach.rate), not per class.
-    const doneHours = coachInstances
-      .filter((i) => i.status === "DONE" && !i.isPrivate)
-      .reduce((sum, i) => sum + classDurationHours(i.startTime, i.endTime), 0);
     const privateDone = coachInstances.filter(
       (i) => i.status === "DONE" && i.isPrivate
     ).length;
-    const groupAmount = doneHours * (coach.rate ?? groupClassRate(coach.level));
+    // Group classes are paid on the hours the head coach has marked Fait
+    // (see bulkSetClassStatus/validateWeek), at the rate snapshotted on each
+    // class the moment it was validated (paidRate) — so a later change to
+    // Coach.rate never retroactively changes already-validated pay.
+    const fallbackRate = coach.rate ?? groupClassRate(coach.level);
+    const groupAmount = coachInstances
+      .filter((i) => i.status === "DONE" && !i.isPrivate)
+      .reduce(
+        (sum, i) => sum + classDurationHours(i.startTime, i.endTime) * (i.paidRate ?? fallbackRate),
+        0
+      );
     const privateCost = privateDone * PRIVATE_CLASS_COST_EUR;
     const netAmount = groupAmount - privateCost;
     // This coach's reviews this month, most recent first.

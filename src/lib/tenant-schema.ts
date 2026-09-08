@@ -90,6 +90,7 @@ export function tenantTableDdl(schema: string): string[] {
       "coachId" TEXT,
       "substituteCoachId" TEXT,
       "status" TEXT NOT NULL DEFAULT 'PLANNED',
+      "paidRate" INTEGER,
       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" TIMESTAMP(3) NOT NULL,
       CONSTRAINT "ClassInstance_pkey" PRIMARY KEY ("id")

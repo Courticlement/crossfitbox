@@ -52,14 +52,18 @@ export async function weeklyDigestRows(
     const heuresFixes = activeCoachInstances
       .filter((i) => isoWeekday(i.date) <= 5)
       .reduce((sum, i) => sum + classDurationHours(i.startTime, i.endTime), 0);
-    // Net € keys off delivered (DONE) classes, paid by the hour at the
-    // coach's rate (see Coach.rate) — same as week-dashboard.tsx.
-    const doneHours = coachInstances
-      .filter((i) => i.status === "DONE" && !i.isPrivate)
-      .reduce((sum, i) => sum + classDurationHours(i.startTime, i.endTime), 0);
+    // Net € keys off delivered (DONE) classes, paid at the rate snapshotted
+    // on each class when it was validated (paidRate) — same as
+    // week-dashboard.tsx.
     const privateDone = coachInstances.filter((i) => i.status === "DONE" && i.isPrivate).length;
     const reviewCount = weekReviews.filter((r) => r.classInstance.coachId === coach.id).length;
-    const groupAmount = doneHours * (coach.rate ?? groupClassRate(coach.level));
+    const fallbackRate = coach.rate ?? groupClassRate(coach.level);
+    const groupAmount = coachInstances
+      .filter((i) => i.status === "DONE" && !i.isPrivate)
+      .reduce(
+        (sum, i) => sum + classDurationHours(i.startTime, i.endTime) * (i.paidRate ?? fallbackRate),
+        0
+      );
     const privateCost = privateDone * PRIVATE_CLASS_COST_EUR;
     const netAmount = groupAmount - privateCost;
     return { name: coach.name, totalHours, heuresFixes, reviewCount, privateDone, netAmount };
@@ -97,12 +101,15 @@ export async function monthlyDigestRows(
     const heuresFixes = activeCoachInstances
       .filter((i) => isoWeekday(i.date) <= 5)
       .reduce((sum, i) => sum + classDurationHours(i.startTime, i.endTime), 0);
-    const doneHours = coachInstances
-      .filter((i) => i.status === "DONE" && !i.isPrivate)
-      .reduce((sum, i) => sum + classDurationHours(i.startTime, i.endTime), 0);
     const privateDone = coachInstances.filter((i) => i.status === "DONE" && i.isPrivate).length;
     const reviewCount = monthReviews.filter((r) => r.classInstance.coachId === coach.id).length;
-    const groupAmount = doneHours * (coach.rate ?? groupClassRate(coach.level));
+    const fallbackRate = coach.rate ?? groupClassRate(coach.level);
+    const groupAmount = coachInstances
+      .filter((i) => i.status === "DONE" && !i.isPrivate)
+      .reduce(
+        (sum, i) => sum + classDurationHours(i.startTime, i.endTime) * (i.paidRate ?? fallbackRate),
+        0
+      );
     const privateCost = privateDone * PRIVATE_CLASS_COST_EUR;
     const netAmount = groupAmount - privateCost;
     return { name: coach.name, totalHours, heuresFixes, reviewCount, privateDone, netAmount };

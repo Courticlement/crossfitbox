@@ -9,6 +9,11 @@ export type ClassInstanceForStats = {
   isPrivate: boolean;
   coachId: string | null;
   substituteCoachId: string | null;
+  // € per hour this class was paid at, snapshotted when it was marked Fait
+  // (see bulkSetClassStatus/validateWeek in actions/planning.ts) — null for
+  // a class marked Fait before this field existed, or one that's never
+  // been Fait.
+  paidRate: number | null;
 };
 
 export type CoachStats = {
@@ -79,9 +84,10 @@ export function computeMonthlyHoursByCoach(
 export function computeCoachStats(
   coachId: string,
   instances: ClassInstanceForStats[],
-  // € per hour of group class delivered — the caller resolves this
+  // Fallback € per hour of group class delivered — the caller resolves this
   // (coach.rate, or the CrossFit-level default when unset; see
-  // groupClassRate) rather than this function looking it up itself.
+  // groupClassRate) rather than this function looking it up itself. Used
+  // whenever a class has no paidRate snapshot of its own.
   rate: number,
   // Only private classes delivered after this date count toward
   // privateBalance — null (never paid) counts the whole history.
@@ -148,7 +154,13 @@ export function computeCoachStats(
           }
         }
       } else {
-        const amount = rate * duration;
+        // The snapshot taken when this class was validated (see
+        // ClassInstanceForStats.paidRate) wins over the coach's current
+        // rate — only a class with no snapshot (or a MISSED class credited
+        // to a substitute, which was never itself validated) falls back to
+        // the live rate passed in.
+        const effectiveRate = inst.status === "DONE" ? (inst.paidRate ?? rate) : rate;
+        const amount = effectiveRate * duration;
         if (inst.date >= currentMonthStart && inst.date < nextMonthStart) {
           amountThisMonth += amount;
         }

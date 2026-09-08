@@ -6,6 +6,7 @@ import { tenantPrisma } from "@/lib/prisma";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { addDays, parseDateOnly } from "@/lib/dates";
 import { isDateInValidatedWeek, isWeekValidated } from "@/lib/planning-lock";
+import { groupClassRate } from "@/lib/coach-levels";
 import { requireCoachSession, requireOrgAdmin } from "@/lib/auth-context";
 
 function revalidateAll() {
@@ -63,9 +64,21 @@ async function applyOfficial(
   if (!submission) {
     await db.classInstance.update({
       where: { id: classInstanceId },
-      data: { status: "PLANNED", substituteCoachId: null },
+      data: { status: "PLANNED", substituteCoachId: null, paidRate: null },
     });
     return;
+  }
+
+  // A DONE report is stamped with its coach's current rate (see
+  // markInstancesDone in actions/planning.ts) — so a later change to
+  // Coach.rate never retroactively changes pay already validated this way.
+  let paidRate: number | null = null;
+  if (submission.status === "DONE") {
+    const coach = await db.coach.findUnique({
+      where: { id: submission.coachId },
+      select: { rate: true, level: true },
+    });
+    paidRate = coach ? (coach.rate ?? groupClassRate(coach.level)) : null;
   }
 
   await db.classInstance.update({
@@ -74,6 +87,7 @@ async function applyOfficial(
       status: submission.status,
       coachId: submission.status === "DONE" ? submission.coachId : instance.coachId,
       substituteCoachId: submission.status === "DONE" ? null : instance.substituteCoachId,
+      paidRate,
     },
   });
 }
