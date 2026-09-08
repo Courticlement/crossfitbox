@@ -104,7 +104,11 @@ export default async function AdminDashboardPage({
           digestStatus={digestStatus}
         />
       ) : view === "month" ? (
-        <MonthDashboard organizationId={organizationId} monthParam={monthParam} />
+        <MonthDashboard
+          organizationId={organizationId}
+          monthParam={monthParam}
+          digestStatus={digestStatus}
+        />
       ) : (
         <YearDashboard organizationId={organizationId} yearParam={yearParam} />
       )}
