@@ -25,6 +25,8 @@ export default async function AdminDashboardPage({
   const monthParam = typeof params?.month === "string" ? params.month : undefined;
   const yearParam = typeof params?.year === "string" ? params.year : undefined;
   const digestStatus = typeof params?.digest === "string" ? params.digest : undefined;
+  const digestReason = typeof params?.reason === "string" ? params.reason : undefined;
+  const digestDetail = typeof params?.detail === "string" ? params.detail : undefined;
 
   const { organizationId } = await requireOrgAdmin();
   const prevWeekAlert = await getPrevWeekAlert(organizationId);
@@ -102,12 +104,16 @@ export default async function AdminDashboardPage({
           organizationId={organizationId}
           weekParam={weekParam}
           digestStatus={digestStatus}
+          digestReason={digestReason}
+          digestDetail={digestDetail}
         />
       ) : view === "month" ? (
         <MonthDashboard
           organizationId={organizationId}
           monthParam={monthParam}
           digestStatus={digestStatus}
+          digestReason={digestReason}
+          digestDetail={digestDetail}
         />
       ) : (
         <YearDashboard organizationId={organizationId} yearParam={yearParam} />

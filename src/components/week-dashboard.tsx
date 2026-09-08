@@ -12,16 +12,21 @@ import {
 } from "@/lib/dates";
 import { classDurationHours } from "@/lib/coach-stats";
 import { sendWeeklyDigest } from "@/lib/actions/digest";
+import { digestErrorMessage } from "@/lib/digest-error-message";
 import { groupClassRate, PRIVATE_CLASS_COST_EUR } from "@/lib/coach-levels";
 
 export async function WeekDashboard({
   organizationId,
   weekParam,
   digestStatus,
+  digestReason,
+  digestDetail,
 }: {
   organizationId: string;
   weekParam?: string;
   digestStatus?: string;
+  digestReason?: string;
+  digestDetail?: string;
 }) {
   const prisma = tenantPrisma(organizationId);
   const requested = (weekParam && parseDateOnly(weekParam)) || toDateOnly(new Date());
@@ -297,9 +302,7 @@ export async function WeekDashboard({
       )}
       {digestStatus === "error" && (
         <p className="mb-3 rounded-md border border-red-900 bg-red-950 px-3 py-2 text-sm text-red-300">
-          Impossible d&apos;envoyer le récapitulatif. Vérifiez RESEND_API_KEY
-          dans .env et qu&apos;au moins un admin ou superadmin a un compte
-          pour cette box.
+          {digestErrorMessage(digestReason, digestDetail)}
         </p>
       )}
       <form action={sendWeeklyDigest}>

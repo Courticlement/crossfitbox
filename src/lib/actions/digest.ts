@@ -86,15 +86,28 @@ async function digestRecipients(organizationId: string): Promise<string[]> {
   return admins.map((a) => a.email);
 }
 
+// "No recipients" and "provider rejected the send" used to collapse into
+// one generic error — e.g. Resend's sandbox mode refusing every recipient
+// but the account owner reads identically to "nobody to send to" unless
+// the caller can tell them apart. `detail` carries the provider's own
+// message (short, safe to show — Resend's rejection reasons are generic
+// account-config text, never anything about a specific person) so the
+// admin sees exactly what to fix instead of a dead end.
+type DigestSendResult =
+  | { ok: true }
+  | { ok: false; reason: "no_recipients" | "no_api_key" | "send_failed"; detail?: string };
+
 async function sendDigestToAdmins(
   organizationId: string,
   subject: string,
   rows: DigestRow[],
   periodLabel: string
-): Promise<{ error: true } | { error: false }> {
+): Promise<DigestSendResult> {
   const to = await digestRecipients(organizationId);
+  if (to.length === 0) return { ok: false, reason: "no_recipients" };
+
   const apiKey = process.env.RESEND_API_KEY;
-  if (to.length === 0 || !apiKey) return { error: true };
+  if (!apiKey) return { ok: false, reason: "no_api_key" };
 
   try {
     const resend = new Resend(apiKey);
@@ -104,11 +117,19 @@ async function sendDigestToAdmins(
       subject,
       html: renderDigestHtml(rows, periodLabel),
     });
-    if (error) return { error: true };
-  } catch {
-    return { error: true };
+    if (error) return { ok: false, reason: "send_failed", detail: error.message };
+  } catch (err) {
+    return { ok: false, reason: "send_failed", detail: err instanceof Error ? err.message : undefined };
   }
-  return { error: false };
+  return { ok: true };
+}
+
+// Builds the redirect query string for a failed send — same shape from
+// both actions, just onto a different base (week vs month view).
+function digestErrorParams(result: Extract<DigestSendResult, { ok: false }>): string {
+  const params = new URLSearchParams({ digest: "error", reason: result.reason });
+  if (result.detail) params.set("detail", result.detail);
+  return params.toString();
 }
 
 export async function sendWeeklyDigest(formData: FormData) {
@@ -161,7 +182,7 @@ export async function sendWeeklyDigest(formData: FormData) {
     periodLabel
   );
 
-  if (result.error) redirect(`/admin?week=${weekStartStr}&digest=error`);
+  if (!result.ok) redirect(`/admin?week=${weekStartStr}&${digestErrorParams(result)}`);
   redirect(`/admin?week=${weekStartStr}&digest=sent`);
 }
 
@@ -223,6 +244,6 @@ export async function sendMonthlyDigest(formData: FormData) {
     periodLabel
   );
 
-  if (result.error) redirect(`/admin?view=month&month=${monthStartStr}&digest=error`);
+  if (!result.ok) redirect(`/admin?view=month&month=${monthStartStr}&${digestErrorParams(result)}`);
   redirect(`/admin?view=month&month=${monthStartStr}&digest=sent`);
 }
