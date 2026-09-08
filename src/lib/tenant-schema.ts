@@ -42,12 +42,14 @@ export function tenantTableDdl(schema: string): string[] {
       "rate" INTEGER,
       "color" TEXT,
       "passwordHash" TEXT,
+      "calendarToken" TEXT,
       "privateBalancePaidAt" TIMESTAMP(3),
       "archived" BOOLEAN NOT NULL DEFAULT false,
       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT "Coach_pkey" PRIMARY KEY ("id")
     )`,
     `CREATE UNIQUE INDEX "Coach_organizationId_name_key" ON ${q(schema, "Coach")}("organizationId", "name")`,
+    `CREATE UNIQUE INDEX "Coach_calendarToken_key" ON ${q(schema, "Coach")}("calendarToken")`,
     `CREATE UNIQUE INDEX "Coach_organizationId_color_key" ON ${q(schema, "Coach")}("organizationId", "color")`,
 
     `CREATE TABLE ${q(schema, "PrivatePayment")} (

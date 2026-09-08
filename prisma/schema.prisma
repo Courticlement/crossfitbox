@@ -110,6 +110,14 @@ model Coach {
   // Replaces the old unguessable-link (accessToken) system now that /upload
   // is gated by real auth (see middleware.ts).
   passwordHash         String?
+  // Opaque secret embedded in this coach's calendar subscription link (see
+  // /calendar/[organizationId]/[token] and regenerateCalendarToken) — null
+  // until they first turn sync on from My Classes. Regenerating it swaps in
+  // a fresh value, which silently invalidates every previously issued link
+  // (the feed route looks the token up directly, nothing else references
+  // the old value) — the coach's way to revoke a leaked or no-longer-wanted
+  // subscription without touching their login password.
+  calendarToken        String?      @unique
   // Set when the admin marks this coach's private-class debt as settled
   // (see markPrivateBalancePaid) — only private classes delivered after
   // this date count toward the outstanding balance shown on the Coaches

@@ -12,6 +12,7 @@ import {
 } from "@/lib/dates";
 import { PrivateClassForm } from "@/components/private-class-form";
 import { PrivateClassFab } from "@/components/private-class-fab";
+import { CalendarSyncCard } from "@/components/calendar-sync-card";
 import { UnavailabilityForm } from "@/components/unavailability-form";
 import { MyClassesGrid } from "@/components/my-classes-grid";
 import { CoachPrevWeekBanner } from "@/components/coach-prev-week-banner";
@@ -152,6 +153,8 @@ export default async function UploadPage({
         </div>
 
         <CoachPrevWeekBanner organizationId={organizationId} coachId={coach.id} />
+
+        <CalendarSyncCard organizationId={organizationId} token={coach.calendarToken} />
 
         <UnavailabilityForm coachId={coach.id} entries={myUnavailability} />
 
