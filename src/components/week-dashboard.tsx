@@ -11,22 +11,14 @@ import {
   toDateOnly,
 } from "@/lib/dates";
 import { classDurationHours } from "@/lib/coach-stats";
-import { sendWeeklyDigest } from "@/lib/actions/digest";
-import { digestErrorMessage } from "@/lib/digest-error-message";
 import { groupClassRate, PRIVATE_CLASS_COST_EUR } from "@/lib/coach-levels";
 
 export async function WeekDashboard({
   organizationId,
   weekParam,
-  digestStatus,
-  digestReason,
-  digestDetail,
 }: {
   organizationId: string;
   weekParam?: string;
-  digestStatus?: string;
-  digestReason?: string;
-  digestDetail?: string;
 }) {
   const prisma = tenantPrisma(organizationId);
   const requested = (weekParam && parseDateOnly(weekParam)) || toDateOnly(new Date());
@@ -295,23 +287,13 @@ export async function WeekDashboard({
         </table>
       </div>
 
-      {digestStatus === "sent" && (
-        <p className="mb-3 rounded-md border border-emerald-900 bg-emerald-950 px-3 py-2 text-sm text-emerald-300">
-          E-mail récapitulatif envoyé.
-        </p>
-      )}
-      {digestStatus === "error" && (
-        <p className="mb-3 rounded-md border border-red-900 bg-red-950 px-3 py-2 text-sm text-red-300">
-          {digestErrorMessage(digestReason, digestDetail)}
-        </p>
-      )}
-      <form action={sendWeeklyDigest}>
-        <input type="hidden" name="weekStart" value={weekStartStr} />
+      <form method="get" action="/admin/digest/week/pdf">
+        <input type="hidden" name="week" value={weekStartStr} />
         <button
           type="submit"
           className="rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
         >
-          Envoyer le récapitulatif hebdomadaire par e-mail
+          Exporter le récapitulatif hebdomadaire en PDF
         </button>
       </form>
     </>

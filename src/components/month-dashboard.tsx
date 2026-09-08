@@ -17,8 +17,6 @@ import {
 import { classDurationHours } from "@/lib/coach-stats";
 import { groupClassRate, PRIVATE_CLASS_COST_EUR } from "@/lib/coach-levels";
 import { chartSeriesColor } from "@/lib/chart-palette";
-import { sendMonthlyDigest } from "@/lib/actions/digest";
-import { digestErrorMessage } from "@/lib/digest-error-message";
 
 // The calendar weeks (Monday-start) a month overlaps — a month rarely
 // starts on a Monday, so its first and/or last week here can extend outside
@@ -43,15 +41,9 @@ function weekLabel(weekStart: Date): string {
 export async function MonthDashboard({
   organizationId,
   monthParam,
-  digestStatus,
-  digestReason,
-  digestDetail,
 }: {
   organizationId: string;
   monthParam?: string;
-  digestStatus?: string;
-  digestReason?: string;
-  digestDetail?: string;
 }) {
   const prisma = tenantPrisma(organizationId);
   const requested = (monthParam && parseMonthOnly(monthParam)) || toDateOnly(new Date());
@@ -351,23 +343,13 @@ export async function MonthDashboard({
       <h2 className="mb-3 text-sm font-medium text-neutral-400">Heures par coach et par semaine</h2>
       <MonthHoursChart weekLabels={weekLabels} series={weeklySeries} />
 
-      {digestStatus === "sent" && (
-        <p className="mt-6 mb-3 rounded-md border border-emerald-900 bg-emerald-950 px-3 py-2 text-sm text-emerald-300">
-          E-mail récapitulatif envoyé.
-        </p>
-      )}
-      {digestStatus === "error" && (
-        <p className="mt-6 mb-3 rounded-md border border-red-900 bg-red-950 px-3 py-2 text-sm text-red-300">
-          {digestErrorMessage(digestReason, digestDetail)}
-        </p>
-      )}
-      <form action={sendMonthlyDigest} className={digestStatus ? "" : "mt-6"}>
-        <input type="hidden" name="monthStart" value={monthStartStr} />
+      <form method="get" action="/admin/digest/month/pdf" className="mt-6">
+        <input type="hidden" name="month" value={monthStartStr} />
         <button
           type="submit"
           className="rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
         >
-          Envoyer le récapitulatif mensuel par e-mail
+          Exporter le récapitulatif mensuel en PDF
         </button>
       </form>
     </>
