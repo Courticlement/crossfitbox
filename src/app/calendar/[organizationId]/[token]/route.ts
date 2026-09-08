@@ -18,52 +18,54 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
 
-  let prisma: ReturnType<typeof tenantPrisma>;
+  // Wraps the tenantPrisma() construction *and* every query below: a
+  // well-formed but nonexistent organizationId (e.g. a stale or guessed
+  // link) passes tenantPrisma's own format guard and only fails once a
+  // query hits its schema — a plain "does not exist" from Postgres, which
+  // should read as 404 to the caller just like a malformed id or an
+  // unmatched token, never as an unhandled 500.
   try {
-    prisma = tenantPrisma(organizationId);
+    const prisma = tenantPrisma(organizationId);
+
+    const coach = await prisma.coach.findFirst({
+      where: { calendarToken: token, archived: false },
+    });
+    if (!coach) {
+      return new Response("Not found", { status: 404 });
+    }
+
+    // From this week onward — a class only ever gets generated a handful of
+    // weeks ahead (see generateWeek), so a fixed forward window is generous
+    // rather than an artificial cutoff. Starting at the week (not just today)
+    // keeps the rest of an in-progress week visible instead of only what's
+    // still ahead today.
+    const today = toDateOnly(new Date());
+    const windowStart = startOfWeekMonday(today);
+    const windowEnd = addDays(today, 180);
+
+    const instances = await prisma.classInstance.findMany({
+      where: {
+        coachId: coach.id,
+        status: { not: "CANCELLED" },
+        date: { gte: windowStart, lt: windowEnd },
+      },
+      include: { room: { select: { name: true } } },
+      orderBy: [{ date: "asc" }, { startTime: "asc" }],
+    });
+
+    const ics = buildIcsFeed(coach.name, instances);
+    const filename = `planning-${coach.name.replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase()}.ics`;
+
+    return new Response(ics, {
+      headers: {
+        "Content-Type": "text/calendar; charset=utf-8",
+        "Content-Disposition": `inline; filename="${filename}"`,
+        // Every request re-reads the coach's current schedule — a stale
+        // cached copy would defeat the whole point of a live feed.
+        "Cache-Control": "no-store",
+      },
+    });
   } catch {
-    // A malformed organizationId (not this app's own generated shape) —
-    // tenantPrisma's own guard throws rather than ever interpolating it
-    // into a schema name.
     return new Response("Not found", { status: 404 });
   }
-
-  const coach = await prisma.coach.findFirst({
-    where: { calendarToken: token, archived: false },
-  });
-  if (!coach) {
-    return new Response("Not found", { status: 404 });
-  }
-
-  // From this week onward — a class only ever gets generated a handful of
-  // weeks ahead (see generateWeek), so a fixed forward window is generous
-  // rather than an artificial cutoff. Starting at the week (not just today)
-  // keeps the rest of an in-progress week visible instead of only what's
-  // still ahead today.
-  const today = toDateOnly(new Date());
-  const windowStart = startOfWeekMonday(today);
-  const windowEnd = addDays(today, 180);
-
-  const instances = await prisma.classInstance.findMany({
-    where: {
-      coachId: coach.id,
-      status: { not: "CANCELLED" },
-      date: { gte: windowStart, lt: windowEnd },
-    },
-    include: { room: { select: { name: true } } },
-    orderBy: [{ date: "asc" }, { startTime: "asc" }],
-  });
-
-  const ics = buildIcsFeed(coach.name, instances);
-  const filename = `planning-${coach.name.replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase()}.ics`;
-
-  return new Response(ics, {
-    headers: {
-      "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `inline; filename="${filename}"`,
-      // Every request re-reads the coach's current schedule — a stale
-      // cached copy would defeat the whole point of a live feed.
-      "Cache-Control": "no-store",
-    },
-  });
 }
