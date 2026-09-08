@@ -367,6 +367,7 @@ export default async function PlanningPage({
               <input type="hidden" name="weekStart" value={formatDateISO(weekStart)} />
               <button
                 type="submit"
+                title="Marque Fait tout cours encore Prévu avec un coach assigné, puis verrouille la semaine"
                 className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-500"
               >
                 <span className="sm:hidden">Valider</span>

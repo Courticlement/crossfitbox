@@ -319,15 +319,34 @@ export async function copyLastWeek(formData: FormData) {
   revalidateAll();
 }
 
-// Locks the week: from this point, coaches can no longer submit or change
-// self-reports for it on My Classes (see lib/planning-lock.ts). The admin's
-// own edits here on the Planning page are never blocked by this.
+// Confirms and locks the week in one step: every still-PLANNED, assigned
+// class is marked Fait (so it's paid — see coach-stats.ts), then the week is
+// locked, blocking a coach's own edits (private classes, claims — see
+// lib/planning-lock.ts) from that point on. The admin's own edits here on
+// the Planning page are never blocked by this.
 export async function validateWeek(formData: FormData) {
   const { organizationId } = await requireOrgAdmin();
   const prisma = tenantPrisma(organizationId);
   const weekStartStr = String(formData.get("weekStart") ?? "");
   const weekStart = parseDateOnly(weekStartStr);
   if (!weekStart) return;
+  const weekEnd = addDays(weekStart, 7);
+
+  // Validating the week is "confirm everything happened as scheduled": any
+  // class still sitting PLANNED (i.e. nobody already flagged it Fait or
+  // Manqué individually via bulkSetClassStatus) is marked Fait so it's paid.
+  // Classes with no coach (unassigned, or a team event by design — see
+  // ClassInstance.isTeamEvent) are left alone since there's nobody to pay;
+  // an already-Manqué class is left alone too, since that's a deliberate
+  // record of a missed class, not an oversight to paper over.
+  await prisma.classInstance.updateMany({
+    where: {
+      date: { gte: weekStart, lt: weekEnd },
+      status: "PLANNED",
+      coachId: { not: null },
+    },
+    data: { status: "DONE" },
+  });
 
   await prisma.planningWeek.upsert({
     where: { organizationId_weekStart: { organizationId, weekStart } },
