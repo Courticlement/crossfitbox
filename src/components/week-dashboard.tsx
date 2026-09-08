@@ -298,7 +298,8 @@ export async function WeekDashboard({
       {digestStatus === "error" && (
         <p className="mb-3 rounded-md border border-red-900 bg-red-950 px-3 py-2 text-sm text-red-300">
           Impossible d&apos;envoyer le récapitulatif. Vérifiez RESEND_API_KEY
-          et DIGEST_EMAIL_TO dans .env.
+          dans .env et qu&apos;au moins un admin ou superadmin a un compte
+          pour cette box.
         </p>
       )}
       <form action={sendWeeklyDigest}>
