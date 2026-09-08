@@ -15,7 +15,7 @@ export async function PrevWeekBanner({ organizationId }: { organizationId: strin
       {formatDayLabel(addDays(prevWeekStart, 6))}) n&apos;a pas encore été
       validée
       {unreported > 0 &&
-        ` — ${unreported} cours non déclaré${unreported === 1 ? "" : "s"} par les coachs`}
+        ` — ${unreported} cours pas encore marqué${unreported === 1 ? "" : "s"} Fait ou Manqué`}
       .{" "}
       <Link
         href={`/admin/planning?week=${formatDateISO(prevWeekStart)}`}

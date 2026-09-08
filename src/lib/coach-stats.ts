@@ -1,5 +1,4 @@
 import { timeToMinutes } from "@/lib/calendar-layout";
-import { formatDateISO, startOfWeekMonday } from "@/lib/dates";
 import { PRIVATE_CLASS_COST_EUR } from "@/lib/coach-levels";
 
 export type ClassInstanceForStats = {
@@ -20,10 +19,9 @@ export type CoachStats = {
   // excluded so a month that's only just started doesn't drag this down.
   averageHoursPerMonth: number | null;
   privateClassesDone: number;
-  // € owed for group classes this coach delivered in a week the admin has
-  // explicitly validated (see PlanningWeek / validateWeek) — private classes
-  // are never paid through this rate, and classes in a not-yet-validated
-  // week don't count until the admin signs off on that week.
+  // € owed for group classes this coach delivered — hours the head coach
+  // has marked Fait (see bulkSetClassStatus), at the coach's hourly rate.
+  // Private classes are never paid through this rate.
   amountThisMonth: number;
   amountLastMonth: number;
   // € the coach owes the box for private classes delivered this/last month
@@ -81,11 +79,10 @@ export function computeMonthlyHoursByCoach(
 export function computeCoachStats(
   coachId: string,
   instances: ClassInstanceForStats[],
-  // € per validated group class — the caller resolves this (coach.rate, or
-  // the CrossFit-level default when unset; see groupClassRate) rather than
-  // this function looking it up itself.
+  // € per hour of group class delivered — the caller resolves this
+  // (coach.rate, or the CrossFit-level default when unset; see
+  // groupClassRate) rather than this function looking it up itself.
   rate: number,
-  validatedWeekStarts: ReadonlySet<string>,
   // Only private classes delivered after this date count toward
   // privateBalance — null (never paid) counts the whole history.
   privateBalancePaidAt: Date | null,
@@ -151,14 +148,12 @@ export function computeCoachStats(
           }
         }
       } else {
-        const weekStartStr = formatDateISO(startOfWeekMonday(inst.date));
-        if (validatedWeekStarts.has(weekStartStr)) {
-          if (inst.date >= currentMonthStart && inst.date < nextMonthStart) {
-            amountThisMonth += rate;
-          }
-          if (inst.date >= lastMonthStart && inst.date < currentMonthStart) {
-            amountLastMonth += rate;
-          }
+        const amount = rate * duration;
+        if (inst.date >= currentMonthStart && inst.date < nextMonthStart) {
+          amountThisMonth += amount;
+        }
+        if (inst.date >= lastMonthStart && inst.date < currentMonthStart) {
+          amountLastMonth += amount;
         }
       }
     }

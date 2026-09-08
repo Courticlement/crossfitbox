@@ -30,14 +30,13 @@ export async function WeekDashboard({
 
   const today = toDateOnly(new Date());
 
-  const [coaches, instances, planningWeek, weekReviews, upcomingClasses] = await Promise.all([
+  const [coaches, instances, weekReviews, upcomingClasses] = await Promise.all([
     prisma.coach.findMany({ orderBy: { name: "asc" } }),
     // Unfiltered by coach on purpose — the box-wide summary below needs
     // unassigned classes too, not just ones already claimed by someone.
     prisma.classInstance.findMany({
       where: { date: { gte: weekStart, lt: weekEnd } },
     }),
-    prisma.planningWeek.findUnique({ where: { organizationId_weekStart: { organizationId, weekStart } } }),
     // Scoped to this week, same as Faits/Prévus below — the count in the
     // Review column and the "last review" it links to both come from here.
     prisma.classReview.findMany({
@@ -59,7 +58,6 @@ export async function WeekDashboard({
       select: { id: true, coachId: true, date: true, startTime: true, label: true },
     }),
   ]);
-  const weekValidated = planningWeek !== null;
 
   const activeInstances = instances.filter((i) => i.status !== "CANCELLED");
   const totalClasses = activeInstances.length;
@@ -85,9 +83,12 @@ export async function WeekDashboard({
     const heuresFixes = activeCoachInstances
       .filter((i) => isoWeekday(i.date) <= 5)
       .reduce((sum, i) => sum + classDurationHours(i.startTime, i.endTime), 0);
-    // Net € still keys off delivered (DONE) classes, same as before — only
-    // the hours columns above count scheduled-but-not-yet-done classes too.
-    const done = coachInstances.filter((i) => i.status === "DONE" && !i.isPrivate).length;
+    // Net € keys off delivered (DONE) classes, same as before — only the
+    // hours columns above count scheduled-but-not-yet-done classes too. Paid
+    // by the hour now (see Coach.rate), not per class.
+    const doneHours = coachInstances
+      .filter((i) => i.status === "DONE" && !i.isPrivate)
+      .reduce((sum, i) => sum + classDurationHours(i.startTime, i.endTime), 0);
     const privateDone = coachInstances.filter(
       (i) => i.status === "DONE" && i.isPrivate
     ).length;
@@ -101,10 +102,10 @@ export async function WeekDashboard({
     // (upcomingClasses is sorted soonest-first, so the first match is it).
     const nextClass = reviewCount === 0 ? (upcomingClasses.find((i) => i.coachId === coach.id) ?? null) : null;
     const nextClassWeekStart = nextClass ? formatDateISO(startOfWeekMonday(nextClass.date)) : null;
-    // Group classes only pay out once the admin has validated this week
-    // (see validateWeek) — private classes are always costed, validated or
-    // not, since they're logged ad hoc outside the planning workflow.
-    const groupAmount = weekValidated ? done * groupClassRate(coach.level) : 0;
+    // Group classes are paid on the hours the head coach has marked Fait
+    // (see bulkSetClassStatus) — private classes are always costed, since
+    // they're logged ad hoc outside the weekly planning workflow.
+    const groupAmount = doneHours * (coach.rate ?? groupClassRate(coach.level));
     const privateCost = privateDone * PRIVATE_CLASS_COST_EUR;
     const netAmount = groupAmount - privateCost;
     return {
@@ -207,11 +208,7 @@ export async function WeekDashboard({
               <th className="px-4 py-2 font-medium">Privés</th>
               <th
                 className="px-4 py-2 font-medium"
-                title={
-                  weekValidated
-                    ? "Montant collectif moins le coût des cours privés"
-                    : "Le montant collectif est à 0 tant que la semaine n'est pas validée — coût des cours privés uniquement"
-                }
+                title="Heures de cours collectifs marquées Fait, au tarif horaire du coach, moins le coût des cours privés"
               >
                 Net €
               </th>

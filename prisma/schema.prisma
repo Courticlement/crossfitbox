@@ -89,7 +89,7 @@ model Coach {
   // set it once instead of every week. A week-specific override in
   // CoachWeeklyQuota always wins over this.
   weeklyQuota          Int?
-  // € paid per validated group class this coach delivers (see
+  // € paid per hour of validated group class this coach delivers (see
   // computeCoachStats). Null falls back to the CrossFit-level default (see
   // groupClassRate) — set once the admin edits it on the Coaches page, at
   // which point it's a plain per-coach number and no longer follows level
@@ -299,11 +299,14 @@ model CoachWeeklyQuota {
   @@unique([coachId, weekStart])
 }
 
-// Marks a week's planning as validated by the admin. The row's mere
-// existence means "locked" — once present, coaches can no longer submit or
-// change self-reports for that week from My Classes (see
-// src/lib/planning-lock.ts). The admin's own Planning page is unaffected;
-// deleting the row (via the Unlock action) re-opens the week.
+// Marks a week's planning as validated (closed out) by the admin. The row's
+// mere existence means "locked" — once present, coaches can no longer add or
+// remove their own private classes, or claim unassigned classes, for that
+// week from My Classes (see src/lib/planning-lock.ts). Unrelated to group
+// class pay, which is computed straight from each class's Fait/Manqué status
+// (see bulkSetClassStatus) regardless of this lock. The admin's own Planning
+// page is unaffected; deleting the row (via the Unlock action) re-opens the
+// week.
 model PlanningWeek {
   id             String   @id @default(cuid())
   // Plain column, not a Prisma relation — see Organization's comment above.

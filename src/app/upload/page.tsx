@@ -15,7 +15,6 @@ import { PrivateClassFab } from "@/components/private-class-fab";
 import { CalendarSyncCard } from "@/components/calendar-sync-card";
 import { UnavailabilityForm } from "@/components/unavailability-form";
 import { MyClassesGrid } from "@/components/my-classes-grid";
-import { CoachPrevWeekBanner } from "@/components/coach-prev-week-banner";
 import { MyFocusCard } from "@/components/my-focus-card";
 import { coachLogout } from "@/lib/actions/auth";
 import { loadCoachWeekData } from "@/lib/coach-upload-data";
@@ -151,8 +150,6 @@ export default async function UploadPage({
             </p>
           )}
         </div>
-
-        <CoachPrevWeekBanner organizationId={organizationId} coachId={coach.id} />
 
         <CalendarSyncCard organizationId={organizationId} token={coach.calendarToken} />
 

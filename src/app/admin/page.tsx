@@ -39,15 +39,15 @@ export default async function AdminDashboardPage({
             <div>
               <h2 className="text-base font-semibold text-white">
                 {prevWeekAlert.unreported > 0
-                  ? "Les coachs n'ont pas fini de déclarer la semaine dernière"
+                  ? "Des cours de la semaine dernière restent à marquer Fait/Manqué"
                   : "La semaine dernière est prête à être validée"}
               </h2>
               <p className="mt-1 text-sm text-red-200">
                 {formatDayLabel(prevWeekAlert.prevWeekStart)} –{" "}
                 {formatDayLabel(addDays(prevWeekAlert.prevWeekStart, 6))}
                 {prevWeekAlert.unreported > 0
-                  ? ` — ${prevWeekAlert.unreported} cours encore non déclaré${prevWeekAlert.unreported === 1 ? "" : "s"}.`
-                  : " — tous les cours sont déclarés. Validez pour la verrouiller."}
+                  ? ` — ${prevWeekAlert.unreported} cours encore non marqué${prevWeekAlert.unreported === 1 ? "" : "s"}.`
+                  : " — tous les cours sont marqués. Validez pour verrouiller la semaine."}
               </p>
             </div>
           </div>

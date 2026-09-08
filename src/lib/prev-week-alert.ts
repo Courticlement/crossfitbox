@@ -4,8 +4,9 @@ import { startOfWeekMonday, addDays, toDateOnly } from "@/lib/dates";
 export type PrevWeekAlert = {
   show: boolean;
   prevWeekStart: Date;
-  // Still-PLANNED group classes with nobody's report to show for them — the
-  // clearest signal that coaches haven't uploaded their classes yet.
+  // Still-PLANNED group classes the head coach hasn't yet marked Fait or
+  // Manqué (see bulkSetClassStatus) — the clearest signal there's still
+  // review work left before this week can be validated.
   unreported: number;
 };
 
@@ -40,46 +41,5 @@ export async function getPrevWeekAlert(organizationId: string): Promise<PrevWeek
     show: planningWeek === null && instances.length > 0,
     prevWeekStart,
     unreported,
-  };
-}
-
-export type CoachPrevWeekAlert = {
-  show: boolean;
-  prevWeekStart: Date;
-  // This coach's own group classes from last week that are still sitting
-  // unreported — the thing they personally need to go fix.
-  unreportedMine: number;
-};
-
-// Coach-facing counterpart to getPrevWeekAlert: only fires while there's
-// still something this specific coach can do about it — the admin hasn't
-// validated (and thus locked) last week yet, and this coach still has
-// classes assigned to them with no Done/Missed report against their name.
-export async function getCoachPrevWeekAlert(
-  organizationId: string,
-  coachId: string
-): Promise<CoachPrevWeekAlert> {
-  const prisma = tenantPrisma(organizationId);
-  const thisWeekStart = startOfWeekMonday(toDateOnly(new Date()));
-  const prevWeekStart = addDays(thisWeekStart, -7);
-
-  const [planningWeek, unreportedMine] = await Promise.all([
-    prisma.planningWeek.findUnique({
-      where: { organizationId_weekStart: { organizationId, weekStart: prevWeekStart } },
-    }),
-    prisma.classInstance.count({
-      where: {
-        date: { gte: prevWeekStart, lt: thisWeekStart },
-        coachId,
-        isPrivate: false,
-        status: "PLANNED",
-      },
-    }),
-  ]);
-
-  return {
-    show: planningWeek === null && unreportedMine > 0,
-    prevWeekStart,
-    unreportedMine,
   };
 }
