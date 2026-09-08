@@ -11,6 +11,7 @@ import {
   platformCreateAdmin,
   impersonateOrganization,
 } from "@/lib/actions/organizations";
+import { DeleteAdminButton } from "@/components/delete-admin-button";
 
 // Without this, Next would statically prerender the page and freeze this
 // organization's room list until the next deploy — same reasoning as every
@@ -254,15 +255,22 @@ export default async function SuperadminOrganizationPage({
                 : "border-neutral-800 bg-neutral-900"
             }`}
           >
-            <div className="flex items-center gap-2 text-sm font-semibold text-white">
-              {admin.email}
-              {admin.archived && (
-                <span className="rounded border border-neutral-700 px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-neutral-500">
-                  Archivé
-                </span>
-              )}
+            <div className="mb-1 flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                {admin.email}
+                {admin.archived && (
+                  <span className="rounded border border-neutral-700 px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-neutral-500">
+                    Archivé
+                  </span>
+                )}
+              </div>
+              <DeleteAdminButton
+                adminId={admin.id}
+                organizationId={organization.id}
+                email={admin.email}
+              />
             </div>
-            <div className="mt-1 text-xs text-neutral-500">
+            <div className="text-xs text-neutral-500">
               {admin.role === "SUPERADMIN" ? "Superadmin" : "Admin"} · Créé le{" "}
               {formatDateISO(admin.createdAt)}
             </div>

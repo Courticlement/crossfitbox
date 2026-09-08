@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { tenantPrisma } from "@/lib/prisma";
-import { Prisma } from "@/generated/prisma/client";
+import { tenantPrisma, isPrismaErrorCode } from "@/lib/prisma";
 import { requireOrgAdmin } from "@/lib/auth-context";
 
 function revalidateRoomsPaths() {
@@ -25,7 +24,7 @@ export async function createRoom(formData: FormData) {
   } catch (err) {
     // Room name already taken in this organization — silent no-op, same
     // convention as createCoach's upsert-on-collision.
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return;
+    if (isPrismaErrorCode(err, "P2002")) return;
     throw err;
   }
   revalidateRoomsPaths();
@@ -50,7 +49,7 @@ export async function renameRoom(formData: FormData) {
       data: { name, shortLabel, color },
     });
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return;
+    if (isPrismaErrorCode(err, "P2002")) return;
     throw err;
   }
   revalidateRoomsPaths();

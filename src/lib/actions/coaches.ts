@@ -2,8 +2,7 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { tenantPrisma } from "@/lib/prisma";
-import { Prisma } from "@/generated/prisma/client";
+import { tenantPrisma, isPrismaErrorCode } from "@/lib/prisma";
 import { isCoachLevel } from "@/lib/coach-levels";
 import { hashPassword } from "@/lib/password";
 import { isCoachColor } from "@/lib/coach-colors";
@@ -89,7 +88,7 @@ export async function renameCoach(formData: FormData) {
     // only fires on a genuine race — two saves picking the same
     // just-freed/new color at the same moment. Rather than failing the
     // whole save, keep every other edit and just drop the color change.
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+    if (isPrismaErrorCode(err, "P2002")) {
       await prisma.coach.update({
         where: { id },
         data: { name, level, weeklyQuota: weeklyQuota ?? null, rate: rate ?? null },

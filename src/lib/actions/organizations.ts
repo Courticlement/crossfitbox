@@ -4,9 +4,8 @@ import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { prisma, tenantPrisma, tenantSchemaName } from "@/lib/prisma";
+import { prisma, tenantPrisma, tenantSchemaName, isPrismaErrorCode } from "@/lib/prisma";
 import { tenantTableDdl, tenantTableForeignKeys } from "@/lib/tenant-schema";
-import { Prisma } from "@/generated/prisma/client";
 import { hashPassword } from "@/lib/password";
 import { requireAdmin } from "@/lib/auth-context";
 import {
@@ -92,11 +91,8 @@ export async function createOrganization(formData: FormData) {
       });
     });
   } catch (err) {
-    if (
-      err instanceof Prisma.PrismaClientKnownRequestError &&
-      err.code === "P2002" &&
-      (err.meta?.target as string[] | undefined)?.some((f) => f.includes("name"))
-    ) {
+    const meta = (err as { meta?: { target?: string[] } } | null)?.meta;
+    if (isPrismaErrorCode(err, "P2002") && meta?.target?.some((f) => f.includes("name"))) {
       return; // organization name already taken — silent no-op
     }
     throw err;
@@ -123,10 +119,7 @@ export async function renameOrganization(formData: FormData) {
     // Either the id doesn't exist (P2025) or the new name collides with
     // another organization's (P2002) — either way, silent no-op, same
     // convention as createOrganization's name-collision handling above.
-    if (
-      err instanceof Prisma.PrismaClientKnownRequestError &&
-      (err.code === "P2002" || err.code === "P2025")
-    ) {
+    if (isPrismaErrorCode(err, "P2002") || isPrismaErrorCode(err, "P2025")) {
       return;
     }
     throw err;
@@ -157,7 +150,7 @@ export async function platformCreateRoom(formData: FormData) {
       data: { organizationId, name, shortLabel, color },
     });
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return;
+    if (isPrismaErrorCode(err, "P2002")) return;
     throw err;
   }
   revalidateOrgPaths(organizationId);
@@ -179,7 +172,7 @@ export async function platformRenameRoom(formData: FormData) {
       data: { name, shortLabel, color },
     });
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return;
+    if (isPrismaErrorCode(err, "P2002")) return;
     throw err;
   }
   revalidateOrgPaths(organizationId);
@@ -231,10 +224,26 @@ export async function platformCreateAdmin(formData: FormData) {
       data: { email, passwordHash: hashPassword(password), role, organizationId },
     });
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return;
+    if (isPrismaErrorCode(err, "P2002")) return;
     throw err;
   }
 
+  revalidateOrgPaths(organizationId);
+}
+
+// Hard delete, not archive: unlike a box's own archiveAdmin (which only
+// revokes login, keeping the row so the email stays reserved), this is the
+// platform superadmin's way to actually free up an email — e.g. so the same
+// person can be re-added as an admin of a different box, which the global
+// email-uniqueness constraint would otherwise block forever. Irreversible.
+export async function platformDeleteAdmin(formData: FormData) {
+  await requirePlatformSuperadmin();
+
+  const id = String(formData.get("id") ?? "");
+  const organizationId = String(formData.get("organizationId") ?? "");
+  if (!id || !organizationId) return;
+
+  await prisma.admin.deleteMany({ where: { id, organizationId } });
   revalidateOrgPaths(organizationId);
 }
 

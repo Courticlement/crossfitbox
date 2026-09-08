@@ -74,3 +74,15 @@ export function tenantPrisma(organizationId: string): PrismaClient {
   cache.set(organizationId, client);
   return client;
 }
+
+// `instanceof Prisma.PrismaClientKnownRequestError` looks like the obvious
+// check, but it's unreliable across a bundled deploy: Next.js's standalone
+// build can end up with more than one copy of the generated client module in
+// the dependency graph (one per route/action chunk), so the error thrown by
+// one copy fails `instanceof` against the class re-exported from another —
+// confirmed on Prisma Compute, where this silently turned every "duplicate
+// email/name" no-op into an unhandled 500. `code` is a plain string on the
+// error regardless of which copy threw it, so check that directly instead.
+export function isPrismaErrorCode(err: unknown, code: string): boolean {
+  return typeof err === "object" && err !== null && "code" in err && err.code === code;
+}
