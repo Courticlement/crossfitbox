@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { tenantPrisma } from "@/lib/prisma";
 import {
@@ -12,6 +11,7 @@ import {
   isoWeekday,
 } from "@/lib/dates";
 import { PrivateClassForm } from "@/components/private-class-form";
+import { PrivateClassFab } from "@/components/private-class-fab";
 import { UnavailabilityForm } from "@/components/unavailability-form";
 import { MyClassesGrid } from "@/components/my-classes-grid";
 import { CoachPrevWeekBanner } from "@/components/coach-prev-week-banner";
@@ -19,7 +19,7 @@ import { MyFocusCard } from "@/components/my-focus-card";
 import { coachLogout } from "@/lib/actions/auth";
 import { loadCoachWeekData } from "@/lib/coach-upload-data";
 import { getLastFocus } from "@/lib/coaching-focus";
-import { COACH_COOKIE, verifyCoachSessionToken } from "@/lib/session";
+import { requireCoachSession } from "@/lib/auth-context";
 
 export default async function UploadPage({
   searchParams,
@@ -27,15 +27,12 @@ export default async function UploadPage({
   const params = await searchParams;
   const weekParam = typeof params?.week === "string" ? params.week : undefined;
 
-  // middleware.ts already redirects an unauthenticated request to /login
-  // before this ever renders — this re-check just satisfies TypeScript
-  // (the session isn't threaded through as a prop) and guards the narrow
-  // window where a session is revoked between the middleware check and this
-  // render. organizationId comes straight from the signed token, not a DB
-  // lookup — Coach lives in that organization's own Postgres schema (see
-  // tenantPrisma in lib/prisma.ts), so there'd be no way to find the coach's
-  // own row without already knowing which schema to query.
-  const session = await verifyCoachSessionToken((await cookies()).get(COACH_COOKIE)?.value);
+  // proxy.ts already redirects an unauthenticated request to /login before
+  // this ever renders — this re-check just satisfies TypeScript (the
+  // session isn't threaded through as a prop) and guards the narrow window
+  // where a session is revoked, or its organization no longer exists (see
+  // requireCoachSession), between the proxy check and this render.
+  const session = await requireCoachSession();
   if (!session) redirect("/login");
   const { coachId, organizationId } = session;
   const prisma = tenantPrisma(organizationId);
@@ -190,6 +187,8 @@ export default async function UploadPage({
           </p>
         )}
       </main>
+
+      <PrivateClassFab coachId={coach.id} weekStart={weekStart} locked={locked} />
     </div>
   );
 }

@@ -19,7 +19,14 @@ export async function loadCoachWeekData(
       date: { gte: weekStart, lt: weekEnd },
       OR: [{ coachId }, { coachId: null }],
     },
-    include: { coach: true },
+    include: {
+      coach: true,
+      // This coach's own claim on the class, if any — at most one row per
+      // (classInstanceId, coachId) pair (see ClassClaim's unique
+      // constraint), which drives whether MyClassesGrid shows a Réclamer
+      // button or a pending/withdraw state for an unassigned class.
+      claims: { where: { coachId }, select: { id: true, status: true } },
+    },
     orderBy: [{ date: "asc" }, { startTime: "asc" }],
   });
 

@@ -22,6 +22,7 @@ import { ReviewButton } from "@/components/review-button";
 import { PrevWeekBanner } from "@/components/prev-week-banner";
 import { ScrollToHighlight } from "@/components/scroll-to-highlight";
 import { UnavailabilityAlert } from "@/components/unavailability-alert";
+import { PendingClaimsPanel } from "@/components/pending-claims-panel";
 import { ResetWeekButton } from "@/components/reset-week-button";
 import { CopyLastWeekButton } from "@/components/copy-last-week-button";
 import { SubstituteSelect } from "@/components/substitute-select";
@@ -330,6 +331,7 @@ export default async function PlanningPage({
 
       <PrevWeekBanner organizationId={organizationId} />
       <UnavailabilityAlert organizationId={organizationId} />
+      <PendingClaimsPanel organizationId={organizationId} />
 
       <div className="mb-6 flex items-center gap-3">
         <form action={generateWeek}>

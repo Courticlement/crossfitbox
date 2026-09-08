@@ -1,26 +1,26 @@
 import Link from "next/link";
 
 // Shared by WeekDashboard and MonthDashboard — same per-coach numbers as
-// their <table>, stacked into a card instead of eight columns that don't
-// fit a phone width. The two callers' row shapes differ slightly (only the
-// week view has a quota), so every field but the always-present ones is
-// optional.
+// their <table>, stacked into a card instead of columns that don't fit a
+// phone width. The two callers' row shapes differ (the week view shows
+// hours, the month view shows assigned/done/planned/missed), so a row
+// carries one or the other and the render branches on which is present.
 type Row = {
   coach: { id: string; name: string };
-  quota?: number | null;
-  assigned: number;
-  done: number;
-  planned: number;
+  // Week view only.
+  totalHours?: number;
+  heuresFixes?: number;
+  // Month view only.
+  assigned?: number;
+  done?: number;
+  planned?: number;
   missed?: number;
+  hasMissed?: boolean;
   privateDone: number;
   reviewCount: number;
   lastReviewId: string | null;
   nextClass: { id: string } | null;
   nextClassWeekStart: string | null;
-  overQuota?: boolean;
-  underQuota?: boolean;
-  hasMissed?: boolean;
-  privateOverLimit?: boolean;
   netAmount: number;
 };
 
@@ -59,21 +59,25 @@ export function DashboardCoachCards({ rows }: { rows: Row[] }) {
           </div>
 
           <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
-            {r.quota != null && (
-              <span
-                className={`rounded-md border border-neutral-800 px-2 py-1 ${
-                  r.overQuota ? "text-red-400" : "text-neutral-400"
-                }`}
-              >
-                {r.assigned}/{r.quota}
-              </span>
+            {r.totalHours !== undefined ? (
+              <>
+                <span className="rounded-md border border-neutral-800 px-2 py-1 text-white">
+                  {r.totalHours.toFixed(1)}h total
+                </span>
+                <span className="rounded-md border border-neutral-800 px-2 py-1 text-neutral-400">
+                  {(r.heuresFixes ?? 0).toFixed(1)}h fixes
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="rounded-md border border-neutral-800 px-2 py-1 text-emerald-400">
+                  {r.done} fait{r.done === 1 ? "" : "s"}
+                </span>
+                <span className="rounded-md border border-neutral-800 px-2 py-1 text-neutral-400">
+                  {r.planned} prévu{r.planned === 1 ? "" : "s"}
+                </span>
+              </>
             )}
-            <span className="rounded-md border border-neutral-800 px-2 py-1 text-emerald-400">
-              {r.done} fait{r.done === 1 ? "" : "s"}
-            </span>
-            <span className="rounded-md border border-neutral-800 px-2 py-1 text-neutral-400">
-              {r.planned} prévu{r.planned === 1 ? "" : "s"}
-            </span>
             {r.privateDone > 0 && (
               <span className="rounded-md border border-neutral-800 px-2 py-1 text-neutral-400">
                 {r.privateDone} privé{r.privateDone === 1 ? "" : "s"}
@@ -88,28 +92,11 @@ export function DashboardCoachCards({ rows }: { rows: Row[] }) {
             </span>
           </div>
 
-          {(r.overQuota || r.underQuota || r.hasMissed || r.privateOverLimit) && (
+          {r.hasMissed && (
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {r.overQuota && (
-                <span className="rounded-full bg-red-900/40 px-2 py-0.5 text-xs text-red-300">
-                  Quota dépassé ({r.assigned}/{r.quota})
-                </span>
-              )}
-              {r.underQuota && (
-                <span className="rounded-full bg-amber-900/40 px-2 py-0.5 text-xs text-amber-300">
-                  Quota non atteint ({r.assigned}/{r.quota})
-                </span>
-              )}
-              {r.hasMissed && (
-                <span className="rounded-full bg-red-900/40 px-2 py-0.5 text-xs text-red-300">
-                  {r.missed} manqué{r.missed === 1 ? "" : "s"}
-                </span>
-              )}
-              {r.privateOverLimit && (
-                <span className="rounded-full bg-amber-900/40 px-2 py-0.5 text-xs text-amber-300">
-                  {r.privateDone} cours privés
-                </span>
-              )}
+              <span className="rounded-full bg-red-900/40 px-2 py-0.5 text-xs text-red-300">
+                {r.missed} manqué{r.missed === 1 ? "" : "s"}
+              </span>
             </div>
           )}
         </div>

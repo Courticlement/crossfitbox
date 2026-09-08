@@ -1,6 +1,6 @@
 // The DDL for one organization's Postgres schema — every operational
 // table (Room, Coach, ClassTemplate, ClassInstance, PlanningWeek,
-// BoxClosure, CoachWeeklyQuota, ClassSubmission, ClassReview,
+// BoxClosure, CoachWeeklyQuota, ClassSubmission, ClassReview, ClassClaim,
 // Unavailability, PrivatePayment), byte-for-byte matching
 // prisma/schema.prisma. Used by createOrganization (lib/actions/
 // organizations.ts) to provision a brand-new org's schema, and mirrors
@@ -120,6 +120,19 @@ export function tenantTableDdl(schema: string): string[] {
     `CREATE UNIQUE INDEX "ClassReview_classInstanceId_key" ON ${q(schema, "ClassReview")}("classInstanceId")`,
     `CREATE INDEX "ClassReview_createdAt_idx" ON ${q(schema, "ClassReview")}("createdAt")`,
 
+    `CREATE TABLE ${q(schema, "ClassClaim")} (
+      "id" TEXT NOT NULL,
+      "classInstanceId" TEXT NOT NULL,
+      "coachId" TEXT NOT NULL,
+      "status" TEXT NOT NULL DEFAULT 'PENDING',
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "resolvedAt" TIMESTAMP(3),
+      CONSTRAINT "ClassClaim_pkey" PRIMARY KEY ("id")
+    )`,
+    `CREATE UNIQUE INDEX "ClassClaim_classInstanceId_coachId_key" ON ${q(schema, "ClassClaim")}("classInstanceId", "coachId")`,
+    `CREATE INDEX "ClassClaim_classInstanceId_idx" ON ${q(schema, "ClassClaim")}("classInstanceId")`,
+    `CREATE INDEX "ClassClaim_status_idx" ON ${q(schema, "ClassClaim")}("status")`,
+
     `CREATE TABLE ${q(schema, "CoachWeeklyQuota")} (
       "id" TEXT NOT NULL,
       "coachId" TEXT NOT NULL,
@@ -191,6 +204,8 @@ export function tenantTableForeignKeys(schema: string): string[] {
     `ALTER TABLE ${s("ClassInstance")} ADD CONSTRAINT "ClassInstance_coachId_fkey" FOREIGN KEY ("coachId") REFERENCES ${s("Coach")}("id") ON DELETE SET NULL ON UPDATE CASCADE`,
     `ALTER TABLE ${s("ClassInstance")} ADD CONSTRAINT "ClassInstance_substituteCoachId_fkey" FOREIGN KEY ("substituteCoachId") REFERENCES ${s("Coach")}("id") ON DELETE SET NULL ON UPDATE CASCADE`,
     `ALTER TABLE ${s("ClassReview")} ADD CONSTRAINT "ClassReview_classInstanceId_fkey" FOREIGN KEY ("classInstanceId") REFERENCES ${s("ClassInstance")}("id") ON DELETE CASCADE ON UPDATE CASCADE`,
+    `ALTER TABLE ${s("ClassClaim")} ADD CONSTRAINT "ClassClaim_classInstanceId_fkey" FOREIGN KEY ("classInstanceId") REFERENCES ${s("ClassInstance")}("id") ON DELETE CASCADE ON UPDATE CASCADE`,
+    `ALTER TABLE ${s("ClassClaim")} ADD CONSTRAINT "ClassClaim_coachId_fkey" FOREIGN KEY ("coachId") REFERENCES ${s("Coach")}("id") ON DELETE CASCADE ON UPDATE CASCADE`,
     `ALTER TABLE ${s("CoachWeeklyQuota")} ADD CONSTRAINT "CoachWeeklyQuota_coachId_fkey" FOREIGN KEY ("coachId") REFERENCES ${s("Coach")}("id") ON DELETE CASCADE ON UPDATE CASCADE`,
     `ALTER TABLE ${s("PlanningWeek")} ADD CONSTRAINT "PlanningWeek_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE`,
     `ALTER TABLE ${s("ClassSubmission")} ADD CONSTRAINT "ClassSubmission_classInstanceId_fkey" FOREIGN KEY ("classInstanceId") REFERENCES ${s("ClassInstance")}("id") ON DELETE CASCADE ON UPDATE CASCADE`,

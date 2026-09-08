@@ -6,6 +6,7 @@ import { WeekDashboard } from "@/components/week-dashboard";
 import { MonthDashboard } from "@/components/month-dashboard";
 import { YearDashboard } from "@/components/year-dashboard";
 import { UnavailabilityAlert } from "@/components/unavailability-alert";
+import { PendingClaimsPanel } from "@/components/pending-claims-panel";
 import { requireOrgAdmin } from "@/lib/auth-context";
 
 function tabClass(active: boolean): string {
@@ -79,6 +80,7 @@ export default async function AdminDashboardPage({
       )}
 
       <UnavailabilityAlert organizationId={organizationId} />
+      <PendingClaimsPanel organizationId={organizationId} />
 
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-white">Tableau de bord</h1>

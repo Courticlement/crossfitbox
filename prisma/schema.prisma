@@ -131,6 +131,7 @@ model Coach {
   submissions       ClassSubmission[]
   unavailabilities  Unavailability[]
   privatePayments   PrivatePayment[]
+  classClaims       ClassClaim[]
 
   @@unique([organizationId, name])
   @@unique([organizationId, color])
@@ -210,11 +211,35 @@ model ClassInstance {
 
   submissions ClassSubmission[]
   review      ClassReview?
+  claims      ClassClaim[]
 
   @@index([date])
   @@index([coachId])
   @@index([substituteCoachId])
   @@index([roomId])
+}
+
+// A coach's request to take an unassigned class from their own My Classes
+// view — held pending until the head coach approves it (see claimClass/
+// approveClaim/rejectClaim in lib/actions/claims.ts), at which point the
+// class actually gets assigned to them. Unlike ClassSubmission (a coach
+// reporting DONE/MISSED on a class already assigned to them), this is for
+// classes with no coach at all yet, and a rejected or approved claim can
+// always be re-requested later (see the upsert in claimClass) since it's
+// only ever one row per (classInstanceId, coachId) pair.
+model ClassClaim {
+  id              String        @id @default(cuid())
+  classInstanceId String
+  classInstance   ClassInstance @relation(fields: [classInstanceId], references: [id], onDelete: Cascade)
+  coachId         String
+  coach           Coach         @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  status          String        @default("PENDING") // "PENDING" | "APPROVED" | "REJECTED"
+  createdAt       DateTime      @default(now())
+  resolvedAt      DateTime?
+
+  @@unique([classInstanceId, coachId])
+  @@index([classInstanceId])
+  @@index([status])
 }
 
 // The head coach's structured observation of a delivered class — walks

@@ -354,8 +354,10 @@ type ScheduleInstance = { id: string; date: Date; startTime: string; endTime: st
 
 // A coach can only be in one place at a time — whether they're the planned
 // coach or covering as a substitute elsewhere. Returns the conflicting class
-// (if any) so callers can report it, checking both roles.
-async function findSchedulingConflict(
+// (if any) so callers can report it, checking both roles. Exported for
+// approveClaim (lib/actions/claims.ts), which runs the same check before
+// actually assigning a coach's approved claim.
+export async function findSchedulingConflict(
   organizationId: string,
   coachId: string,
   instance: ScheduleInstance

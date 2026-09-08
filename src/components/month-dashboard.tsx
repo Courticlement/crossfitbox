@@ -1,17 +1,42 @@
 import Link from "next/link";
 import { DashboardCoachCards } from "@/components/dashboard-coach-cards";
+import { MonthHoursChart, type CoachWeeklyHours } from "@/components/month-hours-chart";
 import { tenantPrisma } from "@/lib/prisma";
 import {
   startOfWeekMonday,
+  addDays,
   addMonths,
   formatDateISO,
   formatMonthISO,
   formatMonthLabel,
+  isoWeekday,
   parseMonthOnly,
   startOfMonth,
   toDateOnly,
 } from "@/lib/dates";
+import { classDurationHours } from "@/lib/coach-stats";
 import { groupClassRate, PRIVATE_CLASS_COST_EUR } from "@/lib/coach-levels";
+import { chartSeriesColor } from "@/lib/chart-palette";
+
+// The calendar weeks (Monday-start) a month overlaps — a month rarely
+// starts on a Monday, so its first and/or last week here can extend outside
+// [monthStart, monthEnd), which is fine: only that week's classes that
+// actually fall within the month get bucketed into it below.
+function monthWeekStarts(monthStart: Date, monthEnd: Date): Date[] {
+  const weeks: Date[] = [];
+  let w = startOfWeekMonday(monthStart);
+  while (w < monthEnd) {
+    weeks.push(w);
+    w = addDays(w, 7);
+  }
+  return weeks;
+}
+
+function weekLabel(weekStart: Date): string {
+  const day = String(weekStart.getUTCDate()).padStart(2, "0");
+  const month = String(weekStart.getUTCMonth() + 1).padStart(2, "0");
+  return `${day}/${month}`;
+}
 
 export async function MonthDashboard({
   organizationId,
@@ -71,16 +96,26 @@ export async function MonthDashboard({
 
   const rows = coaches.map((coach) => {
     const coachInstances = instances.filter((i) => i.coachId === coach.id);
-    const assigned = coachInstances.filter(
-      (i) => i.status !== "CANCELLED" && !i.isPrivate
-    ).length;
+    // Hours are scheduled workload, not just delivered — every non-cancelled
+    // class counts (planned or done, group or private) so the number
+    // reflects the whole month, not just what's happened so far.
+    const activeCoachInstances = coachInstances.filter((i) => i.status !== "CANCELLED");
+    const totalHours = activeCoachInstances.reduce(
+      (sum, i) => sum + classDurationHours(i.startTime, i.endTime),
+      0
+    );
+    // "Heures fixes" — the regular Mon–Fri workload, set apart from weekend
+    // classes (which skew private/ad hoc) since isoWeekday returns 1..5 for
+    // Monday through Friday.
+    const heuresFixes = activeCoachInstances
+      .filter((i) => isoWeekday(i.date) <= 5)
+      .reduce((sum, i) => sum + classDurationHours(i.startTime, i.endTime), 0);
+    // Net € still keys off delivered (DONE) classes, same as before — only
+    // the hours columns above count scheduled-but-not-yet-done classes too.
     const done = coachInstances.filter((i) => i.status === "DONE" && !i.isPrivate);
-    const missed = coachInstances.filter((i) => i.status === "MISSED" && !i.isPrivate).length;
-    const planned = coachInstances.filter((i) => i.status === "PLANNED" && !i.isPrivate).length;
     const privateDone = coachInstances.filter(
       (i) => i.status === "DONE" && i.isPrivate
     ).length;
-    const hasMissed = missed > 0;
     // Each DONE group class only pays out if the admin validated *its own*
     // week (see validateWeek) — a month can mix validated and
     // not-yet-validated weeks, so this is checked per class, not per month.
@@ -100,32 +135,61 @@ export async function MonthDashboard({
     const nextClassWeekStart = nextClass ? formatDateISO(startOfWeekMonday(nextClass.date)) : null;
     return {
       coach,
-      assigned,
-      done: done.length,
-      missed,
-      planned,
+      totalHours,
+      heuresFixes,
       privateDone,
       reviewCount,
       lastReviewId,
       nextClass,
       nextClassWeekStart,
-      hasMissed,
       netAmount,
     };
   });
 
   const totals = rows.reduce(
     (acc, r) => ({
-      assigned: acc.assigned + r.assigned,
-      done: acc.done + r.done,
-      missed: acc.missed + r.missed,
-      planned: acc.planned + r.planned,
+      totalHours: acc.totalHours + r.totalHours,
+      heuresFixes: acc.heuresFixes + r.heuresFixes,
       privateDone: acc.privateDone + r.privateDone,
       reviewCount: acc.reviewCount + r.reviewCount,
       netAmount: acc.netAmount + r.netAmount,
     }),
-    { assigned: 0, done: 0, missed: 0, planned: 0, privateDone: 0, reviewCount: 0, netAmount: 0 }
+    { totalHours: 0, heuresFixes: 0, privateDone: 0, reviewCount: 0, netAmount: 0 }
   );
+
+  // Same non-cancelled classes as the table's Heure total / Heures fixes
+  // columns, just bucketed by week instead of summed over the whole month —
+  // feeds the line chart below.
+  const weeks = monthWeekStarts(monthStart, monthEnd);
+  const weekLabels = weeks.map(weekLabel);
+  const weekIndexByStart = new Map(weeks.map((w, idx) => [formatDateISO(w), idx]));
+
+  const weeklyByCoach = new Map<string, { total: number[]; fixes: number[] }>(
+    coaches.map((coach) => [
+      coach.id,
+      { total: new Array(weeks.length).fill(0), fixes: new Array(weeks.length).fill(0) },
+    ])
+  );
+  for (const inst of activeInstances) {
+    if (!inst.coachId) continue;
+    const entry = weeklyByCoach.get(inst.coachId);
+    if (!entry) continue;
+    const weekIdx = weekIndexByStart.get(formatDateISO(startOfWeekMonday(inst.date)));
+    if (weekIdx === undefined) continue;
+    const hours = classDurationHours(inst.startTime, inst.endTime);
+    entry.total[weekIdx] += hours;
+    if (isoWeekday(inst.date) <= 5) entry.fixes[weekIdx] += hours;
+  }
+  const weeklySeries: CoachWeeklyHours[] = coaches.map((coach, i) => {
+    const entry = weeklyByCoach.get(coach.id)!;
+    return {
+      id: coach.id,
+      name: coach.name,
+      color: chartSeriesColor(i),
+      totalHours: entry.total,
+      heuresFixes: entry.fixes,
+    };
+  });
 
   return (
     <>
@@ -187,15 +251,15 @@ export async function MonthDashboard({
           <thead className="bg-neutral-900 text-left text-neutral-400">
             <tr>
               <th className="px-4 py-2 font-medium">Coach</th>
-              <th className="px-4 py-2 font-medium" title="Cours collectifs assignés ce mois-ci">
-                Assignés (collectif)
+              <th className="px-4 py-2 font-medium" title="Total des heures de cours non annulés ce mois-ci (collectifs + privés, faits ou prévus)">
+                Heure total
               </th>
-              <th className="px-4 py-2 font-medium">Faits</th>
-              <th className="px-4 py-2 font-medium">Prévus</th>
+              <th className="px-4 py-2 font-medium" title="Total des heures de cours non annulés du lundi au vendredi">
+                Heures fixes
+              </th>
               <th className="px-4 py-2 font-medium" title="Reviews de coaching ce mois-ci — clic sur le nombre pour voir la dernière, ou le prochain cours à observer">
                 Review
               </th>
-              <th className="px-4 py-2 font-medium">Alerte</th>
               <th className="px-4 py-2 font-medium">Privés</th>
               <th
                 className="px-4 py-2 font-medium"
@@ -208,23 +272,19 @@ export async function MonthDashboard({
           <tbody>
             {rows.map(({
               coach,
-              assigned,
-              done,
-              missed,
-              planned,
+              totalHours,
+              heuresFixes,
               privateDone,
               reviewCount,
               lastReviewId,
               nextClass,
               nextClassWeekStart,
-              hasMissed,
               netAmount,
             }) => (
               <tr key={coach.id} className="border-t border-neutral-800">
                 <td className="px-4 py-2 text-white">{coach.name}</td>
-                <td className="px-4 py-2">{assigned}</td>
-                <td className="px-4 py-2 text-emerald-400">{done}</td>
-                <td className="px-4 py-2 text-neutral-400">{planned}</td>
+                <td className="px-4 py-2 text-white">{totalHours.toFixed(1)}h</td>
+                <td className="px-4 py-2 text-neutral-400">{heuresFixes.toFixed(1)}h</td>
                 <td className="px-4 py-2">
                   {reviewCount > 0 ? (
                     <Link
@@ -246,13 +306,6 @@ export async function MonthDashboard({
                     <span className="text-neutral-500">0</span>
                   )}
                 </td>
-                <td className="px-4 py-2">
-                  {hasMissed && (
-                    <span className="rounded-full bg-red-900/40 px-2 py-0.5 text-xs text-red-300">
-                      {missed} manqué{missed === 1 ? "" : "s"}
-                    </span>
-                  )}
-                </td>
                 <td className="px-4 py-2 text-neutral-400">{privateDone}</td>
                 <td className={`px-4 py-2 ${netAmount < 0 ? "text-red-400" : "text-emerald-400"}`}>
                   {netAmount}€
@@ -261,7 +314,7 @@ export async function MonthDashboard({
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-neutral-500">
+                <td colSpan={6} className="px-4 py-6 text-center text-neutral-500">
                   Aucun coach pour l&apos;instant.
                 </td>
               </tr>
@@ -271,11 +324,9 @@ export async function MonthDashboard({
             <tfoot>
               <tr className="border-t border-neutral-700 bg-neutral-900 font-medium">
                 <td className="px-4 py-2 text-white">Total</td>
-                <td className="px-4 py-2 text-white">{totals.assigned}</td>
-                <td className="px-4 py-2 text-emerald-400">{totals.done}</td>
-                <td className="px-4 py-2 text-neutral-400">{totals.planned}</td>
+                <td className="px-4 py-2 text-white">{totals.totalHours.toFixed(1)}h</td>
+                <td className="px-4 py-2 text-neutral-400">{totals.heuresFixes.toFixed(1)}h</td>
                 <td className="px-4 py-2 text-neutral-400">{totals.reviewCount}</td>
-                <td className="px-4 py-2" />
                 <td className="px-4 py-2 text-neutral-400">{totals.privateDone}</td>
                 <td
                   className={`px-4 py-2 ${totals.netAmount < 0 ? "text-red-400" : "text-emerald-400"}`}
@@ -287,6 +338,9 @@ export async function MonthDashboard({
           )}
         </table>
       </div>
+
+      <h2 className="mb-3 text-sm font-medium text-neutral-400">Heures par coach et par semaine</h2>
+      <MonthHoursChart weekLabels={weekLabels} series={weeklySeries} />
     </>
   );
 }
