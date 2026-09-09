@@ -5,7 +5,7 @@ export function isCoachLevel(value: string): value is CoachLevel {
   return (COACH_LEVELS as readonly string[]).includes(value);
 }
 
-// € paid per hour of validated group class delivered, by CrossFit level.
+// € paid per validated group class delivered, by CrossFit level.
 const GROUP_CLASS_RATE_EUR: Record<CoachLevel, number> = {
   "Level 1": 20,
   "Level 2": 20,

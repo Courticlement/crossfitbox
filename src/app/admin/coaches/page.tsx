@@ -157,7 +157,7 @@ function CoachCard({
             <tr>
               <td
                 className="text-xs text-neutral-500"
-                title="Heures de cours collectifs marquées Fait dans une semaine validée, au tarif horaire"
+                title="Cours collectifs marqués Fait (Valider le planning), au tarif du coach"
               >
                 Montant
               </td>
@@ -241,13 +241,13 @@ function CoachCard({
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs text-neutral-500">Taux (€/h)</span>
+              <span className="mb-1 block text-xs text-neutral-500">Taux (€/cours)</span>
               <input
                 type="number"
                 name="rate"
                 min={0}
                 defaultValue={coach.rate ?? groupClassRate(coach.level)}
-                title="€ par heure de cours collectif validée — utilise par défaut le taux du niveau CrossFit tant qu'il n'est pas modifié"
+                title="€ par cours collectif validé — utilise par défaut le taux du niveau CrossFit tant qu'il n'est pas modifié"
                 className="w-full rounded border border-neutral-800 bg-transparent px-1.5 py-1 text-xs text-white hover:border-neutral-700 focus:border-neutral-500 focus:outline-none"
               />
             </label>
@@ -271,7 +271,7 @@ function CoachCard({
 export default async function CoachesPage() {
   const { organizationId } = await requireOrgAdmin();
   const prisma = tenantPrisma(organizationId);
-  const [coaches, instances, planningWeeks] = await Promise.all([
+  const [coaches, instances] = await Promise.all([
     prisma.coach.findMany({
       orderBy: [{ archived: "asc" }, { name: "asc" }],
     }),
@@ -290,10 +290,7 @@ export default async function CoachesPage() {
         paidRate: true,
       },
     }),
-    prisma.planningWeek.findMany({ select: { weekStart: true } }),
   ]);
-
-  const validatedWeekStarts = new Set(planningWeeks.map((w) => formatDateISO(w.weekStart)));
 
   const instancesByCoach = new Map<string, typeof instances>();
   for (const inst of instances) {
@@ -324,7 +321,6 @@ export default async function CoachesPage() {
               coach.id,
               instancesByCoach.get(coach.id) ?? [],
               coach.rate ?? groupClassRate(coach.level),
-              validatedWeekStarts,
               coach.privateBalancePaidAt
             )}
             takenColors={takenColorsExcept(coach.id)}
@@ -351,7 +347,6 @@ export default async function CoachesPage() {
                   coach.id,
                   instancesByCoach.get(coach.id) ?? [],
                   coach.rate ?? groupClassRate(coach.level),
-                  validatedWeekStarts,
                   coach.privateBalancePaidAt
                 )}
                 takenColors={takenColorsExcept(coach.id)}

@@ -320,8 +320,10 @@ export async function copyLastWeek(formData: FormData) {
   revalidateAll();
 }
 
-// Confirms and locks the week in one step: every still-PLANNED, assigned
-// class is marked Fait (so it's paid — see coach-stats.ts), then the week is
+// Confirms and locks the week in one step — the sole way a group class
+// moves from Assigned to Done: every still-PLANNED, coach-assigned class is
+// marked Fait, stamped with its coach's current rate (see
+// markInstancesDone), so it's paid (see coach-stats.ts). The week is then
 // locked, blocking a coach's own edits (private classes, claims — see
 // lib/planning-lock.ts) from that point on. The admin's own edits here on
 // the Planning page are never blocked by this.
@@ -333,14 +335,11 @@ export async function validateWeek(formData: FormData) {
   if (!weekStart) return;
   const weekEnd = addDays(weekStart, 7);
 
-  // Validating the week is "confirm everything happened as scheduled": any
-  // class still sitting PLANNED (i.e. nobody already flagged it Fait or
-  // Manqué individually via bulkSetClassStatus) is marked Fait, stamped
-  // with its coach's current rate, so it's paid (see markInstancesDone).
   // Classes with no coach (unassigned, or a team event by design — see
   // ClassInstance.isTeamEvent) are left alone since there's nobody to pay;
-  // an already-Manqué class is left alone too, since that's a deliberate
-  // record of a missed class, not an oversight to paper over.
+  // an already-Manqué class (from historical data — nothing sets Manqué
+  // going forward) is left alone too, since that's a deliberate record of a
+  // missed class, not an oversight to paper over.
   const stillPlanned = await prisma.classInstance.findMany({
     where: {
       date: { gte: weekStart, lt: weekEnd },
@@ -497,18 +496,14 @@ export async function bulkAssignCoach(
   };
 }
 
-export type BulkStatusState = { error: null; updated: number };
-
-const CLASS_STATUS_VALUES = ["PLANNED", "DONE", "MISSED"] as const;
-
-// Marks the given classes Fait, stamping each one with its assigned coach's
-// *current* hourly rate (paidRate) — so a later change to Coach.rate (or
+// Marks the given classes Fait (Done), stamping each one with its assigned
+// coach's *current* rate (paidRate) — so a later change to Coach.rate (or
 // the CrossFit-level default) never retroactively changes pay that's
-// already been validated (see coach-stats.ts / week-dashboard.tsx). Shared
-// by bulkSetClassStatus (admin picks specific classes) and validateWeek
-// (auto-marks whatever's left PLANNED when the week is validated). Classes
-// grouped by resolved rate so each distinct rate is one updateMany, not one
-// query per class.
+// already been validated (see coach-stats.ts / week-dashboard.tsx). Only
+// ever called by validateWeek — "Valider le planning" is the sole way a
+// class becomes Done; there's no per-class control for it. Classes grouped
+// by resolved rate so each distinct rate is one updateMany, not one query
+// per class.
 async function markInstancesDone(
   prisma: ReturnType<typeof tenantPrisma>,
   ids: string[]
@@ -545,47 +540,6 @@ async function markInstancesDone(
     count += result.count;
   }
   return count;
-}
-
-// Admin-only validation, bulk-only: the Planning grid's multi-select
-// toolbar (see BulkAssignProvider) is the sole way to confirm a batch of
-// classes Fait/Manqué — coaches no longer self-report this (see
-// submissions.ts history), and there's no per-class control for it either.
-// Doesn't touch coachId; who's assigned is still set separately via
-// assignCoach/CoachSelect.
-export async function bulkSetClassStatus(
-  _prevState: BulkStatusState,
-  formData: FormData
-): Promise<BulkStatusState> {
-  const { organizationId } = await requireOrgAdmin();
-  const prisma = tenantPrisma(organizationId);
-  const ids = formData.getAll("ids").map(String).filter(Boolean);
-  const statusRaw = String(formData.get("status") ?? "");
-  if (ids.length === 0 || !(CLASS_STATUS_VALUES as readonly string[]).includes(statusRaw)) {
-    return { error: null, updated: 0 };
-  }
-  const status = statusRaw as (typeof CLASS_STATUS_VALUES)[number];
-
-  let count: number;
-  if (status === "DONE") {
-    count = await markInstancesDone(prisma, ids);
-  } else {
-    const result = await prisma.classInstance.updateMany({
-      where: { id: { in: ids } },
-      data: {
-        status,
-        // No longer Fait — any snapshotted rate is stale (see
-        // markInstancesDone) and a "covered by" note only makes sense while
-        // the class is Manqué, same as applyOfficial's DONE/undo handling
-        // used to.
-        paidRate: null,
-        ...(status !== "MISSED" ? { substituteCoachId: null } : {}),
-      },
-    });
-    count = result.count;
-  }
-  revalidateAll();
-  return { error: null, updated: count };
 }
 
 // Shared by both the admin's Planning page (context="admin") and a coach's

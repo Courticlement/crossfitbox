@@ -30,14 +30,13 @@ export async function WeekDashboard({
 
   const today = toDateOnly(new Date());
 
-  const [coaches, instances, planningWeek, weekReviews, upcomingClasses] = await Promise.all([
+  const [coaches, instances, weekReviews, upcomingClasses] = await Promise.all([
     prisma.coach.findMany({ orderBy: { name: "asc" } }),
     // Unfiltered by coach on purpose — the box-wide summary below needs
     // unassigned classes too, not just ones already claimed by someone.
     prisma.classInstance.findMany({
       where: { date: { gte: weekStart, lt: weekEnd } },
     }),
-    prisma.planningWeek.findUnique({ where: { organizationId_weekStart: { organizationId, weekStart } } }),
     // Scoped to this week, same as Faits/Prévus below — the count in the
     // Review column and the "last review" it links to both come from here.
     prisma.classReview.findMany({
@@ -59,7 +58,6 @@ export async function WeekDashboard({
       select: { id: true, coachId: true, date: true, startTime: true, label: true },
     }),
   ]);
-  const weekValidated = planningWeek !== null;
 
   const activeInstances = instances.filter((i) => i.status !== "CANCELLED");
   const totalClasses = activeInstances.length;
@@ -98,23 +96,16 @@ export async function WeekDashboard({
     // (upcomingClasses is sorted soonest-first, so the first match is it).
     const nextClass = reviewCount === 0 ? (upcomingClasses.find((i) => i.coachId === coach.id) ?? null) : null;
     const nextClassWeekStart = nextClass ? formatDateISO(startOfWeekMonday(nextClass.date)) : null;
-    // Group classes are paid on hours marked Fait, only once the head coach
-    // has locked the week via "Valider le planning" — a class marked Fait
-    // ahead of that is prepared but not yet paid. Each hour is paid at the
-    // rate snapshotted on that class when it was validated (paidRate), not
-    // the coach's live rate, so a later Coach.rate change never
-    // retroactively changes already-validated pay. Private classes are
-    // always costed, whether or not the week is locked, since they're
-    // logged ad hoc outside the weekly planning workflow.
+    // Group classes are paid per class marked Done — the status a class only
+    // ever reaches via "Valider le planning" (see validateWeek), which
+    // stamps it with the coach's rate at that moment (paidRate) — so a
+    // later Coach.rate change never retroactively changes already-validated
+    // pay. Private classes are always costed, since they're logged ad hoc
+    // outside the weekly planning workflow.
     const fallbackRate = coach.rate ?? groupClassRate(coach.level);
-    const groupAmount = weekValidated
-      ? coachInstances
-          .filter((i) => i.status === "DONE" && !i.isPrivate)
-          .reduce(
-            (sum, i) => sum + classDurationHours(i.startTime, i.endTime) * (i.paidRate ?? fallbackRate),
-            0
-          )
-      : 0;
+    const groupAmount = coachInstances
+      .filter((i) => i.status === "DONE" && !i.isPrivate)
+      .reduce((sum, i) => sum + (i.paidRate ?? fallbackRate), 0);
     const privateCost = privateDone * PRIVATE_CLASS_COST_EUR;
     const netAmount = groupAmount - privateCost;
     return {
@@ -217,11 +208,7 @@ export async function WeekDashboard({
               <th className="px-4 py-2 font-medium">Privés</th>
               <th
                 className="px-4 py-2 font-medium"
-                title={
-                  weekValidated
-                    ? "Heures de cours collectifs marquées Fait, au tarif horaire du coach, moins le coût des cours privés"
-                    : "0€ tant que la semaine n'est pas validée (Valider le planning) — coût des cours privés uniquement"
-                }
+                title="Cours collectifs marqués Fait (Valider le planning), au tarif du coach, moins le coût des cours privés"
               >
                 Net €
               </th>

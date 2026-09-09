@@ -20,11 +20,12 @@ const STATUS_TEXT_COLOR: Record<string, string> = {
   CANCELLED: "text-neutral-600",
 };
 
-// A coach's read-only view of the week: who's assigned and whether the
-// admin has validated each class Fait/Manqué (see bulkSetClassStatus in
-// actions/planning.ts — coaches no longer self-report this). The only thing
-// still editable here is naming a substitute once the admin has marked a
-// class Manqué.
+// A coach's read-only view of the week: who's assigned, and whether the
+// admin has validated the whole week Fait via "Valider le planning" (see
+// validateWeek in actions/planning.ts — coaches no longer self-report this,
+// and there's no per-class control for it). The only thing still editable
+// here is naming a substitute for a class marked Manqué (historical data
+// only — nothing sets Manqué going forward).
 export function MyClassesGrid({
   weekStart,
   selectedDay,

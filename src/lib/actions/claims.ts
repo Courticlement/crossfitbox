@@ -20,7 +20,8 @@ export type ClaimState = { error: string | null };
 // The head coach still has to approve it (see approveClaim below) before
 // the class actually shows up as theirs — an unchecked coach-side write
 // straight onto a class's official coachId is exactly what coaches losing
-// self-report privileges (see bulkSetClassStatus's comment) was about.
+// self-report privileges (see validateWeek's comment in actions/planning.ts)
+// was about.
 // Re-claiming after a rejection is allowed (the upsert just flips the same
 // row back to PENDING) since only one row ever exists per
 // (classInstanceId, coachId) pair.

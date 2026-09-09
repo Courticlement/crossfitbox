@@ -4,9 +4,10 @@ import { startOfWeekMonday, addDays, toDateOnly } from "@/lib/dates";
 export type PrevWeekAlert = {
   show: boolean;
   prevWeekStart: Date;
-  // Still-PLANNED group classes the head coach hasn't yet marked Fait or
-  // Manqué (see bulkSetClassStatus) — the clearest signal there's still
-  // review work left before this week can be validated.
+  // Still-PLANNED group classes — a class only leaves PLANNED for Fait when
+  // the head coach clicks "Valider le planning" (see validateWeek in
+  // actions/planning.ts), so this is just "classes this week, not yet
+  // validated."
   unreported: number;
 };
 

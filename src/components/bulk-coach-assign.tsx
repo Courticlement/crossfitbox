@@ -1,16 +1,9 @@
 "use client";
 
 import { createContext, useContext, useState, useActionState } from "react";
-import {
-  bulkAssignCoach,
-  bulkSetClassStatus,
-  type BulkAssignState,
-  type BulkStatusState,
-} from "@/lib/actions/planning";
-import { statusLabel } from "@/lib/status-labels";
+import { bulkAssignCoach, type BulkAssignState } from "@/lib/actions/planning";
 
 const initialAssignState: BulkAssignState = { error: null, assigned: 0 };
-const initialStatusState: BulkStatusState = { error: null, updated: 0 };
 
 type Ctx = {
   selected: Set<string>;
@@ -36,9 +29,10 @@ export function SelectClassCheckbox({ id }: { id: string }) {
 }
 
 // Wraps the Planning grid: owns the multi-select state and renders the
-// toolbar to act on every selected class at once — reassign their coach, or
-// validate them Fait/Manqué (the only way to do either in bulk; there's no
-// per-class control for either on the grid itself). The checkboxes live
+// toolbar to reassign the coach on every selected class at once (there's no
+// per-class control for it on the grid itself). Marking classes Fait/Done
+// only ever happens for the whole week at once, via "Valider le planning"
+// (see validateWeek in actions/planning.ts) — not here. The checkboxes live
 // deep inside the (server-rendered) WeekGrid tree passed as children — they
 // reach this state through context, same pattern as any client provider
 // wrapping server-component children in the App Router.
@@ -51,13 +45,12 @@ export function BulkAssignProvider({
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [assignState, assignAction] = useActionState(bulkAssignCoach, initialAssignState);
-  const [statusState, statusAction] = useActionState(bulkSetClassStatus, initialStatusState);
 
-  // Once either submit round-trips (its state identity changes), that
-  // action is done — clear the selection so stale checkboxes don't linger.
-  const [synced, setSynced] = useState({ assignState, statusState });
-  if (synced.assignState !== assignState || synced.statusState !== statusState) {
-    setSynced({ assignState, statusState });
+  // Once the submit round-trips (its state identity changes), the action is
+  // done — clear the selection so stale checkboxes don't linger.
+  const [synced, setSynced] = useState(assignState);
+  if (synced !== assignState) {
+    setSynced(assignState);
     setSelected(new Set());
   }
 
@@ -106,30 +99,6 @@ export function BulkAssignProvider({
           </button>
         </form>
 
-        <form action={statusAction} className="flex items-center gap-2">
-          {idInputs}
-          <select
-            name="status"
-            defaultValue=""
-            disabled={selected.size === 0}
-            className="rounded-md border border-neutral-700 bg-neutral-950 px-2 py-1.5 text-xs text-white focus:border-neutral-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <option value="" disabled>
-              Valider…
-            </option>
-            <option value="DONE">{statusLabel("DONE")}</option>
-            <option value="MISSED">{statusLabel("MISSED")}</option>
-            <option value="PLANNED">{statusLabel("PLANNED")}</option>
-          </select>
-          <button
-            type="submit"
-            disabled={selected.size === 0}
-            className="rounded-md bg-white px-3 py-1.5 text-xs font-medium text-neutral-950 hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Valider
-          </button>
-        </form>
-
         {selected.size > 0 && (
           <button
             type="button"
@@ -143,9 +112,6 @@ export function BulkAssignProvider({
         {assignState.error && <span className="text-xs text-amber-400">{assignState.error}</span>}
         {!assignState.error && assignState.assigned > 0 && (
           <span className="text-xs text-emerald-400">{assignState.assigned} coach(s) mis à jour.</span>
-        )}
-        {statusState.updated > 0 && (
-          <span className="text-xs text-emerald-400">{statusState.updated} cours validé(s).</span>
         )}
       </div>
       {children}

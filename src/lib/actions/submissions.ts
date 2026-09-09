@@ -34,7 +34,8 @@ type OfficialSubmission = {
 // Applies a submission as the class's official record, or (if null) resets
 // the class back to an unreported PLANNED state. Only reachable now via the
 // admin's conflict-resolution actions below (useSubmission/dismissSubmission)
-// — coaches no longer self-report, see bulkSetClassStatus in actions/planning.ts.
+// — coaches no longer self-report; going forward a class only becomes Fait
+// via validateWeek ("Valider le planning") in actions/planning.ts.
 //
 // For a DONE report, coachId is overwritten to whoever the admin picked as
 // official — this re-derives from whatever's left among the historical
