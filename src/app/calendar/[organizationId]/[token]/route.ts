@@ -1,5 +1,5 @@
 import { tenantPrisma } from "@/lib/prisma";
-import { toDateOnly, startOfWeekMonday, addDays } from "@/lib/dates";
+import { toDateOnly, startOfWeekMonday, addDays, isoWeekday } from "@/lib/dates";
 import { buildIcsFeed } from "@/lib/calendar-feed";
 
 // The coach's own calendar-subscription feed (see CalendarSyncCard /
@@ -34,18 +34,35 @@ export async function GET(
       return new Response("Not found", { status: 404 });
     }
 
-    // From this week onward — a class only ever gets generated a handful of
-    // weeks ahead (see generateWeek), so a fixed forward window is generous
-    // rather than an artificial cutoff. Starting at the week (not just today)
-    // keeps the rest of an in-progress week visible instead of only what's
-    // still ahead today.
+    // Starting at the week (not just today) keeps the rest of an
+    // in-progress week visible instead of only what's still ahead today.
+    // The forward edge follows the same "next week opens Friday" rule as
+    // the coach's own /upload view (see UploadPage's maxWeekStart) — a
+    // subscribed calendar shouldn't leak next week's schedule before the
+    // admin's typically finished planning it. Once Friday opens it, a class
+    // only ever gets generated a handful of weeks ahead anyway (see
+    // generateWeek), so a fixed 180-day window is generous rather than an
+    // artificial cutoff. Either way this week's own classes — and any
+    // last-minute change to one — reach the feed the moment a calendar app
+    // re-polls, since nothing here is cached (see Cache-Control below).
     const today = toDateOnly(new Date());
-    const windowStart = startOfWeekMonday(today);
-    const windowEnd = addDays(today, 180);
+    const thisWeekStart = startOfWeekMonday(today);
+    const windowStart = thisWeekStart;
+    const nextWeekOpen = isoWeekday(today) >= 5;
+    const windowEnd = nextWeekOpen ? addDays(today, 180) : addDays(thisWeekStart, 7);
 
     const instances = await prisma.classInstance.findMany({
       where: {
-        coachId: coach.id,
+        // A substitute taking over (assignSubstitute) leaves coachId
+        // pointing at whoever was originally on the hook — they're not the
+        // one actually delivering it anymore, so their feed should drop it
+        // in favor of the substitute's. `substituteCoachId: null` on the
+        // first branch is what makes that handoff exclusive instead of
+        // leaving it on both calendars.
+        OR: [
+          { coachId: coach.id, substituteCoachId: null },
+          { substituteCoachId: coach.id },
+        ],
         status: { not: "CANCELLED" },
         date: { gte: windowStart, lt: windowEnd },
       },
