@@ -11,7 +11,7 @@ import {
   toDateOnly,
 } from "@/lib/dates";
 import { classDurationHours } from "@/lib/coach-stats";
-import { groupClassRate, PRIVATE_CLASS_COST_EUR } from "@/lib/coach-levels";
+import { groupClassRate } from "@/lib/coach-levels";
 import { pastilleColor } from "@/lib/review-constants";
 
 export async function WeekDashboard({
@@ -109,14 +109,12 @@ export async function WeekDashboard({
     // ever reaches via "Valider le planning" (see validateWeek), which
     // stamps it with the coach's rate at that moment (paidRate) — so a
     // later Coach.rate change never retroactively changes already-validated
-    // pay. Private classes are always costed, since they're logged ad hoc
-    // outside the weekly planning workflow.
+    // pay. Net is group-class pay only — private classes are tracked
+    // separately (see the Privés column) and don't factor into it.
     const fallbackRate = coach.rate ?? groupClassRate(coach.level);
-    const groupAmount = coachInstances
+    const netAmount = coachInstances
       .filter((i) => i.status === "DONE" && !i.isPrivate)
       .reduce((sum, i) => sum + (i.paidRate ?? fallbackRate), 0);
-    const privateCost = privateDone * PRIVATE_CLASS_COST_EUR;
-    const netAmount = groupAmount - privateCost;
     return {
       coach,
       totalHours,
@@ -218,7 +216,7 @@ export async function WeekDashboard({
               <th className="px-4 py-2 font-medium">Privés</th>
               <th
                 className="px-4 py-2 font-medium"
-                title="Cours collectifs marqués Fait (Valider le planning), au tarif du coach, moins le coût des cours privés"
+                title="Cours collectifs marqués Fait (Valider le planning), au tarif du coach — hors cours privés"
               >
                 Net €
               </th>

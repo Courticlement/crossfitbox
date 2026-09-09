@@ -1,7 +1,7 @@
 import { tenantPrisma } from "@/lib/prisma";
 import { addDays, addMonths, formatDayLabel, formatMonthLabel, isoWeekday } from "@/lib/dates";
 import { classDurationHours } from "@/lib/coach-stats";
-import { groupClassRate, PRIVATE_CLASS_COST_EUR } from "@/lib/coach-levels";
+import { groupClassRate } from "@/lib/coach-levels";
 
 export type DigestRow = {
   name: string;
@@ -36,27 +36,30 @@ export async function weeklyDigestRows(
 
   const rows: DigestRow[] = coaches.map((coach) => {
     const coachInstances = instances.filter((i) => i.coachId === coach.id);
-    // Same "all non-cancelled classes" basis as the dashboard's hours
-    // columns — includes still-PLANNED classes, not just delivered ones.
+    // Same "all non-cancelled group classes" basis as the dashboard's hours
+    // columns — includes still-PLANNED classes, not just delivered ones,
+    // but excludes private classes and team events.
     const activeCoachInstances = coachInstances.filter((i) => i.status !== "CANCELLED");
-    const totalHours = activeCoachInstances.reduce(
+    const groupCoachInstances = activeCoachInstances.filter(
+      (i) => !i.isPrivate && !i.isTeamEvent
+    );
+    const totalHours = groupCoachInstances.reduce(
       (sum, i) => sum + classDurationHours(i.startTime, i.endTime),
       0
     );
-    const heuresFixes = activeCoachInstances
+    const heuresFixes = groupCoachInstances
       .filter((i) => isoWeekday(i.date) <= 5)
       .reduce((sum, i) => sum + classDurationHours(i.startTime, i.endTime), 0);
     // Net € is paid per class marked Done — the status a class only ever
     // reaches via "Valider le planning" — at the rate snapshotted on it
-    // (paidRate), same as week-dashboard.tsx.
+    // (paidRate), same as week-dashboard.tsx. Group-class pay only —
+    // private classes don't factor into it.
     const privateDone = coachInstances.filter((i) => i.status === "DONE" && i.isPrivate).length;
     const reviewCount = weekReviews.filter((r) => r.classInstance.coachId === coach.id).length;
     const fallbackRate = coach.rate ?? groupClassRate(coach.level);
-    const groupAmount = coachInstances
+    const netAmount = coachInstances
       .filter((i) => i.status === "DONE" && !i.isPrivate)
       .reduce((sum, i) => sum + (i.paidRate ?? fallbackRate), 0);
-    const privateCost = privateDone * PRIVATE_CLASS_COST_EUR;
-    const netAmount = groupAmount - privateCost;
     return { name: coach.name, totalHours, heuresFixes, reviewCount, privateDone, netAmount };
   });
 
@@ -85,21 +88,22 @@ export async function monthlyDigestRows(
   const rows: DigestRow[] = coaches.map((coach) => {
     const coachInstances = instances.filter((i) => i.coachId === coach.id);
     const activeCoachInstances = coachInstances.filter((i) => i.status !== "CANCELLED");
-    const totalHours = activeCoachInstances.reduce(
+    const groupCoachInstances = activeCoachInstances.filter(
+      (i) => !i.isPrivate && !i.isTeamEvent
+    );
+    const totalHours = groupCoachInstances.reduce(
       (sum, i) => sum + classDurationHours(i.startTime, i.endTime),
       0
     );
-    const heuresFixes = activeCoachInstances
+    const heuresFixes = groupCoachInstances
       .filter((i) => isoWeekday(i.date) <= 5)
       .reduce((sum, i) => sum + classDurationHours(i.startTime, i.endTime), 0);
     const privateDone = coachInstances.filter((i) => i.status === "DONE" && i.isPrivate).length;
     const reviewCount = monthReviews.filter((r) => r.classInstance.coachId === coach.id).length;
     const fallbackRate = coach.rate ?? groupClassRate(coach.level);
-    const groupAmount = coachInstances
+    const netAmount = coachInstances
       .filter((i) => i.status === "DONE" && !i.isPrivate)
       .reduce((sum, i) => sum + (i.paidRate ?? fallbackRate), 0);
-    const privateCost = privateDone * PRIVATE_CLASS_COST_EUR;
-    const netAmount = groupAmount - privateCost;
     return { name: coach.name, totalHours, heuresFixes, reviewCount, privateDone, netAmount };
   });
 
