@@ -23,6 +23,7 @@ export async function PrivatePaymentAlert({ organizationId }: { organizationId: 
         startTime: true,
         endTime: true,
         status: true,
+        label: true,
         isPrivate: true,
         athleteIsMember: true,
         paidRate: true,

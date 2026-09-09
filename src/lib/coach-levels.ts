@@ -17,6 +17,19 @@ export function groupClassRate(level: string | null): number {
   return level && isCoachLevel(level) ? GROUP_CLASS_RATE_EUR[level] : 0;
 }
 
+// A handful of named class types are paid at one flat rate, the same for
+// every coach regardless of level — overrides both Coach.rate and
+// groupClassRate for a class whose label matches (case/whitespace
+// insensitive, since it's admin-typed free text, not a fixed enum).
+const NAMED_CLASS_RATES_EUR: Record<string, number> = {
+  "big wod": 45,
+};
+
+export function classPayRate(label: string, fallbackRate: number): number {
+  const named = NAMED_CLASS_RATES_EUR[label.trim().toLowerCase()];
+  return named ?? fallbackRate;
+}
+
 // € the coach owes the box per private class they deliver, flat regardless
 // of level — unlike group classes, this isn't gated on the week being
 // validated, since private lessons are logged ad hoc outside the weekly

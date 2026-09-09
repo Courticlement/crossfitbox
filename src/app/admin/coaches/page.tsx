@@ -286,6 +286,7 @@ export default async function CoachesPage() {
         startTime: true,
         endTime: true,
         status: true,
+        label: true,
         isPrivate: true,
         athleteIsMember: true,
         paidRate: true,

@@ -1,11 +1,12 @@
 import { timeToMinutes } from "@/lib/calendar-layout";
-import { privateClassCost } from "@/lib/coach-levels";
+import { privateClassCost, classPayRate } from "@/lib/coach-levels";
 
 export type ClassInstanceForStats = {
   date: Date;
   startTime: string;
   endTime: string;
   status: string;
+  label: string;
   isPrivate: boolean;
   // Only meaningful when isPrivate — see ClassInstance.athleteIsMember.
   // Drives which private-class rate applies (see privateClassCost).
@@ -93,7 +94,8 @@ export function computeCoachStats(
   // groupClassRate) rather than this function looking it up itself. Used
   // whenever a class has no paidRate snapshot of its own, and for a MISSED
   // class credited to a substitute (which was never itself validated, so
-  // never gets a snapshot).
+  // never gets a snapshot) — still overridden per-class by classPayRate for
+  // a named class type (e.g. "Big WOD").
   rate: number,
   // Only private classes delivered after this date count toward
   // privateBalance — null (never paid) counts the whole history.
@@ -166,9 +168,11 @@ export function computeCoachStats(
         // ClassInstanceForStats.paidRate) wins over the coach's current
         // rate — only a class with no snapshot (or a MISSED class credited
         // to a substitute, which was never itself validated) falls back to
-        // the live rate passed in. One flat payment per class, not scaled
-        // by duration.
-        const amount = inst.status === "DONE" ? (inst.paidRate ?? rate) : rate;
+        // the live rate passed in, still subject to a named class type's
+        // flat override (see classPayRate). One flat payment per class, not
+        // scaled by duration.
+        const fallbackRate = classPayRate(inst.label, rate);
+        const amount = inst.status === "DONE" ? (inst.paidRate ?? fallbackRate) : fallbackRate;
         if (inst.date >= currentMonthStart && inst.date < nextMonthStart) {
           amountThisMonth += amount;
         }

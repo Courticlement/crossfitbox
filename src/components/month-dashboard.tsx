@@ -15,7 +15,7 @@ import {
   toDateOnly,
 } from "@/lib/dates";
 import { classDurationHours } from "@/lib/coach-stats";
-import { groupClassRate } from "@/lib/coach-levels";
+import { groupClassRate, classPayRate } from "@/lib/coach-levels";
 import { chartSeriesColor } from "@/lib/chart-palette";
 import { pastilleColor } from "@/lib/review-constants";
 
@@ -123,7 +123,7 @@ export async function MonthDashboard({
     const fallbackRate = coach.rate ?? groupClassRate(coach.level);
     const netAmount = coachInstances
       .filter((i) => i.status === "DONE" && !i.isPrivate)
-      .reduce((sum, i) => sum + (i.paidRate ?? fallbackRate), 0);
+      .reduce((sum, i) => sum + (i.paidRate ?? classPayRate(i.label, fallbackRate)), 0);
     // This coach's reviews this month, most recent first.
     const coachReviews = monthReviews.filter((r) => r.classInstance.coachId === coach.id);
     const reviewCount = coachReviews.length;

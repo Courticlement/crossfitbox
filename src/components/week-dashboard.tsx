@@ -11,7 +11,7 @@ import {
   toDateOnly,
 } from "@/lib/dates";
 import { classDurationHours } from "@/lib/coach-stats";
-import { groupClassRate } from "@/lib/coach-levels";
+import { groupClassRate, classPayRate } from "@/lib/coach-levels";
 import { pastilleColor } from "@/lib/review-constants";
 
 export async function WeekDashboard({
@@ -114,7 +114,7 @@ export async function WeekDashboard({
     const fallbackRate = coach.rate ?? groupClassRate(coach.level);
     const netAmount = coachInstances
       .filter((i) => i.status === "DONE" && !i.isPrivate)
-      .reduce((sum, i) => sum + (i.paidRate ?? fallbackRate), 0);
+      .reduce((sum, i) => sum + (i.paidRate ?? classPayRate(i.label, fallbackRate)), 0);
     return {
       coach,
       totalHours,
