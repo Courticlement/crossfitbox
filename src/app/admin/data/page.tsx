@@ -67,6 +67,8 @@ export default async function DataPage({
     room: inst.room.name,
     label: inst.label,
     type: inst.isPrivate ? "Privé" : "Collectif",
+    athleteName: inst.athleteName ?? "",
+    athleteIsMember: inst.athleteIsMember,
     coachName: inst.coach?.name ?? "—",
     substituteName: inst.substituteCoach?.name ?? "—",
     status: statusLabel(inst.status),

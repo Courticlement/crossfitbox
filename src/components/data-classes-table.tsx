@@ -10,6 +10,8 @@ export type ClassRow = {
   room: string;
   label: string;
   type: string;
+  athleteName: string;
+  athleteIsMember: boolean | null;
   coachName: string;
   substituteName: string;
   status: string;
@@ -80,6 +82,7 @@ export function DataClassesTable({ rows }: { rows: ClassRow[] }) {
               <th className="px-4 py-2 font-medium">Salle</th>
               <th className="px-4 py-2 font-medium">Intitulé</th>
               <th className="px-4 py-2 font-medium">Type</th>
+              <th className="px-4 py-2 font-medium">Athlète</th>
               <th className="px-4 py-2 font-medium">Coach</th>
               <th className="px-4 py-2 font-medium">Remplaçant</th>
               <th className="px-4 py-2 font-medium">Statut</th>
@@ -103,6 +106,19 @@ export function DataClassesTable({ rows }: { rows: ClassRow[] }) {
                 <td className="px-4 py-2">{row.room}</td>
                 <td className="px-4 py-2 text-white">{row.label}</td>
                 <td className="px-4 py-2">{row.type}</td>
+                <td className="px-4 py-2">
+                  {row.athleteName || "—"}
+                  {row.athleteName && row.athleteIsMember !== null && (
+                    <span
+                      className={
+                        row.athleteIsMember ? "text-emerald-400" : "text-amber-400"
+                      }
+                    >
+                      {" "}
+                      ({row.athleteIsMember ? "abonné" : "non abonné"})
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-2">{row.coachName}</td>
                 <td className="px-4 py-2">{row.substituteName}</td>
                 <td className={`px-4 py-2 ${row.statusColor}`}>{row.status}</td>
@@ -110,7 +126,7 @@ export function DataClassesTable({ rows }: { rows: ClassRow[] }) {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-6 text-center text-neutral-500">
+                <td colSpan={10} className="px-4 py-6 text-center text-neutral-500">
                   Aucun cours sur cette période.
                 </td>
               </tr>

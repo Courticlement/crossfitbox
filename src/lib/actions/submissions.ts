@@ -175,6 +175,7 @@ const PrivateClassSchema = z
     dayOfWeek: z.coerce.number().int().min(1).max(7),
     startTime: z.string().regex(/^\d{2}:\d{2}$/),
     endTime: z.string().regex(/^\d{2}:\d{2}$/),
+    athleteName: z.string().trim().min(1),
   })
   .refine((data) => data.endTime > data.startTime, {
     message: "End time must be after start time",
@@ -199,10 +200,12 @@ export async function addPrivateClass(formData: FormData) {
     dayOfWeek: formData.get("dayOfWeek"),
     startTime: formData.get("startTime"),
     endTime: formData.get("endTime"),
+    athleteName: formData.get("athleteName"),
   });
   if (!parsed.success) return;
 
-  const { weekStart, dayOfWeek, startTime, endTime } = parsed.data;
+  const { weekStart, dayOfWeek, startTime, endTime, athleteName } = parsed.data;
+  const athleteIsMember = formData.get("athleteIsMember") === "on";
 
   const coach = await prisma.coach.findUnique({ where: { id: coachId } });
   if (!coach || coach.archived) return;
@@ -225,6 +228,8 @@ export async function addPrivateClass(formData: FormData) {
       label: "Cours privé",
       roomId: defaultRoom.id,
       isPrivate: true,
+      athleteName,
+      athleteIsMember,
       status: "DONE",
       coachId,
     },

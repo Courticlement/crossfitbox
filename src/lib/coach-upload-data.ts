@@ -36,7 +36,14 @@ export async function loadCoachWeekData(
       isPrivate: true,
       date: { gte: weekStart, lt: weekEnd },
     },
-    select: { id: true, date: true, startTime: true, endTime: true },
+    select: {
+      id: true,
+      date: true,
+      startTime: true,
+      endTime: true,
+      athleteName: true,
+      athleteIsMember: true,
+    },
   });
 
   const locked = await isWeekValidated(organizationId, weekStart);

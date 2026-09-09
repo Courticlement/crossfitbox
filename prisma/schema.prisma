@@ -193,6 +193,12 @@ model ClassInstance {
   roomId            String
   room              Room           @relation(fields: [roomId], references: [id])
   isPrivate         Boolean        @default(false)
+  // Only set for a private class (see isPrivate) — who it's for, and
+  // whether they're a subscribed member of the box (vs. a drop-in/outside
+  // athlete), captured on the coach's "Cours privés" form (addPrivateClass).
+  // Meaningless for a group class or team event; left null there.
+  athleteName       String?
+  athleteIsMember   Boolean?
   // A whole-team event (staff meeting, seminar, box party…) rather than a
   // class taught by one coach — created with coachId left null (see
   // addAdHocClass) so it doesn't count toward anyone's quota or pay, and

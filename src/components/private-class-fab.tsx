@@ -108,6 +108,23 @@ export function PrivateClassFab({
                   />
                 </div>
               </div>
+              <div>
+                <label className="mb-1 block text-xs text-neutral-500">Athlète</label>
+                <input
+                  type="text"
+                  name="athleteName"
+                  required
+                  placeholder="Nom de l'athlète"
+                  className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
+                />
+              </div>
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-neutral-300">
+                <span className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full bg-neutral-700 transition-colors has-checked:bg-emerald-500">
+                  <input type="checkbox" name="athleteIsMember" className="peer sr-only" />
+                  <span className="absolute left-0.5 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-4" />
+                </span>
+                Abonné à la box
+              </label>
               <button
                 type="submit"
                 className="mt-1 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"

@@ -86,6 +86,8 @@ export function tenantTableDdl(schema: string): string[] {
       "label" TEXT NOT NULL,
       "roomId" TEXT NOT NULL,
       "isPrivate" BOOLEAN NOT NULL DEFAULT false,
+      "athleteName" TEXT,
+      "athleteIsMember" BOOLEAN,
       "isTeamEvent" BOOLEAN NOT NULL DEFAULT false,
       "coachId" TEXT,
       "substituteCoachId" TEXT,

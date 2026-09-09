@@ -22,6 +22,8 @@ export type PrivateClassEntry = {
   date: Date;
   startTime: string;
   endTime: string;
+  athleteName: string | null;
+  athleteIsMember: boolean | null;
 };
 
 export function PrivateClassForm({
@@ -90,6 +92,31 @@ export function PrivateClassForm({
             className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none disabled:opacity-50"
           />
         </div>
+        <div>
+          <label className="mb-1 block text-xs text-neutral-500">Athlète</label>
+          <input
+            type="text"
+            name="athleteName"
+            required
+            disabled={locked}
+            placeholder="Nom de l'athlète"
+            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none disabled:opacity-50"
+          />
+        </div>
+        <label className="mb-2 flex cursor-pointer items-center gap-2 text-sm text-neutral-300">
+          <span
+            className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full bg-neutral-700 transition-colors has-checked:bg-emerald-500"
+          >
+            <input
+              type="checkbox"
+              name="athleteIsMember"
+              disabled={locked}
+              className="peer sr-only"
+            />
+            <span className="absolute left-0.5 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-4" />
+          </span>
+          Abonné à la box
+        </label>
         <AddButton locked={locked} />
       </form>
 
@@ -109,6 +136,22 @@ export function PrivateClassForm({
               >
                 <span>
                   {formatDayLabel(entry.date)} · {entry.startTime}–{entry.endTime}
+                  {entry.athleteName && (
+                    <>
+                      {" · "}
+                      {entry.athleteName}
+                      {entry.athleteIsMember !== null && (
+                        <span
+                          className={
+                            entry.athleteIsMember ? "text-emerald-400" : "text-amber-400"
+                          }
+                        >
+                          {" "}
+                          ({entry.athleteIsMember ? "abonné" : "non abonné"})
+                        </span>
+                      )}
+                    </>
+                  )}
                 </span>
                 {!locked && (
                   <form action={deletePrivateClass}>
