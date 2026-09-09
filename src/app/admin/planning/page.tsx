@@ -28,7 +28,7 @@ import { CopyLastWeekButton } from "@/components/copy-last-week-button";
 import { SubstituteSelect } from "@/components/substitute-select";
 import { TimeConflictsPanel, type TimeConflictGroup } from "@/components/time-conflicts-panel";
 import { WeekGrid } from "@/components/week-grid";
-import { generateWeek, validateWeek, unlockWeek } from "@/lib/actions/planning";
+import { generateWeek, validateWeek, unlockWeek, lockWeek } from "@/lib/actions/planning";
 import { requireOrgAdmin } from "@/lib/auth-context";
 
 export default async function PlanningPage({
@@ -44,10 +44,17 @@ export default async function PlanningPage({
   const prevWeek = formatDateISO(addDays(weekStart, -7));
   const nextWeek = formatDateISO(addDays(weekStart, 7));
   const weekStartStr = formatDateISO(weekStart);
+  const today = toDateOnly(new Date());
   // Drives the "Cette semaine" badge next to the date range — the admin
   // flips back and forth between weeks via Préc./Suivant a lot, and without
   // this the header always looks the same regardless of which week it is.
-  const isCurrentWeek = weekStartStr === formatDateISO(startOfWeekMonday(toDateOnly(new Date())));
+  const isCurrentWeek = weekStartStr === formatDateISO(startOfWeekMonday(today));
+  // Drives which action the top-right button offers: before the week has
+  // actually happened, there's nothing to mark Fait yet, so it only locks
+  // (Verrouiller la semaine) — a head-coach sign-off that the planning is
+  // ready. Once the week is over, it becomes Valider le planning, the
+  // existing mark-Fait-and-lock behavior.
+  const weekIsOver = today >= weekEnd;
 
   const coachIdFilter = typeof params?.coachId === "string" ? params.coachId : "";
   const typeFilter = typeof params?.type === "string" ? params.type : "";
@@ -110,7 +117,6 @@ export default async function PlanningPage({
   // day (see highlightInstanceId above), then today, all clamped to this
   // week.
   const dayParam = typeof params?.day === "string" ? params.day : undefined;
-  const today = toDateOnly(new Date());
   let selectedDay = weekStart;
   const dayCandidate =
     (dayParam && parseDateOnly(dayParam)) ||
@@ -347,10 +353,10 @@ export default async function PlanningPage({
         <CopyLastWeekButton weekStart={formatDateISO(weekStart)} />
         <ResetWeekButton weekStart={formatDateISO(weekStart)} />
         <div className="ml-auto flex items-center gap-2">
-          {validated ? (
+          {validated && (
             <>
               <span className="rounded-full bg-emerald-900/40 px-2.5 py-1 text-xs text-emerald-300">
-                Validée le {planningWeek.validatedAt.toLocaleString("fr-FR", { timeZone: "UTC" })}
+                Verrouillée le {planningWeek.validatedAt.toLocaleString("fr-FR", { timeZone: "UTC" })}
               </span>
               <form action={unlockWeek}>
                 <input type="hidden" name="weekStart" value={formatDateISO(weekStart)} />
@@ -363,7 +369,8 @@ export default async function PlanningPage({
                 </button>
               </form>
             </>
-          ) : (
+          )}
+          {weekIsOver ? (
             <form action={validateWeek}>
               <input type="hidden" name="weekStart" value={formatDateISO(weekStart)} />
               <button
@@ -375,6 +382,20 @@ export default async function PlanningPage({
                 <span className="hidden sm:inline">Valider le planning</span>
               </button>
             </form>
+          ) : (
+            !validated && (
+              <form action={lockWeek}>
+                <input type="hidden" name="weekStart" value={formatDateISO(weekStart)} />
+                <button
+                  type="submit"
+                  title="Verrouille la semaine sans marquer de cours Fait — confirme que le planning est prêt avant que la semaine ait eu lieu"
+                  className="rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
+                >
+                  <span className="sm:hidden">Verrouiller</span>
+                  <span className="hidden sm:inline">Verrouiller la semaine</span>
+                </button>
+              </form>
+            )
           )}
         </div>
       </div>

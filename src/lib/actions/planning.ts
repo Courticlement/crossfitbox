@@ -323,13 +323,38 @@ export async function copyLastWeek(formData: FormData) {
   revalidateAll();
 }
 
+// Locks the week without marking anything Fait — for a week that hasn't
+// happened yet, so there's nothing to pay for regardless. Lets the head
+// coach sign off that the planning is ready (blocking a coach's own edits —
+// private classes, claims — see lib/planning-lock.ts) before the week
+// actually plays out; see validateWeek below for once it has. Same
+// PlanningWeek row either way, so unlockWeek reverses both identically, and
+// validateWeek can still run later against a week already locked here (its
+// own upsert is a no-op on the lock, only newly-still-PLANNED classes get
+// marked Fait at that point).
+export async function lockWeek(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+  const weekStartStr = String(formData.get("weekStart") ?? "");
+  const weekStart = parseDateOnly(weekStartStr);
+  if (!weekStart) return;
+
+  await prisma.planningWeek.upsert({
+    where: { organizationId_weekStart: { organizationId, weekStart } },
+    create: { organizationId, weekStart },
+    update: {},
+  });
+  revalidateAll();
+}
+
 // Confirms and locks the week in one step — the sole way a group class
 // moves from Assigned to Done: every still-PLANNED, coach-assigned class is
 // marked Fait, stamped with its coach's current rate (see
 // markInstancesDone), so it's paid (see coach-stats.ts). The week is then
-// locked, blocking a coach's own edits (private classes, claims — see
-// lib/planning-lock.ts) from that point on. The admin's own edits here on
-// the Planning page are never blocked by this.
+// locked (upsert is a no-op if lockWeek already locked it earlier), blocking
+// a coach's own edits (private classes, claims — see lib/planning-lock.ts)
+// from that point on. The admin's own edits here on the Planning page are
+// never blocked by this.
 export async function validateWeek(formData: FormData) {
   const { organizationId } = await requireOrgAdmin();
   const prisma = tenantPrisma(organizationId);
