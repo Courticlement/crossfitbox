@@ -4,7 +4,7 @@ import { refresh, revalidatePath } from "next/cache";
 import { tenantPrisma } from "@/lib/prisma";
 import { addDays, formatDateISO, parseDateOnly } from "@/lib/dates";
 import { isDateInValidatedWeek } from "@/lib/planning-lock";
-import { groupClassRate } from "@/lib/coach-levels";
+import { groupClassRate, classPayRate } from "@/lib/coach-levels";
 import { requireOrgAdmin, requireCoachSession } from "@/lib/auth-context";
 
 function revalidateAll() {
@@ -323,15 +323,16 @@ export async function copyLastWeek(formData: FormData) {
   revalidateAll();
 }
 
-// Locks the week without marking anything Fait — for a week that hasn't
-// happened yet, so there's nothing to pay for regardless. Lets the head
-// coach sign off that the planning is ready (blocking a coach's own edits —
-// private classes, claims — see lib/planning-lock.ts) before the week
-// actually plays out; see validateWeek below for once it has. Same
-// PlanningWeek row either way, so unlockWeek reverses both identically, and
-// validateWeek can still run later against a week already locked here (its
-// own upsert is a no-op on the lock, only newly-still-PLANNED classes get
-// marked Fait at that point).
+// Locks the week without marking anything Fait or restricting a coach's own
+// edits yet — for a week that hasn't happened yet, so there's nothing to pay
+// for regardless. Lets the head coach sign off that the planning is ready;
+// a coach can still add/remove their own private classes and claim
+// unassigned ones (see lib/planning-lock.ts's isWeekValidated, which only
+// starts blocking once paidAt is set) until validateWeek below actually
+// closes the week out. Same PlanningWeek row either way, so unlockWeek
+// reverses both identically, and validateWeek can still run later against a
+// week already locked here (its own upsert just adds paidAt on top; only
+// newly-still-PLANNED classes get marked Fait at that point).
 export async function lockWeek(formData: FormData) {
   const { organizationId } = await requireOrgAdmin();
   const prisma = tenantPrisma(organizationId);
@@ -347,14 +348,15 @@ export async function lockWeek(formData: FormData) {
   revalidateAll();
 }
 
-// Confirms and locks the week in one step — the sole way a group class
+// Confirms and closes out the week in one step — the sole way a group class
 // moves from Assigned to Done: every still-PLANNED, coach-assigned class is
 // marked Fait, stamped with its coach's current rate (see
-// markInstancesDone), so it's paid (see coach-stats.ts). The week is then
-// locked (upsert is a no-op if lockWeek already locked it earlier), blocking
-// a coach's own edits (private classes, claims — see lib/planning-lock.ts)
-// from that point on. The admin's own edits here on the Planning page are
-// never blocked by this.
+// markInstancesDone), so it's paid (see coach-stats.ts). paidAt is then
+// stamped on the week's PlanningWeek row (creating it if lockWeek hasn't
+// already), which is what actually starts blocking a coach's own edits
+// (private classes, claims — see lib/planning-lock.ts) from that point on —
+// merely being locked via lockWeek doesn't. The admin's own edits here on
+// the Planning page are never blocked by either stage.
 export async function validateWeek(formData: FormData) {
   const { organizationId } = await requireOrgAdmin();
   const prisma = tenantPrisma(organizationId);
@@ -381,10 +383,11 @@ export async function validateWeek(formData: FormData) {
     stillPlanned.map((i) => i.id)
   );
 
+  const paidAt = new Date();
   await prisma.planningWeek.upsert({
     where: { organizationId_weekStart: { organizationId, weekStart } },
-    create: { organizationId, weekStart },
-    update: {},
+    create: { organizationId, weekStart, paidAt },
+    update: { paidAt },
   });
   revalidateAll();
 }
@@ -545,11 +548,12 @@ export async function bulkAssignCoach(
 // Marks the given classes Fait (Done), stamping each one with its assigned
 // coach's *current* rate (paidRate) — so a later change to Coach.rate (or
 // the CrossFit-level default) never retroactively changes pay that's
-// already been validated (see coach-stats.ts / week-dashboard.tsx). Only
-// ever called by validateWeek — "Valider le planning" is the sole way a
-// class becomes Done; there's no per-class control for it. Classes grouped
-// by resolved rate so each distinct rate is one updateMany, not one query
-// per class.
+// already been validated (see coach-stats.ts / week-dashboard.tsx). A named
+// class type (see classPayRate, e.g. "Big WOD") overrides that per-coach
+// rate with one flat amount regardless of who taught it. Only ever called
+// by validateWeek — "Valider le planning" is the sole way a class becomes
+// Done; there's no per-class control for it. Classes grouped by resolved
+// rate so each distinct rate is one updateMany, not one query per class.
 async function markInstancesDone(
   prisma: ReturnType<typeof tenantPrisma>,
   ids: string[]
@@ -558,7 +562,7 @@ async function markInstancesDone(
 
   const instances = await prisma.classInstance.findMany({
     where: { id: { in: ids }, coachId: { not: null } },
-    select: { id: true, coachId: true },
+    select: { id: true, coachId: true, label: true },
   });
   if (instances.length === 0) return 0;
 
@@ -571,7 +575,8 @@ async function markInstancesDone(
 
   const idsByRate = new Map<number, string[]>();
   for (const inst of instances) {
-    const rate = rateByCoach.get(inst.coachId!) ?? 0;
+    const baseRate = rateByCoach.get(inst.coachId!) ?? 0;
+    const rate = classPayRate(inst.label, baseRate);
     const group = idsByRate.get(rate) ?? [];
     group.push(inst.id);
     idsByRate.set(rate, group);

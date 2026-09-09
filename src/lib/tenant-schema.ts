@@ -152,6 +152,7 @@ export function tenantTableDdl(schema: string): string[] {
       "organizationId" TEXT NOT NULL,
       "weekStart" TIMESTAMP(3) NOT NULL,
       "validatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "paidAt" TIMESTAMP(3),
       CONSTRAINT "PlanningWeek_pkey" PRIMARY KEY ("id")
     )`,
     `CREATE UNIQUE INDEX "PlanningWeek_organizationId_weekStart_key" ON ${q(schema, "PlanningWeek")}("organizationId", "weekStart")`,

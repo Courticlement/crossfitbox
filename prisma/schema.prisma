@@ -38,7 +38,7 @@ model Organization {
 // organizationId is a plain column, not a Prisma relation — see
 // Organization's comment above for why.
 model Room {
-  id             String @id @default(cuid())
+  id             String   @id @default(cuid())
   organizationId String
   name           String
   // Short header abbreviation on the Planning grid (e.g. "S1"); falls back
@@ -47,8 +47,8 @@ model Room {
   // Hex tint for this room's lane/header chip on the Planning grid; falls
   // back to a neutral tint when unset.
   color          String?
-  archived       Boolean      @default(false)
-  createdAt      DateTime     @default(now())
+  archived       Boolean  @default(false)
+  createdAt      DateTime @default(now())
 
   templates ClassTemplate[]
   instances ClassInstance[]
@@ -79,7 +79,7 @@ model Admin {
 }
 
 model Coach {
-  id                   String @id @default(cuid())
+  id                   String    @id @default(cuid())
   // Plain column, not a Prisma relation — see Organization's comment above.
   organizationId       String
   name                 String
@@ -117,7 +117,7 @@ model Coach {
   // (the feed route looks the token up directly, nothing else references
   // the old value) — the coach's way to revoke a leaked or no-longer-wanted
   // subscription without touching their login password.
-  calendarToken        String?      @unique
+  calendarToken        String?   @unique
   // Set when the admin marks this coach's private-class debt as settled
   // (see markPrivateBalancePaid) — only private classes delivered after
   // this date count toward the outstanding balance shown on the Coaches
@@ -129,8 +129,8 @@ model Coach {
   // their private upload access (see /upload/[token] and the coach-active
   // guard in lib/actions/submissions.ts) — reversible via unarchiveCoach,
   // unlike Remove which permanently deletes the row.
-  archived             Boolean      @default(false)
-  createdAt            DateTime     @default(now())
+  archived             Boolean   @default(false)
+  createdAt            DateTime  @default(now())
 
   classInstances    ClassInstance[]    @relation("PrimaryCoach")
   substituteClasses ClassInstance[]    @relation("SubstituteCoach")
@@ -314,20 +314,27 @@ model CoachWeeklyQuota {
   @@unique([coachId, weekStart])
 }
 
-// Marks a week's planning as validated (closed out) by the admin. The row's
-// mere existence means "locked" — once present, coaches can no longer add or
+// Marks a week's planning as locked by the admin — two stages, one row.
+// lockWeek creates this row ahead of the week actually happening, as a
+// head-coach sign-off that the planning is ready; that alone doesn't
+// restrict a coach yet (see src/lib/planning-lock.ts). validateWeek is what
+// actually closes the week out: it stamps paidAt (whether creating this row
+// fresh or updating one lockWeek already created) and marks the week's
+// group classes Fait — only once paidAt is set can a coach no longer add or
 // remove their own private classes, or claim unassigned classes, for that
-// week from My Classes (see src/lib/planning-lock.ts). Creating this row
-// (validateWeek) also marks the week's group classes Fait, and deleting it
-// (unlockWeek) reverses that — pay and the lock move together in both
-// directions (see actions/planning.ts). The admin's own Planning page is
-// unaffected either way.
+// week from My Classes. unlockWeek deletes the row outright, reversing both
+// the lock and (if paidAt was set) the pay together (see actions/
+// planning.ts). The admin's own Planning page is unaffected either way.
 model PlanningWeek {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   // Plain column, not a Prisma relation — see Organization's comment above.
   organizationId String
-  weekStart      DateTime // Monday 00:00 of the validated week
-  validatedAt    DateTime @default(now())
+  weekStart      DateTime // Monday 00:00 of the locked week
+  validatedAt    DateTime  @default(now())
+  // Set by validateWeek (only) — null means lockWeek locked this week ahead
+  // of time but a coach can still self-serve (private classes, claims) since
+  // nothing's actually been paid yet.
+  paidAt         DateTime?
 
   @@unique([organizationId, weekStart])
 }

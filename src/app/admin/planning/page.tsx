@@ -356,7 +356,9 @@ export default async function PlanningPage({
           {validated && (
             <>
               <span className="rounded-full bg-emerald-900/40 px-2.5 py-1 text-xs text-emerald-300">
-                Verrouillée le {planningWeek.validatedAt.toLocaleString("fr-FR", { timeZone: "UTC" })}
+                {planningWeek.paidAt
+                  ? `Validée le ${planningWeek.paidAt.toLocaleString("fr-FR", { timeZone: "UTC" })}`
+                  : `Verrouillée le ${planningWeek.validatedAt.toLocaleString("fr-FR", { timeZone: "UTC" })}`}
               </span>
               <form action={unlockWeek}>
                 <input type="hidden" name="weekStart" value={formatDateISO(weekStart)} />
@@ -401,9 +403,19 @@ export default async function PlanningPage({
       </div>
       {validated && (
         <p className="mb-4 text-xs text-neutral-500">
-          Cette semaine est verrouillée — les coachs ne peuvent pas soumettre ni modifier leurs
-          déclarations sur Mes cours tant que vous ne la déverrouillez pas. Déverrouiller annule
-          aussi le paiement des cours collectifs marqués Fait cette semaine.
+          {planningWeek.paidAt ? (
+            <>
+              Cette semaine est validée — les coachs ne peuvent pas soumettre ni modifier leurs
+              déclarations sur Mes cours tant que vous ne la déverrouillez pas. Déverrouiller
+              annule aussi le paiement des cours collectifs marqués Fait cette semaine.
+            </>
+          ) : (
+            <>
+              Cette semaine est verrouillée — c&apos;est juste une confirmation que le planning est
+              prêt, les coachs peuvent toujours ajouter des cours privés et réclamer des cours
+              libres sur Mes cours tant qu&apos;elle n&apos;est pas validée.
+            </>
+          )}
         </p>
       )}
 
