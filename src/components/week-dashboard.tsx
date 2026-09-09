@@ -70,18 +70,23 @@ export async function WeekDashboard({
 
   const rows = coaches.map((coach) => {
     const coachInstances = instances.filter((i) => i.coachId === coach.id);
-    // Hours are scheduled workload, not just delivered — every non-cancelled
-    // class counts (planned or done, group or private) so the number
-    // reflects the whole week, not just what's happened so far.
     const activeCoachInstances = coachInstances.filter((i) => i.status !== "CANCELLED");
-    const totalHours = activeCoachInstances.reduce(
+    // Hours are scheduled workload, not just delivered — every non-cancelled
+    // group class counts (planned or done) so the number reflects the whole
+    // week, not just what's happened so far. Private classes and team
+    // events are excluded (team events never carry a coachId anyway, see
+    // isTeamEvent above, but filtered explicitly here for clarity).
+    const groupCoachInstances = activeCoachInstances.filter(
+      (i) => !i.isPrivate && !i.isTeamEvent
+    );
+    const totalHours = groupCoachInstances.reduce(
       (sum, i) => sum + classDurationHours(i.startTime, i.endTime),
       0
     );
     // "Heures fixes" — the regular Mon–Fri workload, set apart from weekend
     // classes (which skew private/ad hoc) since isoWeekday returns 1..5 for
     // Monday through Friday.
-    const heuresFixes = activeCoachInstances
+    const heuresFixes = groupCoachInstances
       .filter((i) => isoWeekday(i.date) <= 5)
       .reduce((sum, i) => sum + classDurationHours(i.startTime, i.endTime), 0);
     const privateDone = coachInstances.filter(
@@ -201,10 +206,10 @@ export async function WeekDashboard({
           <thead className="bg-neutral-900 text-left text-neutral-400">
             <tr>
               <th className="px-4 py-2 font-medium">Coach</th>
-              <th className="px-4 py-2 font-medium" title="Total des heures de cours non annulés cette semaine (collectifs + privés, faits ou prévus)">
+              <th className="px-4 py-2 font-medium" title="Total des heures de cours collectifs non annulés cette semaine (faits ou prévus) — hors privés et événements d'équipe">
                 Heure total
               </th>
-              <th className="px-4 py-2 font-medium" title="Total des heures de cours non annulés du lundi au vendredi">
+              <th className="px-4 py-2 font-medium" title="Total des heures de cours collectifs non annulés du lundi au vendredi — hors privés et événements d'équipe">
                 Heures fixes
               </th>
               <th className="px-4 py-2 font-medium" title="Reviews de coaching cette semaine — clic sur le nombre pour voir la dernière, ou le prochain cours à observer">
