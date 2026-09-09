@@ -40,6 +40,7 @@ export async function YearDashboard({
         startTime: true,
         endTime: true,
         status: true,
+        isPrivate: true,
         coachId: true,
         substituteCoachId: true,
       },
@@ -48,12 +49,16 @@ export async function YearDashboard({
 
   const hoursByCoach = computeMonthlyHoursByCoach(instances, year);
 
-  const series: CoachHoursSeries[] = coaches.map((coach, i) => ({
-    id: coach.id,
-    name: coach.name,
-    color: chartSeriesColor(i),
-    hours: hoursByCoach.get(coach.id) ?? new Array(12).fill(0),
-  }));
+  const series: CoachHoursSeries[] = coaches.map((coach, i) => {
+    const hours = hoursByCoach.get(coach.id);
+    return {
+      id: coach.id,
+      name: coach.name,
+      color: chartSeriesColor(i),
+      totalHours: hours?.total ?? new Array(12).fill(0),
+      heuresFixes: hours?.fixes ?? new Array(12).fill(0),
+    };
+  });
 
   return (
     <>

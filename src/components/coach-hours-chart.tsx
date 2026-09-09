@@ -6,8 +6,11 @@ export type CoachHoursSeries = {
   id: string;
   name: string;
   color: string;
-  hours: number[]; // length 12, index 0 = January
+  totalHours: number[]; // length 12, index 0 = January
+  heuresFixes: number[]; // length 12
 };
+
+type Metric = "total" | "fixes";
 
 const PAD_LEFT = 40;
 const PAD_RIGHT = 16;
@@ -47,16 +50,22 @@ export function CoachHoursChart({
   monthLabels: string[]; // length 12
   series: CoachHoursSeries[];
 }) {
+  const [metric, setMetric] = useState<Metric>("total");
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [hoverMonth, setHoverMonth] = useState<number | null>(null);
   const [showTable, setShowTable] = useState(false);
 
+  function valuesOf(s: CoachHoursSeries): number[] {
+    return metric === "total" ? s.totalHours : s.heuresFixes;
+  }
+
   const visibleSeries = series.filter((s) => !hiddenIds.has(s.id));
 
   const yMax = useMemo(() => {
-    const max = Math.max(0, ...visibleSeries.flatMap((s) => s.hours));
+    const max = Math.max(0, ...visibleSeries.flatMap((s) => valuesOf(s)));
     return niceCeil(max * 1.1 || 1);
-  }, [visibleSeries]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleSeries, metric]);
 
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(yMax * f * 10) / 10);
 
@@ -87,6 +96,33 @@ export function CoachHoursChart({
   return (
     <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
       <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div
+          role="group"
+          aria-label="Choix de la mesure"
+          className="inline-flex rounded-md border border-neutral-700 p-0.5"
+        >
+          <button
+            type="button"
+            onClick={() => setMetric("total")}
+            aria-pressed={metric === "total"}
+            className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+              metric === "total" ? "bg-white text-neutral-950" : "text-neutral-400 hover:text-white"
+            }`}
+          >
+            Heure total
+          </button>
+          <button
+            type="button"
+            onClick={() => setMetric("fixes")}
+            aria-pressed={metric === "fixes"}
+            className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+              metric === "fixes" ? "bg-white text-neutral-950" : "text-neutral-400 hover:text-white"
+            }`}
+          >
+            Heures fixes
+          </button>
+        </div>
+
         {series.map((s) => {
           const hidden = hiddenIds.has(s.id);
           return (
@@ -147,7 +183,7 @@ export function CoachHoursChart({
                     />
                     {s.name}
                   </td>
-                  {s.hours.map((h, i) => (
+                  {valuesOf(s).map((h, i) => (
                     <td key={i} className="px-2 py-1 text-right text-neutral-300">
                       {formatHours(h)}
                     </td>
@@ -222,7 +258,8 @@ export function CoachHoursChart({
 
             {/* Lines */}
             {visibleSeries.map((s) => {
-              const d = s.hours
+              const values = valuesOf(s);
+              const d = values
                 .map((h, i) => `${i === 0 ? "M" : "L"}${xForMonth(i)},${yForValue(h, yMax)}`)
                 .join(" ");
               return (
@@ -244,7 +281,7 @@ export function CoachHoursChart({
                 <circle
                   key={s.id}
                   cx={xForMonth(hoverMonth)}
-                  cy={yForValue(s.hours[hoverMonth], yMax)}
+                  cy={yForValue(valuesOf(s)[hoverMonth], yMax)}
                   r={4}
                   fill={s.color}
                   stroke="#171717"
@@ -275,7 +312,7 @@ export function CoachHoursChart({
             >
               <p className="mb-1 font-medium text-white">{monthLabels[hoverMonth]}</p>
               {[...visibleSeries]
-                .sort((a, b) => b.hours[hoverMonth!] - a.hours[hoverMonth!])
+                .sort((a, b) => valuesOf(b)[hoverMonth!] - valuesOf(a)[hoverMonth!])
                 .map((s) => (
                   <div key={s.id} className="flex items-center justify-between gap-3 py-0.5">
                     <span className="flex items-center gap-1.5 text-neutral-400">
@@ -286,7 +323,7 @@ export function CoachHoursChart({
                       />
                       {s.name}
                     </span>
-                    <span className="font-medium text-white">{formatHours(s.hours[hoverMonth!])}</span>
+                    <span className="font-medium text-white">{formatHours(valuesOf(s)[hoverMonth!])}</span>
                   </div>
                 ))}
             </div>

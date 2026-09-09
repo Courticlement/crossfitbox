@@ -1,4 +1,5 @@
 import { timeToMinutes } from "@/lib/calendar-layout";
+import { isoWeekday } from "@/lib/dates";
 import { privateClassCost, classPayRate } from "@/lib/coach-levels";
 
 export type ClassInstanceForStats = {
@@ -56,21 +57,29 @@ export function classDurationHours(startTime: string, endTime: string): number {
   return (timeToMinutes(endTime) - timeToMinutes(startTime)) / 60;
 }
 
+export type MonthlyHours = {
+  total: number[]; // length 12, index 0 = January
+  fixes: number[]; // length 12 — same months, Mon-Fri only (see isoWeekday)
+};
+
 // Hours actually delivered by each coach, bucketed by calendar month, for a
 // given year — same "who delivered it" rule as computeCoachStats (a DONE
 // report credits its coachId, a MISSED report credits whoever substituted),
-// just summed per month instead of this/last-month only. Used by the
+// just summed per month instead of this/last-month only. Group classes
+// only — private classes are excluded, matching Heure total/Heures fixes
+// everywhere else (week/month dashboards, digest PDF); a team event is
+// already excluded on its own since it never carries a coachId. Used by the
 // dashboard's yearly hours-per-coach chart.
 export function computeMonthlyHoursByCoach(
   instances: Pick<
     ClassInstanceForStats,
-    "date" | "startTime" | "endTime" | "status" | "coachId" | "substituteCoachId"
+    "date" | "startTime" | "endTime" | "status" | "coachId" | "substituteCoachId" | "isPrivate"
   >[],
   year: number
-): Map<string, number[]> {
-  const result = new Map<string, number[]>();
+): Map<string, MonthlyHours> {
+  const result = new Map<string, MonthlyHours>();
   for (const inst of instances) {
-    if (inst.date.getUTCFullYear() !== year) continue;
+    if (inst.date.getUTCFullYear() !== year || inst.isPrivate) continue;
     const deliveredBy =
       inst.status === "DONE"
         ? inst.coachId
@@ -79,9 +88,12 @@ export function computeMonthlyHoursByCoach(
           : null;
     if (!deliveredBy) continue;
 
-    const months = result.get(deliveredBy) ?? new Array(12).fill(0);
-    months[inst.date.getUTCMonth()] += classDurationHours(inst.startTime, inst.endTime);
-    result.set(deliveredBy, months);
+    const entry = result.get(deliveredBy) ?? { total: new Array(12).fill(0), fixes: new Array(12).fill(0) };
+    const duration = classDurationHours(inst.startTime, inst.endTime);
+    const month = inst.date.getUTCMonth();
+    entry.total[month] += duration;
+    if (isoWeekday(inst.date) <= 5) entry.fixes[month] += duration;
+    result.set(deliveredBy, entry);
   }
   return result;
 }
