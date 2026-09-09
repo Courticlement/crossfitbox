@@ -361,12 +361,30 @@ export async function validateWeek(formData: FormData) {
   revalidateAll();
 }
 
+// The exact inverse of validateWeek: unlocking un-pays the week too, not
+// just the coach-editing lock. Every group class this week that's Fait goes
+// back to Prévu (Assigned) and loses its rate snapshot, so it stops
+// counting toward Net € the moment the week is unlocked — validating and
+// pay are meant to move together in both directions. Private classes are
+// untouched (they're never part of this lifecycle — see addPrivateClass in
+// submissions.ts) and an already-Manqué class is left alone too, since
+// that's a deliberate record, not something "Valider le planning" set.
 export async function unlockWeek(formData: FormData) {
   const { organizationId } = await requireOrgAdmin();
   const prisma = tenantPrisma(organizationId);
   const weekStartStr = String(formData.get("weekStart") ?? "");
   const weekStart = parseDateOnly(weekStartStr);
   if (!weekStart) return;
+  const weekEnd = addDays(weekStart, 7);
+
+  await prisma.classInstance.updateMany({
+    where: {
+      date: { gte: weekStart, lt: weekEnd },
+      status: "DONE",
+      isPrivate: false,
+    },
+    data: { status: "PLANNED", paidRate: null },
+  });
 
   await prisma.planningWeek.deleteMany({ where: { weekStart, organizationId } });
   revalidateAll();

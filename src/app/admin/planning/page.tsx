@@ -356,6 +356,7 @@ export default async function PlanningPage({
                 <input type="hidden" name="weekStart" value={formatDateISO(weekStart)} />
                 <button
                   type="submit"
+                  title="Remet Prévu tout cours collectif marqué Fait cette semaine (et retire son montant du Net €), puis déverrouille"
                   className="rounded-md border border-neutral-700 px-3 py-2 text-sm text-neutral-300 hover:border-neutral-500 hover:text-white"
                 >
                   Déverrouiller
@@ -380,7 +381,8 @@ export default async function PlanningPage({
       {validated && (
         <p className="mb-4 text-xs text-neutral-500">
           Cette semaine est verrouillée — les coachs ne peuvent pas soumettre ni modifier leurs
-          déclarations sur Mes cours tant que vous ne la déverrouillez pas.
+          déclarations sur Mes cours tant que vous ne la déverrouillez pas. Déverrouiller annule
+          aussi le paiement des cours collectifs marqués Fait cette semaine.
         </p>
       )}
 

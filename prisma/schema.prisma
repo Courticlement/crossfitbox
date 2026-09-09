@@ -310,11 +310,11 @@ model CoachWeeklyQuota {
 // Marks a week's planning as validated (closed out) by the admin. The row's
 // mere existence means "locked" — once present, coaches can no longer add or
 // remove their own private classes, or claim unassigned classes, for that
-// week from My Classes (see src/lib/planning-lock.ts). Unrelated to group
-// class pay, which is computed straight from each class's Fait/Manqué status
-// (see bulkSetClassStatus) regardless of this lock. The admin's own Planning
-// page is unaffected; deleting the row (via the Unlock action) re-opens the
-// week.
+// week from My Classes (see src/lib/planning-lock.ts). Creating this row
+// (validateWeek) also marks the week's group classes Fait, and deleting it
+// (unlockWeek) reverses that — pay and the lock move together in both
+// directions (see actions/planning.ts). The admin's own Planning page is
+// unaffected either way.
 model PlanningWeek {
   id             String   @id @default(cuid())
   // Plain column, not a Prisma relation — see Organization's comment above.
