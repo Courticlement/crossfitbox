@@ -8,6 +8,9 @@ export type DigestRow = {
   totalHours: number;
   heuresFixes: number;
   reviewCount: number;
+  // Oldest first, matching the dashboard's dots — see PASTILLES in
+  // review-constants.ts for the "green" | "yellow" | "orange" | "red" keys.
+  reviewPastilles: string[];
   privateDone: number;
   netAmount: number;
 };
@@ -30,7 +33,8 @@ export async function weeklyDigestRows(
     }),
     tenant.classReview.findMany({
       where: { classInstance: { date: { gte: weekStart, lt: weekEnd } } },
-      select: { id: true, classInstance: { select: { coachId: true } } },
+      select: { id: true, pastille: true, classInstance: { select: { coachId: true, date: true } } },
+      orderBy: { classInstance: { date: "desc" } },
     }),
   ]);
 
@@ -55,12 +59,14 @@ export async function weeklyDigestRows(
     // (paidRate), same as week-dashboard.tsx. Group-class pay only —
     // private classes don't factor into it.
     const privateDone = coachInstances.filter((i) => i.status === "DONE" && i.isPrivate).length;
-    const reviewCount = weekReviews.filter((r) => r.classInstance.coachId === coach.id).length;
+    const coachReviews = weekReviews.filter((r) => r.classInstance.coachId === coach.id);
+    const reviewCount = coachReviews.length;
+    const reviewPastilles = coachReviews.map((r) => r.pastille).reverse();
     const fallbackRate = coach.rate ?? groupClassRate(coach.level);
     const netAmount = coachInstances
       .filter((i) => i.status === "DONE" && !i.isPrivate)
       .reduce((sum, i) => sum + (i.paidRate ?? classPayRate(i.label, fallbackRate)), 0);
-    return { name: coach.name, totalHours, heuresFixes, reviewCount, privateDone, netAmount };
+    return { name: coach.name, totalHours, heuresFixes, reviewCount, reviewPastilles, privateDone, netAmount };
   });
 
   const periodLabel = `${formatDayLabel(weekStart)} au ${formatDayLabel(addDays(weekStart, 6))}`;
@@ -81,7 +87,8 @@ export async function monthlyDigestRows(
     }),
     tenant.classReview.findMany({
       where: { classInstance: { date: { gte: monthStart, lt: monthEnd } } },
-      select: { id: true, classInstance: { select: { coachId: true } } },
+      select: { id: true, pastille: true, classInstance: { select: { coachId: true, date: true } } },
+      orderBy: { classInstance: { date: "desc" } },
     }),
   ]);
 
@@ -99,12 +106,14 @@ export async function monthlyDigestRows(
       .filter((i) => isoWeekday(i.date) <= 5)
       .reduce((sum, i) => sum + classDurationHours(i.startTime, i.endTime), 0);
     const privateDone = coachInstances.filter((i) => i.status === "DONE" && i.isPrivate).length;
-    const reviewCount = monthReviews.filter((r) => r.classInstance.coachId === coach.id).length;
+    const coachReviews = monthReviews.filter((r) => r.classInstance.coachId === coach.id);
+    const reviewCount = coachReviews.length;
+    const reviewPastilles = coachReviews.map((r) => r.pastille).reverse();
     const fallbackRate = coach.rate ?? groupClassRate(coach.level);
     const netAmount = coachInstances
       .filter((i) => i.status === "DONE" && !i.isPrivate)
       .reduce((sum, i) => sum + (i.paidRate ?? classPayRate(i.label, fallbackRate)), 0);
-    return { name: coach.name, totalHours, heuresFixes, reviewCount, privateDone, netAmount };
+    return { name: coach.name, totalHours, heuresFixes, reviewCount, reviewPastilles, privateDone, netAmount };
   });
 
   const periodLabel = formatMonthLabel(monthStart);

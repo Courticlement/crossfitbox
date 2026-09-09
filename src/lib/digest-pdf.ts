@@ -1,5 +1,6 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type Color, type PDFFont, type PDFPage } from "pdf-lib";
 import type { DigestRow } from "@/lib/digest-rows";
+import { pastilleColor } from "@/lib/review-constants";
 
 // A4 portrait, points.
 const PAGE_WIDTH = 595.28;
@@ -7,14 +8,18 @@ const PAGE_HEIGHT = 841.89;
 const MARGIN = 40;
 const ROW_HEIGHT = 20;
 
+// Same total width as before (515pt) — Coach and Heures fixes each gave up
+// a little room so Review (now count + pastille dots, see drawReviewCell)
+// has space without pushing the table past the page margins.
 const COLUMNS: { label: string; width: number }[] = [
-  { label: "Coach", width: 170 },
+  { label: "Coach", width: 150 },
   { label: "Heure total", width: 80 },
-  { label: "Heures fixes", width: 80 },
-  { label: "Review", width: 65 },
+  { label: "Heures fixes", width: 70 },
+  { label: "Review", width: 95 },
   { label: "Privés", width: 65 },
   { label: "Net €", width: 55 },
 ];
+const REVIEW_COLUMN_INDEX = 3;
 
 function cellsFor(row: DigestRow | { name: string; totalHours: number; heuresFixes: number; reviewCount: number; privateDone: number; netAmount: number }): string[] {
   return [
@@ -25,6 +30,14 @@ function cellsFor(row: DigestRow | { name: string; totalHours: number; heuresFix
     String(row.privateDone),
     `${row.netAmount}€`,
   ];
+}
+
+function hexToColor(hex: string): Color {
+  const clean = hex.replace("#", "");
+  const r = parseInt(clean.slice(0, 2), 16) / 255;
+  const g = parseInt(clean.slice(2, 4), 16) / 255;
+  const b = parseInt(clean.slice(4, 6), 16) / 255;
+  return rgb(r, g, b);
 }
 
 const tableWidth = COLUMNS.reduce((sum, c) => sum + c.width, 0);
@@ -86,10 +99,35 @@ export async function renderDigestPdf(rows: DigestRow[], title: string, periodLa
     { totalHours: 0, heuresFixes: 0, reviewCount: 0, privateDone: 0, netAmount: 0 }
   );
 
-  const drawRow = (cells: string[], rowFont: PDFFont, targetPage: PDFPage, atY: number) => {
+  // reviewPastilles (oldest first, see DigestRow) draws as small colored
+  // dots after the count, same as the dashboard's Review column — omitted
+  // for the Total row, which has no single coach's reviews to show.
+  const drawRow = (
+    cells: string[],
+    rowFont: PDFFont,
+    targetPage: PDFPage,
+    atY: number,
+    reviewPastilles?: string[]
+  ) => {
     let x = MARGIN;
     for (let i = 0; i < COLUMNS.length; i++) {
       targetPage.drawText(cells[i], { x, y: atY, size: 10, font: rowFont, color: rgb(0.1, 0.1, 0.1) });
+      if (i === REVIEW_COLUMN_INDEX && reviewPastilles?.length) {
+        const dotRadius = 2.5;
+        const dotSpacing = 7;
+        const maxX = x + COLUMNS[i].width - dotRadius - 2;
+        let dotX = x + rowFont.widthOfTextAtSize(cells[i], 10) + 6 + dotRadius;
+        for (const pastille of reviewPastilles) {
+          if (dotX + dotRadius > maxX) break;
+          targetPage.drawCircle({
+            x: dotX,
+            y: atY + 3,
+            size: dotRadius,
+            color: hexToColor(pastilleColor(pastille)),
+          });
+          dotX += dotSpacing;
+        }
+      }
       x += COLUMNS[i].width;
     }
   };
@@ -101,7 +139,7 @@ export async function renderDigestPdf(rows: DigestRow[], title: string, periodLa
 
   for (const row of rows) {
     if (y < MARGIN + ROW_HEIGHT) newPage();
-    drawRow(cellsFor(row), font, page, y);
+    drawRow(cellsFor(row), font, page, y, row.reviewPastilles);
     y -= ROW_HEIGHT;
   }
 
