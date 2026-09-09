@@ -199,8 +199,8 @@ export async function generateWeek(formData: FormData) {
   revalidateAll();
 }
 
-// Duplicates last week's classes (coach, timing, room, label, private/team
-// flags) onto this week — an alternative to Generate for a week that
+// Duplicates last week's group classes (coach, timing, room, label, team
+// flag) onto this week — an alternative to Generate for a week that
 // shouldn't follow the standing ClassTemplate schedule, e.g. a one-off week
 // that itself deviated from the templates and should just repeat as-is.
 // Follows the same shape as generateWeek: closed dates are skipped, a slot
@@ -208,7 +208,9 @@ export async function generateWeek(formData: FormData) {
 // instance may carry no templateId) is synced only while still PLANNED, and
 // the coach is only carried over if they're not already busy that slot.
 // Cancelled source classes aren't copied — cancelling wasn't a scheduling
-// choice worth repeating.
+// choice worth repeating. Private classes aren't copied either — they're
+// one-off ad hoc lessons a coach logs for that specific week (see
+// addPrivateClass), not a recurring slot worth repeating onto the next one.
 export async function copyLastWeek(formData: FormData) {
   const { organizationId } = await requireOrgAdmin();
   const prisma = tenantPrisma(organizationId);
@@ -221,6 +223,7 @@ export async function copyLastWeek(formData: FormData) {
     where: {
       date: { gte: prevWeekStart, lt: weekStart },
       status: { not: "CANCELLED" },
+      isPrivate: false,
     },
   });
   if (sourceInstances.length === 0) return;
