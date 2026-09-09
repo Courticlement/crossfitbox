@@ -155,7 +155,8 @@ model PrivatePayment {
   coach   Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
   // € settled by this payment — a snapshot of the balance at the moment it
   // was marked paid, not a live computation, so past history stays accurate
-  // even as PRIVATE_CLASS_COST_EUR or a coach's classes change later.
+  // even as the per-class private rates (see privateClassCost) or a
+  // coach's classes change later.
   amount  Int
   paidAt  DateTime @default(now())
 

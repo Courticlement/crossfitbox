@@ -20,5 +20,16 @@ export function groupClassRate(level: string | null): number {
 // € the coach owes the box per private class they deliver, flat regardless
 // of level — unlike group classes, this isn't gated on the week being
 // validated, since private lessons are logged ad hoc outside the weekly
-// planning workflow.
-export const PRIVATE_CLASS_COST_EUR = 20;
+// planning workflow. Which rate applies depends on whether the athlete is a
+// subscribed box member (see ClassInstance.athleteIsMember) — a member
+// costs less than an outside/drop-in athlete.
+export const PRIVATE_CLASS_COST_MEMBER_EUR = 20;
+export const PRIVATE_CLASS_COST_NON_MEMBER_EUR = 25;
+
+// A private class logged before athleteIsMember existed (null) falls back
+// to the member rate — the flat cost every private class was charged at
+// before this distinction existed, so old history doesn't retroactively
+// change.
+export function privateClassCost(athleteIsMember: boolean | null): number {
+  return athleteIsMember === false ? PRIVATE_CLASS_COST_NON_MEMBER_EUR : PRIVATE_CLASS_COST_MEMBER_EUR;
+}

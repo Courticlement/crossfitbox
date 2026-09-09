@@ -1,5 +1,5 @@
 import { timeToMinutes } from "@/lib/calendar-layout";
-import { PRIVATE_CLASS_COST_EUR } from "@/lib/coach-levels";
+import { privateClassCost } from "@/lib/coach-levels";
 
 export type ClassInstanceForStats = {
   date: Date;
@@ -7,6 +7,9 @@ export type ClassInstanceForStats = {
   endTime: string;
   status: string;
   isPrivate: boolean;
+  // Only meaningful when isPrivate — see ClassInstance.athleteIsMember.
+  // Drives which private-class rate applies (see privateClassCost).
+  athleteIsMember: boolean | null;
   coachId: string | null;
   substituteCoachId: string | null;
   // € this class was paid at, snapshotted when it was marked Done — the
@@ -30,8 +33,9 @@ export type CoachStats = {
   amountThisMonth: number;
   amountLastMonth: number;
   // € the coach owes the box for private classes delivered this/last month
-  // (see PRIVATE_CLASS_COST_EUR) — unlike amountThisMonth/LastMonth, this
-  // doesn't depend on classes being marked Done.
+  // (see privateClassCost — the rate depends on each class's
+  // athleteIsMember) — unlike amountThisMonth/LastMonth, this doesn't
+  // depend on classes being marked Done.
   privateCostThisMonth: number;
   privateCostLastMonth: number;
   // € the coach currently owes the box for private classes, running since
@@ -105,10 +109,10 @@ export function computeCoachStats(
   let privateClassesDone = 0;
   let amountThisMonth = 0;
   let amountLastMonth = 0;
-  let privateThisMonth = 0;
-  let privateLastMonth = 0;
-  let privateUnpaid = 0;
-  let privateUnpaidLastMonth = 0;
+  let privateCostThisMonth = 0;
+  let privateCostLastMonth = 0;
+  let privateBalance = 0;
+  let privateBalanceLastMonth = 0;
   const pastMonthHours = new Map<string, number>(); // "YYYY-M" -> hours, excludes current month
 
   for (const inst of instances) {
@@ -143,17 +147,18 @@ export function computeCoachStats(
 
       if (inst.isPrivate) {
         privateClassesDone++;
+        const cost = privateClassCost(inst.athleteIsMember);
         if (inst.date >= currentMonthStart && inst.date < nextMonthStart) {
-          privateThisMonth++;
+          privateCostThisMonth += cost;
         }
         if (inst.date >= lastMonthStart && inst.date < currentMonthStart) {
-          privateLastMonth++;
+          privateCostLastMonth += cost;
         }
         const unpaid = privateBalancePaidAt === null || inst.date > privateBalancePaidAt;
         if (unpaid) {
-          privateUnpaid++;
+          privateBalance += cost;
           if (inst.date >= lastMonthStart && inst.date < currentMonthStart) {
-            privateUnpaidLastMonth++;
+            privateBalanceLastMonth += cost;
           }
         }
       } else if (inst.status === "DONE" || inst.status === "MISSED") {
@@ -186,9 +191,9 @@ export function computeCoachStats(
     privateClassesDone,
     amountThisMonth,
     amountLastMonth,
-    privateCostThisMonth: privateThisMonth * PRIVATE_CLASS_COST_EUR,
-    privateCostLastMonth: privateLastMonth * PRIVATE_CLASS_COST_EUR,
-    privateBalance: privateUnpaid * PRIVATE_CLASS_COST_EUR,
-    privateBalanceLastMonth: privateUnpaidLastMonth * PRIVATE_CLASS_COST_EUR,
+    privateCostThisMonth,
+    privateCostLastMonth,
+    privateBalance,
+    privateBalanceLastMonth,
   };
 }
