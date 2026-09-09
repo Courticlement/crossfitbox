@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { pastilleColor } from "@/lib/review-constants";
 
 // Shared by WeekDashboard and MonthDashboard — same per-coach numbers as
 // their <table>, stacked into a card instead of columns that don't fit a
@@ -19,6 +20,7 @@ type Row = {
   privateDone: number;
   reviewCount: number;
   lastReviewId: string | null;
+  reviewPastilles: string[];
   nextClass: { id: string } | null;
   nextClassWeekStart: string | null;
   netAmount: number;
@@ -40,12 +42,23 @@ export function DashboardCoachCards({ rows }: { rows: Row[] }) {
           <div className="flex items-center justify-between gap-2">
             <span className="font-semibold text-white">{r.coach.name}</span>
             {r.reviewCount > 0 ? (
-              <Link
-                href={`/admin/reviews/${r.lastReviewId}`}
-                className="text-sm font-medium text-emerald-400 underline decoration-emerald-400/40 underline-offset-4"
-              >
-                Review {r.reviewCount}
-              </Link>
+              <span className="flex items-center gap-2">
+                <Link
+                  href={`/admin/reviews/${r.lastReviewId}`}
+                  className="text-sm font-medium text-emerald-400 underline decoration-emerald-400/40 underline-offset-4"
+                >
+                  Review {r.reviewCount}
+                </Link>
+                <span className="flex items-center gap-1">
+                  {r.reviewPastilles.map((pastille, i) => (
+                    <span
+                      key={i}
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: pastilleColor(pastille) }}
+                    />
+                  ))}
+                </span>
+              </span>
             ) : r.nextClass && r.nextClassWeekStart ? (
               <Link
                 href={`/admin/planning?week=${r.nextClassWeekStart}&highlight=${r.nextClass.id}`}

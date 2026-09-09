@@ -17,6 +17,7 @@ import {
 import { classDurationHours } from "@/lib/coach-stats";
 import { groupClassRate, PRIVATE_CLASS_COST_EUR } from "@/lib/coach-levels";
 import { chartSeriesColor } from "@/lib/chart-palette";
+import { pastilleColor } from "@/lib/review-constants";
 
 // The calendar weeks (Monday-start) a month overlaps — a month rarely
 // starts on a Monday, so its first and/or last week here can extend outside
@@ -65,7 +66,7 @@ export async function MonthDashboard({
       where: {
         classInstance: { date: { gte: monthStart, lt: monthEnd } },
       },
-      select: { id: true, classInstance: { select: { coachId: true, date: true } } },
+      select: { id: true, pastille: true, classInstance: { select: { coachId: true, date: true } } },
       orderBy: { classInstance: { date: "desc" } },
     }),
     // A coach with no review this month links to their next scheduled class
@@ -123,6 +124,9 @@ export async function MonthDashboard({
     const coachReviews = monthReviews.filter((r) => r.classInstance.coachId === coach.id);
     const reviewCount = coachReviews.length;
     const lastReviewId = coachReviews[0]?.id ?? null;
+    // Oldest first so the dots read left-to-right in the order the classes
+    // happened, matching monthReviews' newest-first order reversed.
+    const reviewPastilles = coachReviews.map((r) => r.pastille).reverse();
     // No review yet this month — point at their next scheduled class.
     const nextClass = reviewCount === 0 ? (upcomingClasses.find((i) => i.coachId === coach.id) ?? null) : null;
     const nextClassWeekStart = nextClass ? formatDateISO(startOfWeekMonday(nextClass.date)) : null;
@@ -133,6 +137,7 @@ export async function MonthDashboard({
       privateDone,
       reviewCount,
       lastReviewId,
+      reviewPastilles,
       nextClass,
       nextClassWeekStart,
       netAmount,
@@ -270,6 +275,7 @@ export async function MonthDashboard({
               privateDone,
               reviewCount,
               lastReviewId,
+              reviewPastilles,
               nextClass,
               nextClassWeekStart,
               netAmount,
@@ -280,13 +286,24 @@ export async function MonthDashboard({
                 <td className="px-4 py-2 text-neutral-400">{heuresFixes.toFixed(1)}h</td>
                 <td className="px-4 py-2">
                   {reviewCount > 0 ? (
-                    <Link
-                      href={`/admin/reviews/${lastReviewId}`}
-                      title="Voir la dernière review de ce coach ce mois-ci"
-                      className="font-medium text-emerald-400 underline decoration-emerald-400/40 underline-offset-4 hover:text-emerald-300"
-                    >
-                      {reviewCount}
-                    </Link>
+                    <span className="flex items-center gap-2">
+                      <Link
+                        href={`/admin/reviews/${lastReviewId}`}
+                        title="Voir la dernière review de ce coach ce mois-ci"
+                        className="font-medium text-emerald-400 underline decoration-emerald-400/40 underline-offset-4 hover:text-emerald-300"
+                      >
+                        {reviewCount}
+                      </Link>
+                      <span className="flex items-center gap-1">
+                        {reviewPastilles.map((pastille, i) => (
+                          <span
+                            key={i}
+                            className="h-2 w-2 rounded-full"
+                            style={{ backgroundColor: pastilleColor(pastille) }}
+                          />
+                        ))}
+                      </span>
+                    </span>
                   ) : nextClass && nextClassWeekStart ? (
                     <Link
                       href={`/admin/planning?week=${nextClassWeekStart}&highlight=${nextClass.id}`}
