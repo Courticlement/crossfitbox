@@ -1,18 +1,24 @@
 import { cookies } from "next/headers";
-import { Nav } from "@/components/nav";
+import { Nav, type NavItem } from "@/components/nav";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { requireAdmin } from "@/lib/auth-context";
 import { IMPERSONATOR_COOKIE } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 
-const baseLinks = [
+const baseLinks: NavItem[] = [
   { href: "/admin", label: "Tableau de bord" },
   { href: "/admin/planning", label: "Planning" },
-  { href: "/admin/coaches", label: "Coachs" },
+  {
+    label: "Staff",
+    items: [
+      { href: "/admin/coaches", label: "Coachs" },
+      { href: "/admin/rooms", label: "Salles" },
+      { href: "/admin/payments", label: "Paiements" },
+      { href: "/admin/private-classes", label: "Cours privés" },
+    ],
+  },
   { href: "/admin/templates", label: "Modèles de cours" },
-  { href: "/admin/rooms", label: "Salles" },
   { href: "/admin/data", label: "Données" },
-  { href: "/admin/payments", label: "Paiements" },
   { href: "/admin/reviews", label: "Suivi coaching" },
   { href: "/upload", label: "Mes cours" },
 ];
