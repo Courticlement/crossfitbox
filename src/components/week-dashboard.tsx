@@ -61,7 +61,6 @@ export async function WeekDashboard({
   ]);
 
   const activeInstances = instances.filter((i) => i.status !== "CANCELLED");
-  const totalClasses = activeInstances.length;
   // A team event never gets a coach by design (see ClassInstance.isTeamEvent)
   // — it shouldn't inflate the "needs assignment" count.
   const unassignedClasses = activeInstances.filter((i) => !i.coachId && !i.isTeamEvent).length;
@@ -166,10 +165,20 @@ export async function WeekDashboard({
         </Link>
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-          <dt className="text-xs text-neutral-500">Cours cette semaine</dt>
-          <dd className="text-2xl font-semibold text-white">{totalClasses}</dd>
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-5">
+        <div
+          className="rounded-lg border border-neutral-800 bg-neutral-900 p-4"
+          title="Total des heures de cours collectifs non annulés cette semaine (faits ou prévus) — hors privés et événements d'équipe"
+        >
+          <dt className="text-xs text-neutral-500">Heure total</dt>
+          <dd className="text-2xl font-semibold text-white">{totals.totalHours.toFixed(1)}h</dd>
+        </div>
+        <div
+          className="rounded-lg border border-neutral-800 bg-neutral-900 p-4"
+          title="Total des heures de cours collectifs non annulés du lundi au vendredi — hors privés et événements d'équipe"
+        >
+          <dt className="text-xs text-neutral-500">Heures fixes</dt>
+          <dd className="text-2xl font-semibold text-white">{totals.heuresFixes.toFixed(1)}h</dd>
         </div>
         {unassignedClasses > 0 ? (
           <Link
