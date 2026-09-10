@@ -10,6 +10,7 @@ import { requireOrgAdmin, requireCoachSession } from "@/lib/auth-context";
 function revalidateAll() {
   revalidatePath("/admin/planning");
   revalidatePath("/admin");
+  revalidatePath("/admin/private-classes");
   revalidatePath("/upload");
   // Reassigning a coach affects more than the dropdown that was touched —
   // conflict panels, the missed-classes list, and other rows on the same

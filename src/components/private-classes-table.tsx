@@ -1,3 +1,5 @@
+import { DeleteClassButton } from "@/components/delete-class-button";
+
 export type PrivateClassRow = {
   id: string;
   coachName: string;
@@ -18,11 +20,12 @@ export function PrivateClassesTable({ rows }: { rows: PrivateClassRow[] }) {
             <th className="px-4 py-2 font-medium">Abonnement</th>
             <th className="px-4 py-2 font-medium">Date</th>
             <th className="px-4 py-2 font-medium">Heure</th>
+            <th className="px-4 py-2 font-medium" />
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.id} className="border-t border-neutral-800">
+            <tr key={row.id} className="group border-t border-neutral-800">
               <td className="px-4 py-2 text-white">{row.coachName}</td>
               <td className="px-4 py-2">{row.athleteName}</td>
               <td className="px-4 py-2">
@@ -36,11 +39,16 @@ export function PrivateClassesTable({ rows }: { rows: PrivateClassRow[] }) {
               </td>
               <td className="px-4 py-2 whitespace-nowrap">{row.dateLabel}</td>
               <td className="px-4 py-2 whitespace-nowrap">{row.time}</td>
+              <td className="px-4 py-2 text-right">
+                {/* Private classes are always logged as already delivered — reuse the
+                    louder "reported" warning since deleting erases recorded hours. */}
+                <DeleteClassButton id={row.id} reported />
+              </td>
             </tr>
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={5} className="px-4 py-6 text-center text-neutral-500">
+              <td colSpan={6} className="px-4 py-6 text-center text-neutral-500">
                 Aucun cours privé sur cette période.
               </td>
             </tr>
