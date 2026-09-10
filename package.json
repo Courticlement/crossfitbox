@@ -22,6 +22,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@effect/platform-bun": "^4.0.0-rc.111",
     "@effect/platform-node": "^4.0.0-rc.111",
     "@prisma/composer": "^0.14.0",
     "@prisma/composer-prisma-cloud": "^0.14.0",
