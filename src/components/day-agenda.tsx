@@ -4,6 +4,7 @@ import { addDays, formatDateISO } from "@/lib/dates";
 import { hexToRgba } from "@/lib/coach-colors";
 import { statusLabel } from "@/lib/status-labels";
 import { STATUS_BORDER, type WeekGridInstance, type WeekGridRoom } from "@/components/week-grid";
+import { ReviewDot } from "@/components/review-button";
 
 const DEFAULT_ROOM_COLOR = "#525252";
 
@@ -180,6 +181,7 @@ export function DayAgenda<T extends WeekGridInstance>({
                         Privé
                       </span>
                     )}
+                    {inst.review && <ReviewDot review={inst.review} />}
                     {headerAction?.(inst)}
                   </div>
                 </div>

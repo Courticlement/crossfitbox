@@ -3,6 +3,7 @@ import { addDays, formatDateISO, formatDayLabel } from "@/lib/dates";
 import { timeToMinutes, formatHourLabel, layoutDayEventsToGrid } from "@/lib/calendar-layout";
 import { hexToRgba } from "@/lib/coach-colors";
 import { statusLabel } from "@/lib/status-labels";
+import { ReviewDot } from "@/components/review-button";
 
 export type WeekGridRoom = { id: string; name: string; shortLabel: string | null; color: string | null };
 
@@ -65,6 +66,10 @@ export type WeekGridInstance = {
   // null) on grids that don't fetch it (e.g. a coach's own My Classes page),
   // which falls back to the existing room tint exactly as before.
   coachColor?: string | null;
+  // This class's coaching review, if one's been done — renders as a small
+  // ReviewDot under the class label. Undefined on grids that don't fetch it
+  // (e.g. a coach's own My Classes page), which just renders nothing.
+  review?: { id: string; pastille: string } | null;
 };
 
 export function WeekGrid<T extends WeekGridInstance>({
@@ -367,6 +372,11 @@ export function WeekGrid<T extends WeekGridInstance>({
                 >
                   {inst.label}
                 </div>
+                {inst.review && (
+                  <div className="flex items-center">
+                    <ReviewDot review={inst.review} />
+                  </div>
+                )}
                 <div className="mt-auto">{control(inst)}</div>
               </div>
             );
