@@ -212,12 +212,21 @@ export async function generateWeek(formData: FormData) {
 // choice worth repeating. Private classes aren't copied either — they're
 // one-off ad hoc lessons a coach logs for that specific week (see
 // addPrivateClass), not a recurring slot worth repeating onto the next one.
+// `days` (see CopyLastWeekButton's popin) narrows the copy down to just the
+// target dates ("YYYY-MM-DD", this week's) the admin picked instead of the
+// whole week — defaults to every day of the week when omitted.
 export async function copyLastWeek(formData: FormData) {
   const { organizationId } = await requireOrgAdmin();
   const prisma = tenantPrisma(organizationId);
   const weekStartStr = String(formData.get("weekStart") ?? "");
   const weekStart = parseDateOnly(weekStartStr);
   if (!weekStart) return;
+
+  const selectedDays = formData.getAll("days").map(String);
+  const targetDays =
+    selectedDays.length > 0
+      ? new Set(selectedDays)
+      : new Set(Array.from({ length: 7 }, (_, i) => formatDateISO(addDays(weekStart, i))));
 
   const prevWeekStart = addDays(weekStart, -7);
   const sourceInstances = await prisma.classInstance.findMany({
@@ -263,6 +272,7 @@ export async function copyLastWeek(formData: FormData) {
   for (const src of sourceInstances) {
     const date = addDays(src.date, 7);
     const dateStr = formatDateISO(date);
+    if (!targetDays.has(dateStr)) continue; // day not selected in the popin
     if (closedDates.has(dateStr)) continue; // box closed that day — nothing to copy
     const key = `${dateStr}-${src.startTime}-${src.roomId}`;
     const existingInstance = existingByDateTimeRoom.get(key);
