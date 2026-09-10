@@ -170,11 +170,16 @@ export function WeekGrid<T extends WeekGridInstance>({
         />
         {days.map((day, dayIdx) => {
           const closed = closedDates?.has(formatDateISO(day)) ?? false;
+          // Alternates every other day (Tue/Thu/Sat when the week starts
+          // Monday) a shade lighter — plain vertical border separators
+          // alone were hard to scan across a wide 7-day grid, especially
+          // once several room lanes sit side by side within each day.
+          const altDay = dayIdx % 2 === 1;
           const firstCol = 2 + dayIdx * rooms.length;
           return (
             <div
               key={formatDateISO(day)}
-              className={`sticky top-0 z-20 border-b border-l border-neutral-800 p-2 text-xs font-medium ${closed ? "bg-red-950/40 text-red-300" : "bg-neutral-900 text-white"}`}
+              className={`sticky top-0 z-20 border-b border-l border-neutral-800 p-2 text-xs font-medium ${closed ? "bg-red-950/40 text-red-300" : altDay ? "bg-neutral-800 text-white" : "bg-neutral-900 text-white"}`}
               style={{ gridColumn: `${firstCol} / ${firstCol + rooms.length}`, gridRow: 1 }}
             >
               <div className="flex items-center justify-between gap-1">
@@ -223,7 +228,7 @@ export function WeekGrid<T extends WeekGridInstance>({
                 rooms.map((room, roomIdx) => (
                   <div
                     key={`${formatDateISO(day)}-${room.id}-${hour}`}
-                    className={`border-t border-l border-neutral-800 ${closedDates?.has(formatDateISO(day)) ? "bg-red-950/10" : ""} ${roomIdx === 0 ? "border-l-neutral-700" : ""}`}
+                    className={`border-t border-l border-neutral-800 ${closedDates?.has(formatDateISO(day)) ? "bg-red-950/10" : dayIdx % 2 === 1 ? "bg-white/[0.035]" : ""} ${roomIdx === 0 ? "border-l-neutral-700" : ""}`}
                     style={{ gridColumn: 2 + dayIdx * rooms.length + roomIdx, gridRow: `${rowStart} / ${rowEnd}` }}
                   />
                 ))
