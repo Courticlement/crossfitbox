@@ -44,8 +44,13 @@ export function UnavailabilityForm({
   const [recurring, setRecurring] = useState(false);
 
   return (
-    <div className="mb-6 rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-      <h2 className="mb-1 text-sm font-medium text-white">Absence / indisponibilité</h2>
+    // Collapsed by default, same reasoning as CalendarSyncCard — reporting
+    // an absence isn't a weekly action, so it shouldn't eat space above
+    // the actually-relevant weekly content by default.
+    <details className="mb-6 rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+      <summary className="mb-1 cursor-pointer select-none text-sm font-medium text-white">
+        Absence / indisponibilité
+      </summary>
       <p className="mb-3 text-xs text-neutral-500">
         Signalez toute date à venir où vous ne pourrez pas coacher —
         l&apos;admin en est notifié immédiatement.
@@ -131,6 +136,6 @@ export function UnavailabilityForm({
           ))}
         </div>
       )}
-    </div>
+    </details>
   );
 }

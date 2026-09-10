@@ -41,8 +41,13 @@ export function CalendarSyncCard({
   }
 
   return (
-    <div className="mb-6 rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-      <h2 className="mb-1 text-sm font-medium text-white">Synchroniser avec mon calendrier</h2>
+    // Collapsed by default — this is a one-time setup step, not something
+    // a coach needs to see every week, so it shouldn't eat space above the
+    // actually-relevant weekly content by default.
+    <details className="mb-6 rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+      <summary className="mb-1 cursor-pointer select-none text-sm font-medium text-white">
+        Synchroniser avec mon calendrier
+      </summary>
       <p className="mb-3 text-xs text-neutral-500">
         Ajoutez ce lien à l&apos;app Calendrier de votre téléphone pour voir vos cours
         automatiquement — elle se met à jour toute seule au fil des changements de planning.
@@ -100,6 +105,6 @@ export function CalendarSyncCard({
           </span>
         )}
       </form>
-    </div>
+    </details>
   );
 }
