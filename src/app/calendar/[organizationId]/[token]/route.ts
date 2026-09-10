@@ -58,10 +58,13 @@ export async function GET(
         // one actually delivering it anymore, so their feed should drop it
         // in favor of the substitute's. `substituteCoachId: null` on the
         // first branch is what makes that handoff exclusive instead of
-        // leaving it on both calendars.
+        // leaving it on both calendars. A team event has no coachId at all
+        // (see ClassInstance.isTeamEvent) — it's everyone's, so it goes on
+        // every active coach's feed regardless of the other two branches.
         OR: [
           { coachId: coach.id, substituteCoachId: null },
           { substituteCoachId: coach.id },
+          { isTeamEvent: true },
         ],
         status: { not: "CANCELLED" },
         date: { gte: windowStart, lt: windowEnd },

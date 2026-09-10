@@ -40,6 +40,10 @@ export type IcsClassInstance = {
   endTime: string;
   label: string;
   isPrivate: boolean;
+  // Has no single assigned coach and goes on every active coach's feed
+  // (see the calendar route's query) — tagged in SUMMARY so a coach isn't
+  // confused seeing a class they weren't personally assigned.
+  isTeamEvent: boolean;
   room: { name: string };
 };
 
@@ -71,7 +75,7 @@ export function buildIcsFeed(coachName: string, instances: IcsClassInstance[]): 
       `DTSTAMP:${now}`,
       `DTSTART;TZID=Europe/Paris:${icsLocalDateTime(inst.date, inst.startTime)}`,
       `DTEND;TZID=Europe/Paris:${icsLocalDateTime(inst.date, inst.endTime)}`,
-      `SUMMARY:${icsEscape(inst.isPrivate ? `${inst.label} (privé)` : inst.label)}`,
+      `SUMMARY:${icsEscape(inst.isTeamEvent ? `🎉 ${inst.label} (événement d'équipe)` : inst.isPrivate ? `${inst.label} (privé)` : inst.label)}`,
       `LOCATION:${icsEscape(inst.room.name)}`,
       "STATUS:CONFIRMED",
       "END:VEVENT"
