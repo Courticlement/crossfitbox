@@ -12,6 +12,7 @@ export function SubstituteSelect({
   coaches,
   adminContext = false,
   locked = false,
+  light = false,
 }: {
   classInstanceId: string;
   coachId: string | null;
@@ -22,6 +23,9 @@ export function SubstituteSelect({
   // Classes usage (see assignSubstitute).
   adminContext?: boolean;
   locked?: boolean;
+  // Matches WeekGrid/DayAgenda's own `light` switch — set on the admin
+  // Planning usage only; the coach-facing My Classes grid stays dark.
+  light?: boolean;
 }) {
   const [state, formAction] = useActionState(assignSubstitute, initialState);
   const formRef = useRef<HTMLFormElement>(null);
@@ -50,7 +54,11 @@ export function SubstituteSelect({
           setValue(e.target.value);
           formRef.current?.requestSubmit();
         }}
-        className="w-full truncate rounded border border-amber-800 bg-neutral-950 px-1 py-0.5 text-[10px] text-amber-300 focus:border-amber-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+        className={
+          light
+            ? "w-full truncate rounded border border-amber-400 bg-amber-100 px-1 py-0.5 text-[10px] text-amber-800 focus:border-amber-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            : "w-full truncate rounded border border-amber-800 bg-neutral-950 px-1 py-0.5 text-[10px] text-amber-300 focus:border-amber-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+        }
       >
         <option value="">Aucun remplaçant</option>
         {options.map((coach) => (
@@ -62,7 +70,7 @@ export function SubstituteSelect({
       {state.error && (
         <p
           title={state.error}
-          className="truncate text-[9px] leading-tight text-red-400"
+          className={`truncate text-[9px] leading-tight ${light ? "text-red-600" : "text-red-400"}`}
         >
           ⚠ Coach occupé à cette heure
         </p>

@@ -14,11 +14,16 @@ export function EditClassButton({
   label,
   startTime,
   endTime,
+  light = false,
 }: {
   classInstanceId: string;
   label: string;
   startTime: string;
   endTime: string;
+  // Matches WeekGrid/DayAgenda's own `light` switch — this button sits
+  // inside their cards, so its hover color has to flip too or it goes
+  // invisible against a white card (see admin/planning's usage).
+  light?: boolean;
 }) {
   const [state, formAction] = useActionState(updateClassInstance, initialState);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -50,7 +55,7 @@ export function EditClassButton({
         // — hidden until hover only applies once there's room for a full
         // week grid (see WeekGrid, whose event blocks carry the `group`
         // class this relies on at md+).
-        className="shrink-0 rounded-md p-1 text-base text-neutral-500 hover:text-white md:p-0 md:text-[10px] md:opacity-0 md:group-hover:opacity-100"
+        className={`shrink-0 rounded-md p-1 text-base text-neutral-500 md:p-0 md:text-[10px] md:opacity-0 md:group-hover:opacity-100 ${light ? "hover:text-neutral-900" : "hover:text-white"}`}
       >
         ✎
       </button>

@@ -43,9 +43,9 @@ export function PlanningFilters({
           onChange={(e) => e.currentTarget.form?.requestSubmit()}
           className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
         >
-          <option value="">Tous les cours</option>
+          <option value="">Collectifs + équipe</option>
           <option value="private">Privés uniquement</option>
-          <option value="group">Collectifs uniquement</option>
+          <option value="all">Tous les cours (y compris privés)</option>
         </select>
       </div>
       <div>

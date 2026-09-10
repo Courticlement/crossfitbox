@@ -45,10 +45,14 @@ export function CoachSelect({
           setValue(e.target.value);
           formRef.current?.requestSubmit();
         }}
+        // Only ever rendered inside admin/planning's (light) WeekGrid/
+        // DayAgenda — see coach-select.tsx's own header comment for why
+        // this doesn't need a `light` prop like EditClassButton/
+        // DeleteClassButton/ReviewButton/SubstituteSelect do.
         className={`w-full truncate rounded px-1 py-0.5 text-[10px] font-medium focus:outline-none ${
           value
-            ? "border border-neutral-700 bg-neutral-950 text-white focus:border-neutral-500"
-            : "border border-amber-700/70 bg-amber-950/30 text-amber-300 focus:border-amber-500"
+            ? "border border-neutral-300 bg-white text-neutral-900 focus:border-neutral-500"
+            : "border border-amber-400 bg-amber-100 text-amber-800 focus:border-amber-500"
         }`}
       >
         <option value="">Non assigné</option>
@@ -63,7 +67,7 @@ export function CoachSelect({
           className={`truncate text-[9px] leading-tight ${
             coaches.find((c) => c.id === value)?.name === templateCoachName
               ? "text-neutral-500"
-              : "text-amber-400"
+              : "text-amber-600"
           }`}
         >
           Modèle : {templateCoachName}
@@ -72,7 +76,7 @@ export function CoachSelect({
       {state.error && (
         <p
           title={state.error}
-          className="truncate text-[9px] leading-tight text-red-400"
+          className="truncate text-[9px] leading-tight text-red-600"
         >
           ⚠ Coach occupé à cette heure
         </p>

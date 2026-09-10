@@ -22,7 +22,9 @@ export function SelectClassCheckbox({ id }: { id: string }) {
       type="checkbox"
       checked={ctx.selected.has(id)}
       onChange={() => ctx.toggle(id)}
-      className="size-3 shrink-0 rounded border-neutral-600 bg-neutral-950"
+      // Only ever rendered inside admin/planning's (light) WeekGrid — see
+      // this component's own header comment.
+      className="size-3 shrink-0 rounded border-neutral-400 bg-white"
       title="Sélectionner pour agir sur plusieurs cours à la fois"
     />
   );

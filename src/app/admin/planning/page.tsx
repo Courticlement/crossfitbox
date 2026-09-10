@@ -171,7 +171,12 @@ export default async function PlanningPage({
         return false;
       }
       if (typeFilter === "private" && !inst.isPrivate) return false;
-      if (typeFilter === "group" && inst.isPrivate) return false;
+      // Private classes are noise on the default weekly view (the grid is
+      // about group/team coverage) — hidden unless explicitly asked for
+      // via "Privés uniquement" or "Tous les cours" (see PlanningFilters).
+      // Team events are never isPrivate (see ClassInstance.isTeamEvent) so
+      // this never touches them regardless of typeFilter.
+      if (typeFilter !== "private" && typeFilter !== "all" && inst.isPrivate) return false;
       if (roomFilter && inst.roomId !== roomFilter) return false;
       return true;
     })
@@ -254,16 +259,19 @@ export default async function PlanningPage({
         classInstanceId={inst.id}
         review={inst.review ? { id: inst.review.id, pastille: inst.review.pastille } : null}
         weekParam={weekStartStr}
+        light
       />
       <EditClassButton
         classInstanceId={inst.id}
         label={inst.label}
         startTime={inst.startTime}
         endTime={inst.endTime}
+        light
       />
       <DeleteClassButton
         id={inst.id}
         reported={inst.status === "DONE" || inst.status === "MISSED"}
+        light
       />
     </div>
   );
@@ -286,6 +294,7 @@ export default async function PlanningPage({
             substituteCoachId={inst.substituteCoachId}
             coaches={coaches}
             adminContext
+            light
           />
         )}
       </div>
@@ -461,6 +470,7 @@ export default async function PlanningPage({
             selectionAction={(inst) => <SelectClassCheckbox id={inst.id} />}
             headerAction={renderHeaderAction}
             control={renderControl}
+            light
           />
         </BulkAssignProvider>
       </div>
@@ -475,6 +485,7 @@ export default async function PlanningPage({
         closedDates={closedDates}
         headerAction={renderHeaderAction}
         control={renderControl}
+        light
       />
 
       <div className="flex flex-wrap gap-4">

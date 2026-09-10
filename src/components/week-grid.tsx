@@ -45,6 +45,107 @@ const STATUS_BG: Record<string, string> = {
   CANCELLED: "bg-neutral-900/40",
 };
 
+// Light-theme counterparts of the two maps above — same semantics, tuned
+// for a white grid (see the `light` prop) instead of translucent tints
+// meant to blend into a near-black card.
+export const STATUS_BORDER_LIGHT: Record<string, string> = {
+  PLANNED: "border-l-neutral-400",
+  DONE: "border-l-emerald-500",
+  MISSED: "border-l-red-500",
+  CANCELLED: "border-l-neutral-300",
+};
+
+const STATUS_BG_LIGHT: Record<string, string> = {
+  DONE: "bg-emerald-100",
+  MISSED: "bg-red-100",
+  CANCELLED: "bg-neutral-100",
+};
+
+// Every color class the grid uses, grouped so WeekGrid can pick the dark
+// (default, matches the rest of the admin app) or light set as one unit
+// instead of scattering `light ? ... : ...` ternaries through the JSX —
+// see the `light` prop, currently only turned on for /admin/planning.
+function buildTheme(light: boolean) {
+  if (!light) {
+    return {
+      containerBorder: "border-neutral-800",
+      headerBg: "bg-neutral-900",
+      headerBgAlt: "bg-neutral-800",
+      headerBorder: "border-neutral-800",
+      headerText: "text-white",
+      closedHeaderBg: "bg-red-950/40",
+      closedHeaderText: "text-red-300",
+      closedBadgeBg: "bg-red-500/20",
+      closedBadgeText: "text-red-300",
+      hourLabelText: "text-neutral-500",
+      gridLine: "border-neutral-800",
+      gridLineStrong: "border-l-neutral-700",
+      altDayTint: "bg-white/[0.035]",
+      closedHourBg: "bg-red-950/10",
+      cardFallbackBg: "bg-neutral-900",
+      statusBg: STATUS_BG,
+      statusBorder: STATUS_BORDER,
+      teamGradient: "bg-gradient-to-br from-amber-500/30 via-amber-600/15 to-neutral-900",
+      needsCoachGradient: "bg-gradient-to-br from-red-500/30 via-red-600/15 to-neutral-900",
+      teamBorder: "border-amber-400",
+      needsCoachBorder: "border-red-400",
+      coachUnavailableBg: "bg-red-950/60",
+      mineRing: "ring-white/80",
+      highlightRingOffset: "ring-offset-neutral-950",
+      highlightRing: "ring-amber-400",
+      timeText: "text-neutral-300",
+      labelTextDefault: "text-white",
+      labelTextTeam: "text-amber-100",
+      labelTextNeedsCoach: "text-red-100",
+      badgeHighlightBg: "bg-amber-500/20",
+      badgeHighlightText: "text-amber-300",
+      badgeUnavailBg: "bg-red-500/20",
+      badgeUnavailText: "text-red-300",
+      badgePrivateBg: "bg-violet-500/20",
+      badgePrivateText: "text-violet-300",
+      hoverBackdrop: "group-hover:bg-neutral-950/70",
+    };
+  }
+  return {
+    containerBorder: "border-neutral-200",
+    headerBg: "bg-white",
+    headerBgAlt: "bg-neutral-100",
+    headerBorder: "border-neutral-200",
+    headerText: "text-neutral-900",
+    closedHeaderBg: "bg-red-100",
+    closedHeaderText: "text-red-700",
+    closedBadgeBg: "bg-red-200",
+    closedBadgeText: "text-red-800",
+    hourLabelText: "text-neutral-400",
+    gridLine: "border-neutral-200",
+    gridLineStrong: "border-l-neutral-300",
+    altDayTint: "bg-neutral-900/[0.035]",
+    closedHourBg: "bg-red-50",
+    cardFallbackBg: "bg-white",
+    statusBg: STATUS_BG_LIGHT,
+    statusBorder: STATUS_BORDER_LIGHT,
+    teamGradient: "bg-gradient-to-br from-amber-200 via-amber-100 to-white",
+    needsCoachGradient: "bg-gradient-to-br from-red-200 via-red-100 to-white",
+    teamBorder: "border-amber-500",
+    needsCoachBorder: "border-red-500",
+    coachUnavailableBg: "bg-red-100",
+    mineRing: "ring-neutral-900/70",
+    highlightRingOffset: "ring-offset-white",
+    highlightRing: "ring-amber-500",
+    timeText: "text-neutral-500",
+    labelTextDefault: "text-neutral-900",
+    labelTextTeam: "text-amber-900",
+    labelTextNeedsCoach: "text-red-900",
+    badgeHighlightBg: "bg-amber-100",
+    badgeHighlightText: "text-amber-800",
+    badgeUnavailBg: "bg-red-100",
+    badgeUnavailText: "text-red-700",
+    badgePrivateBg: "bg-violet-100",
+    badgePrivateText: "text-violet-700",
+    hoverBackdrop: "group-hover:bg-white/90",
+  };
+}
+
 export type WeekGridInstance = {
   id: string;
   date: Date;
@@ -83,6 +184,7 @@ export function WeekGrid<T extends WeekGridInstance>({
   highlightInstanceId,
   unavailableInstanceIds,
   closedDates,
+  light = false,
 }: {
   weekStart: Date;
   instances: T[];
@@ -115,7 +217,12 @@ export function WeekGrid<T extends WeekGridInstance>({
   // admin/planning's BoxClosuresCard) — tints the whole day column and
   // labels its header, independent of whatever classes still sit on it.
   closedDates?: Set<string>;
+  // Switches the grid to a white background (see buildTheme) — currently
+  // only turned on for /admin/planning; a coach's own My Classes grid
+  // (my-classes-grid.tsx) leaves this off and keeps the original dark look.
+  light?: boolean;
 }) {
+  const theme = buildTheme(light);
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const roomById = new Map(rooms.map((r) => [r.id, r]));
 
@@ -147,7 +254,7 @@ export function WeekGrid<T extends WeekGridInstance>({
     // constraint it never scrolls internally — so instead of sticking, its
     // position:sticky children silently just track the page's scroll and
     // scroll away with everything else.
-    <div className="mb-8 max-h-[75vh] overflow-auto rounded-lg border border-neutral-800">
+    <div className={`mb-8 max-h-[75vh] overflow-auto rounded-lg border ${theme.containerBorder} ${light ? "bg-white" : ""}`}>
       <div
         style={{
           display: "grid",
@@ -165,7 +272,7 @@ export function WeekGrid<T extends WeekGridInstance>({
             room sub-row underneath so a lane's room is always readable
             without having to remember left-vs-right. */}
         <div
-          className="sticky top-0 z-20 border-b border-neutral-800 bg-neutral-900"
+          className={`sticky top-0 z-20 border-b ${theme.headerBorder} ${theme.headerBg}`}
           style={{ gridColumn: 1, gridRow: 1 }}
         />
         {days.map((day, dayIdx) => {
@@ -179,13 +286,13 @@ export function WeekGrid<T extends WeekGridInstance>({
           return (
             <div
               key={formatDateISO(day)}
-              className={`sticky top-0 z-20 border-b border-l border-neutral-800 p-2 text-xs font-medium ${closed ? "bg-red-950/40 text-red-300" : altDay ? "bg-neutral-800 text-white" : "bg-neutral-900 text-white"}`}
+              className={`sticky top-0 z-20 border-b border-l ${theme.headerBorder} p-2 text-xs font-medium ${closed ? `${theme.closedHeaderBg} ${theme.closedHeaderText}` : altDay ? `${theme.headerBgAlt} ${theme.headerText}` : `${theme.headerBg} ${theme.headerText}`}`}
               style={{ gridColumn: `${firstCol} / ${firstCol + rooms.length}`, gridRow: 1 }}
             >
               <div className="flex items-center justify-between gap-1">
                 <span>{formatDayLabel(day)}</span>
                 {closed && (
-                  <span className="rounded-full bg-red-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide text-red-300">
+                  <span className={`rounded-full ${theme.closedBadgeBg} px-1.5 py-0.5 text-[8px] font-semibold uppercase leading-none tracking-wide ${theme.closedBadgeText}`}>
                     Fermé
                   </span>
                 )}
@@ -217,10 +324,10 @@ export function WeekGrid<T extends WeekGridInstance>({
           return (
             <div key={`label-${hour}`} className="contents">
               <div
-                className="relative border-t border-neutral-800"
+                className={`relative border-t ${theme.gridLine}`}
                 style={{ gridColumn: 1, gridRow: `${rowStart} / ${rowEnd}` }}
               >
-                <span className="absolute -top-2 right-2 text-[10px] text-neutral-500">
+                <span className={`absolute -top-2 right-2 text-[10px] ${theme.hourLabelText}`}>
                   {formatHourLabel(hour)}
                 </span>
               </div>
@@ -228,7 +335,7 @@ export function WeekGrid<T extends WeekGridInstance>({
                 rooms.map((room, roomIdx) => (
                   <div
                     key={`${formatDateISO(day)}-${room.id}-${hour}`}
-                    className={`border-t border-l border-neutral-800 ${closedDates?.has(formatDateISO(day)) ? "bg-red-950/10" : dayIdx % 2 === 1 ? "bg-white/[0.035]" : ""} ${roomIdx === 0 ? "border-l-neutral-700" : ""}`}
+                    className={`border-t border-l ${theme.gridLine} ${closedDates?.has(formatDateISO(day)) ? theme.closedHourBg : dayIdx % 2 === 1 ? theme.altDayTint : ""} ${roomIdx === 0 ? theme.gridLineStrong : ""}`}
                     style={{ gridColumn: 2 + dayIdx * rooms.length + roomIdx, gridRow: `${rowStart} / ${rowEnd}` }}
                   />
                 ))
@@ -272,12 +379,12 @@ export function WeekGrid<T extends WeekGridInstance>({
             // block every coach actually needs to notice.
             const faded = highlightCoachId != null && !isMine && !inst.isTeamEvent;
             const coachUnavailable = unavailableInstanceIds?.has(inst.id) ?? false;
-            const statusBg = STATUS_BG[inst.status];
+            const statusBg = theme.statusBg[inst.status];
             const room = roomById.get(inst.roomId);
             // The coach's color now always wins the background, DONE/MISSED
             // included, so a class visually stays "theirs" no matter its
             // outcome — the outcome itself still reads from the border-left
-            // color (STATUS_BORDER) and the status-labeled title tooltip.
+            // color (theme.statusBorder) and the status-labeled title tooltip.
             // Falls back to the status tint, then the room tint, whenever
             // there's no per-coach color to use — no coach assigned, the
             // coach hasn't set one, or this grid doesn't fetch coachColor.
@@ -286,8 +393,8 @@ export function WeekGrid<T extends WeekGridInstance>({
               : null;
             const roomBg = !coachBg && room?.color ? hexToRgba(room.color, 0.2) : null;
             const bg = coachUnavailable
-              ? "bg-red-950/60"
-              : (coachBg || roomBg ? "" : (statusBg ?? "bg-neutral-900"));
+              ? theme.coachUnavailableBg
+              : (coachBg || roomBg ? "" : (statusBg ?? theme.cardFallbackBg));
             // A team event overrides every other border/background rule —
             // it has no coach and no status story to tell, just "everyone
             // needs to see this" (see ClassInstance.isTeamEvent). A still-
@@ -295,16 +402,16 @@ export function WeekGrid<T extends WeekGridInstance>({
             // of amber) since it's the other case that needs the admin's
             // attention before the week is ready.
             const border = inst.isTeamEvent
-              ? "border-2 border-amber-400"
+              ? `border-2 ${theme.teamBorder}`
               : needsCoach
-                ? "border-2 border-red-400"
-                : `border-l-4 ${STATUS_BORDER[inst.status] ?? "border-l-neutral-600"}`;
+                ? `border-2 ${theme.needsCoachBorder}`
+                : `border-l-4 ${theme.statusBorder[inst.status] ?? theme.statusBorder.PLANNED}`;
             return (
               <div
                 key={inst.id}
                 id={isHighlighted ? `class-instance-${inst.id}` : undefined}
                 title={`${inst.isTeamEvent ? "Événement d'équipe · " : ""}${inst.label} · ${room?.name ?? ""} · ${inst.startTime}–${inst.endTime} · ${statusLabel(inst.status)}${coachUnavailable ? " · le coach assigné est indisponible" : ""}`}
-                className={`group relative z-10 flex flex-col gap-0.5 overflow-hidden rounded-md p-1 transition-opacity ${border} ${inst.isTeamEvent ? "bg-gradient-to-br from-amber-500/30 via-amber-600/15 to-neutral-900" : needsCoach ? "bg-gradient-to-br from-red-500/30 via-red-600/15 to-neutral-900" : bg} ${coachUnavailable ? "ring-2 ring-inset ring-red-500" : ""} ${isMineGroup ? "ring-2 ring-inset ring-white/80" : ""} ${isHighlighted ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-neutral-950" : ""} ${faded ? "opacity-40" : ""}`}
+                className={`group relative z-10 flex flex-col gap-0.5 overflow-hidden rounded-md p-1 transition-opacity ${border} ${inst.isTeamEvent ? theme.teamGradient : needsCoach ? theme.needsCoachGradient : bg} ${coachUnavailable ? "ring-2 ring-inset ring-red-500" : ""} ${isMineGroup ? `ring-2 ring-inset ${theme.mineRing}` : ""} ${isHighlighted ? `ring-2 ${theme.highlightRing} ring-offset-2 ${theme.highlightRingOffset}` : ""} ${faded ? "opacity-40" : ""}`}
                 style={{
                   gridColumn: laneColumn,
                   gridRow: `${1 + rowStart} / ${1 + rowEnd}`,
@@ -324,7 +431,7 @@ export function WeekGrid<T extends WeekGridInstance>({
                         range is still in the title tooltip on hover; showing
                         both here was the single biggest thing forcing an
                         early truncation once lanes got this narrow. */}
-                    <span className="truncate font-mono text-[9px] font-semibold text-neutral-300">
+                    <span className={`truncate font-mono text-[9px] font-semibold ${theme.timeText}`}>
                       {inst.startTime}
                     </span>
                   </div>
@@ -346,17 +453,17 @@ export function WeekGrid<T extends WeekGridInstance>({
                       </span>
                     )}
                     {isHighlighted && (
-                      <span className="shrink-0 rounded-full bg-amber-500/20 px-1 py-0.5 text-[7px] font-semibold uppercase leading-none tracking-wide text-amber-300">
+                      <span className={`shrink-0 rounded-full ${theme.badgeHighlightBg} px-1 py-0.5 text-[7px] font-semibold uppercase leading-none tracking-wide ${theme.badgeHighlightText}`}>
                         Prochain
                       </span>
                     )}
                     {coachUnavailable && (
-                      <span className="shrink-0 rounded-full bg-red-500/20 px-1 py-0.5 text-[7px] font-semibold uppercase leading-none tracking-wide text-red-300">
+                      <span className={`shrink-0 rounded-full ${theme.badgeUnavailBg} px-1 py-0.5 text-[7px] font-semibold uppercase leading-none tracking-wide ${theme.badgeUnavailText}`}>
                         Indispo
                       </span>
                     )}
                     {inst.isPrivate && (
-                      <span className="shrink-0 rounded-full bg-violet-500/20 px-1 py-0.5 text-[7px] font-semibold uppercase leading-none tracking-wide text-violet-300">
+                      <span className={`shrink-0 rounded-full ${theme.badgePrivateBg} px-1 py-0.5 text-[7px] font-semibold uppercase leading-none tracking-wide ${theme.badgePrivateText}`}>
                         Privé
                       </span>
                     )}
@@ -366,13 +473,13 @@ export function WeekGrid<T extends WeekGridInstance>({
                       reserving width in lanes this narrow; they only ever
                       overlap the time/badges on hover, when that's exactly
                       the card being acted on anyway. */}
-                  <div className="absolute right-0.5 top-0.5 flex items-center gap-0.5 rounded px-0.5 group-hover:bg-neutral-950/70">
+                  <div className={`absolute right-0.5 top-0.5 flex items-center gap-0.5 rounded px-0.5 ${theme.hoverBackdrop}`}>
                     {headerAction?.(inst)}
                   </div>
                 </div>
                 <div
                   className={`line-clamp-2 text-[10.5px] font-semibold leading-tight ${
-                    inst.isTeamEvent ? "text-amber-100" : needsCoach ? "text-red-100" : "text-white"
+                    inst.isTeamEvent ? theme.labelTextTeam : needsCoach ? theme.labelTextNeedsCoach : theme.labelTextDefault
                   }`}
                 >
                   {inst.label}
