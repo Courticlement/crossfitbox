@@ -90,6 +90,7 @@ function buildTheme(light: boolean) {
       needsCoachBorder: "border-red-400",
       coachUnavailableBg: "bg-red-950/60",
       mineRing: "ring-white/80",
+      assistingRing: "ring-teal-400",
       highlightRingOffset: "ring-offset-neutral-950",
       highlightRing: "ring-amber-400",
       timeText: "text-neutral-300",
@@ -131,6 +132,7 @@ function buildTheme(light: boolean) {
     needsCoachBorder: "border-red-500",
     coachUnavailableBg: "bg-red-100",
     mineRing: "ring-neutral-900/70",
+    assistingRing: "ring-teal-500",
     highlightRingOffset: "ring-offset-white",
     highlightRing: "ring-amber-500",
     timeText: "text-neutral-500",
@@ -384,11 +386,21 @@ export function WeekGrid<T extends WeekGridInstance>({
             const isHighlighted = highlightInstanceId != null && inst.id === highlightInstanceId;
             const isMine = highlightCoachId != null && inst.coachId === highlightCoachId;
             const isMineGroup = isMine && !inst.isPrivate;
+            // Distinct from isMine — this coach is helping on someone
+            // else's class (see ClassInstanceAssistant), not the one it's
+            // assigned to. Gets its own ring color (teal, matching the
+            // assistant badge elsewhere) rather than isMineGroup's, so
+            // "I'm assigned here" and "I'm assisting here" never look the
+            // same class-block treatment.
+            const isAssistingMine =
+              highlightCoachId != null && (inst.assistants?.some((a) => a.id === highlightCoachId) ?? false);
             // A team event has no coachId (see ClassInstance.isTeamEvent) but
             // is everyone's — the "dim what isn't mine" treatment that helps
             // a coach find their own classes shouldn't wash out the one
-            // block every coach actually needs to notice.
-            const faded = highlightCoachId != null && !isMine && !inst.isTeamEvent;
+            // block every coach actually needs to notice. A class this coach
+            // is merely assisting on shouldn't be dimmed either — it's still
+            // theirs to see, just not theirs to teach.
+            const faded = highlightCoachId != null && !isMine && !isAssistingMine && !inst.isTeamEvent;
             const coachUnavailable = unavailableInstanceIds?.has(inst.id) ?? false;
             const statusBg = theme.statusBg[inst.status];
             const room = roomById.get(inst.roomId);
@@ -422,7 +434,7 @@ export function WeekGrid<T extends WeekGridInstance>({
                 key={inst.id}
                 id={isHighlighted ? `class-instance-${inst.id}` : undefined}
                 title={`${inst.isTeamEvent ? "Événement d'équipe · " : ""}${inst.label} · ${room?.name ?? ""} · ${inst.startTime}–${inst.endTime} · ${statusLabel(inst.status)}${coachUnavailable ? " · le coach assigné est indisponible" : ""}`}
-                className={`group relative z-10 flex flex-col gap-0.5 overflow-hidden rounded-md p-1 transition-opacity ${border} ${inst.isTeamEvent ? theme.teamGradient : needsCoach ? theme.needsCoachGradient : bg} ${coachUnavailable ? "ring-2 ring-inset ring-red-500" : ""} ${isMineGroup ? `ring-2 ring-inset ${theme.mineRing}` : ""} ${isHighlighted ? `ring-2 ${theme.highlightRing} ring-offset-2 ${theme.highlightRingOffset}` : ""} ${faded ? "opacity-40" : ""}`}
+                className={`group relative z-10 flex flex-col gap-0.5 overflow-hidden rounded-md p-1 transition-opacity ${border} ${inst.isTeamEvent ? theme.teamGradient : needsCoach ? theme.needsCoachGradient : bg} ${coachUnavailable ? "ring-2 ring-inset ring-red-500" : ""} ${isMineGroup ? `ring-2 ring-inset ${theme.mineRing}` : isAssistingMine ? `ring-2 ring-inset ${theme.assistingRing}` : ""} ${isHighlighted ? `ring-2 ${theme.highlightRing} ring-offset-2 ${theme.highlightRingOffset}` : ""} ${faded ? "opacity-40" : ""}`}
                 style={{
                   gridColumn: laneColumn,
                   gridRow: `${1 + rowStart} / ${1 + rowEnd}`,

@@ -2,10 +2,13 @@ import { tenantPrisma } from "@/lib/prisma";
 import { isWeekValidated } from "@/lib/planning-lock";
 
 // Backs the logged-in coach's /upload page — that week's planning and their
-// private classes that week. Only the coach's own classes and still-
-// unassigned ones are included, not every other coach's — an unassigned
-// slot stays visible so a coach can still pick it up, but another coach's
-// assigned classes (and their private lessons) don't show up here.
+// private classes that week. Only the coach's own classes, classes they're
+// assisting on, and still-unassigned ones are included, not every other
+// coach's — an unassigned slot stays visible so a coach can still pick it
+// up, and an assisted class stays visible (even though someone else is the
+// coach) so a class they're helping on shows up in their own weekly grid
+// instead of only the coach's — but another coach's assigned-and-
+// unassisted classes (and their private lessons) don't show up here.
 export async function loadCoachWeekData(
   organizationId: string,
   coachId: string,
@@ -14,10 +17,10 @@ export async function loadCoachWeekData(
 ) {
   const prisma = tenantPrisma(organizationId);
 
-  const instances = await prisma.classInstance.findMany({
+  const rawInstances = await prisma.classInstance.findMany({
     where: {
       date: { gte: weekStart, lt: weekEnd },
-      OR: [{ coachId }, { coachId: null }],
+      OR: [{ coachId }, { coachId: null }, { assistants: { some: { coachId } } }],
     },
     include: {
       coach: true,
@@ -26,9 +29,17 @@ export async function loadCoachWeekData(
       // constraint), which drives whether MyClassesGrid shows a Réclamer
       // button or a pending/withdraw state for an unassigned class.
       claims: { where: { coachId }, select: { id: true, status: true } },
+      // Every assistant on the class, not just this coach — WeekGrid shows
+      // the whole list as a badge, and separately rings this specific
+      // coach's own card when they're one of them (see MyClassesGrid).
+      assistants: { include: { coach: true }, orderBy: { createdAt: "asc" } },
     },
     orderBy: [{ date: "asc" }, { startTime: "asc" }],
   });
+  const instances = rawInstances.map((inst) => ({
+    ...inst,
+    assistants: inst.assistants.map((a) => ({ id: a.coach.id, name: a.coach.name })),
+  }));
 
   const myPrivateClasses = await prisma.classInstance.findMany({
     where: {

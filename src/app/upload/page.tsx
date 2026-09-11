@@ -15,7 +15,6 @@ import { PrivateClassFab } from "@/components/private-class-fab";
 import { CalendarSyncCard } from "@/components/calendar-sync-card";
 import { UnavailabilityForm } from "@/components/unavailability-form";
 import { MyClassesGrid } from "@/components/my-classes-grid";
-import { MyAssistedClasses } from "@/components/my-assisted-classes";
 import { MyFocusCard } from "@/components/my-focus-card";
 import { coachLogout } from "@/lib/actions/auth";
 import { loadCoachWeekData } from "@/lib/coach-upload-data";
@@ -83,8 +82,12 @@ export default async function UploadPage({
     orderBy: { createdAt: "asc" },
   });
 
-  const [{ instances, myPrivateClasses, locked }, myUnavailability, lastFocus, assistedRows] =
+  const [{ instances, myPrivateClasses, locked }, myUnavailability, lastFocus] =
     await Promise.all([
+      // Includes classes this coach is assisting on, alongside ones they
+      // coach — see loadCoachWeekData and MyClassesGrid, which rings an
+      // assisted class differently (teal) than one they're assigned to
+      // (white) rather than showing assisted classes in a block apart.
       loadCoachWeekData(organizationId, coach.id, weekStart, weekEnd),
       prisma.unavailability.findMany({
         where: {
@@ -95,24 +98,7 @@ export default async function UploadPage({
         orderBy: { startDate: "asc" },
       }),
       getLastFocus(organizationId, coach.id),
-      // Classes this coach is helping out on — separate from `instances`
-      // above (classes they *coach*), see MyAssistedClasses.
-      prisma.classInstanceAssistant.findMany({
-        where: { coachId: coach.id, classInstance: { date: { gte: weekStart, lt: weekEnd } } },
-        include: { classInstance: { include: { coach: true, room: true } } },
-        orderBy: { classInstance: { date: "asc" } },
-      }),
     ]);
-  const assistedInstances = assistedRows.map((row) => ({
-    id: row.classInstance.id,
-    date: row.classInstance.date,
-    startTime: row.classInstance.startTime,
-    endTime: row.classInstance.endTime,
-    label: row.classInstance.label,
-    roomName: row.classInstance.room.name,
-    coachName: row.classInstance.coach?.name ?? null,
-    status: row.classInstance.status,
-  }));
 
   return (
     <div className="flex min-h-screen flex-col bg-neutral-950">
@@ -172,8 +158,6 @@ export default async function UploadPage({
         <CalendarSyncCard organizationId={organizationId} token={coach.calendarToken} />
 
         <UnavailabilityForm coachId={coach.id} entries={myUnavailability} />
-
-        <MyAssistedClasses instances={assistedInstances} />
 
         {locked && (
           <p className="mb-6 rounded-md border border-amber-900 bg-amber-950 px-3 py-2 text-sm text-amber-300">
