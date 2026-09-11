@@ -18,11 +18,16 @@ export default async function ReviewDetailPage({
 
   const review = await tenantPrisma(organizationId).classReview.findFirst({
     where: { id },
-    include: { classInstance: { include: { coach: true } } },
+    include: { classInstance: { include: { coach: true } }, subjectCoach: true },
   });
   if (!review) notFound();
 
   const inst = review.classInstance;
+  // The review's actual subject — the class's coach, or one of its
+  // assistants (see ClassReview.subjectCoachId) — not necessarily the
+  // class's own coach.
+  const isAssistantReview = review.subjectCoachId !== inst.coachId;
+  const subjectLabel = review.subjectCoach.name + (isAssistantReview ? " (assistant·e)" : "");
   const pillars = Object.fromEntries(
     PILLARS.map((p) => [p.key, review[PILLAR_COLUMN[p.key] as keyof typeof review] as PillarRating])
   ) as Record<PillarKey, PillarRating>;
@@ -35,21 +40,20 @@ export default async function ReviewDetailPage({
         </Link>
         <DeleteReviewButton
           reviewId={review.id}
-          label={`de ${inst.coach?.name ?? "ce cours"} — ${inst.label}`}
+          label={`de ${subjectLabel} — ${inst.label}`}
           redirectTo="/admin/reviews"
         />
       </div>
 
       {justCreated && (
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-300">
-          ✓ Review enregistrée pour {inst.coach?.name ?? "ce cours"}.
+          ✓ Review enregistrée pour {subjectLabel}.
         </div>
       )}
 
       <div className="mb-6 flex items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-3">
         <span className="text-[15px] font-bold text-white">
-          {inst.label}{" "}
-          <span className="font-normal text-neutral-500">— {inst.coach?.name ?? "Non assigné"}</span>
+          {inst.label} <span className="font-normal text-neutral-500">— {subjectLabel}</span>
         </span>
         <span className="text-right font-mono text-xs text-neutral-500">
           {formatDayLabel(inst.date)}

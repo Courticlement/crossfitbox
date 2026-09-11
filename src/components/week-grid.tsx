@@ -13,10 +13,9 @@ const DEFAULT_ROOM_COLOR = "#525252";
 
 const SLOT_MINUTES = 5;
 const SLOTS_PER_HOUR = 60 / SLOT_MINUTES;
-const HOUR_PX = 70; // A 1-hour class block's rendered height — was 96px,
-// brought down to 70px now that the card face itself is down to
-// checkbox+time / label / coach-select (badges and header actions no longer
-// eat into that budget — see the event block's own comments below).
+const HOUR_PX = 80; // A 1-hour class block's rendered height — was 70px,
+// bumped up for more breathing room now that a card can also carry an
+// assistant badge and up to two review dots under the label.
 const ROW_PX = HOUR_PX / SLOTS_PER_HOUR;
 const DEFAULT_START_HOUR = 7;
 const DEFAULT_END_HOUR = 21;
@@ -103,6 +102,8 @@ function buildTheme(light: boolean) {
       badgeUnavailText: "text-red-300",
       badgePrivateBg: "bg-violet-500/20",
       badgePrivateText: "text-violet-300",
+      badgeAssistBg: "bg-teal-500/20",
+      badgeAssistText: "text-teal-300",
       hoverBackdrop: "group-hover:bg-neutral-950/70",
     };
   }
@@ -142,6 +143,8 @@ function buildTheme(light: boolean) {
     badgeUnavailText: "text-red-700",
     badgePrivateBg: "bg-violet-100",
     badgePrivateText: "text-violet-700",
+    badgeAssistBg: "bg-teal-100",
+    badgeAssistText: "text-teal-700",
     hoverBackdrop: "group-hover:bg-white/90",
   };
 }
@@ -167,10 +170,18 @@ export type WeekGridInstance = {
   // null) on grids that don't fetch it (e.g. a coach's own My Classes page),
   // which falls back to the existing room tint exactly as before.
   coachColor?: string | null;
-  // This class's coaching review, if one's been done — renders as a small
-  // ReviewDot under the class label. Undefined on grids that don't fetch it
-  // (e.g. a coach's own My Classes page), which just renders nothing.
-  review?: { id: string; pastille: string } | null;
+  // The class's coach's own review, if done — first of the two review
+  // lines under the label (see the badges-row comment further down).
+  // Undefined on grids that don't fetch it (e.g. a coach's own My Classes
+  // page), which just renders nothing.
+  coachReview?: { id: string; pastille: string } | null;
+  // 0, 1 or several people helping the coach run this class (see
+  // ClassInstanceAssistant) — surfaced as its own badge, independent of
+  // whether either of them has been reviewed yet.
+  assistants?: { id: string; name: string }[];
+  // Reviews of this class's assistants (as opposed to coachReview above) —
+  // the second of the two review lines under the label.
+  assistantReviews?: { id: string; pastille: string; coachName: string }[];
 };
 
 export function WeekGrid<T extends WeekGridInstance>({
@@ -467,6 +478,14 @@ export function WeekGrid<T extends WeekGridInstance>({
                         Privé
                       </span>
                     )}
+                    {inst.assistants && inst.assistants.length > 0 && (
+                      <span
+                        className={`shrink-0 truncate rounded-full ${theme.badgeAssistBg} px-1 py-0.5 text-[7px] font-semibold uppercase leading-none tracking-wide ${theme.badgeAssistText}`}
+                        title={`Assistant(s) : ${inst.assistants.map((a) => a.name).join(", ")}`}
+                      >
+                        🤝 {inst.assistants.map((a) => a.name).join(", ")}
+                      </span>
+                    )}
                   </div>
                   {/* Absolutely positioned (not ml-auto in the flow) so
                       these — invisible until hover — stop permanently
@@ -484,9 +503,23 @@ export function WeekGrid<T extends WeekGridInstance>({
                 >
                   {inst.label}
                 </div>
-                {inst.review && (
+                {/* Two lines, not one row — the coach's review and an
+                    assistant's are about two different people, so they
+                    read top-to-bottom instead of blurring into one row of
+                    same-looking dots. Fill color still only ever means the
+                    pastille outcome (unchanged from before assistants
+                    existed); which line a dot is on is what says who it's
+                    about. */}
+                {inst.coachReview && (
                   <div className="flex items-center">
-                    <ReviewDot review={inst.review} />
+                    <ReviewDot review={inst.coachReview} />
+                  </div>
+                )}
+                {inst.assistantReviews && inst.assistantReviews.length > 0 && (
+                  <div className="flex items-center gap-1">
+                    {inst.assistantReviews.map((r) => (
+                      <ReviewDot key={r.id} review={r} />
+                    ))}
                   </div>
                 )}
                 <div className="mt-auto">{control(inst)}</div>

@@ -15,8 +15,11 @@ export async function getLastFocus(
   organizationId: string,
   coachId: string
 ): Promise<LastFocus | null> {
+  // subjectCoachId, not classInstance.coachId — this coach's own focus,
+  // whether the review was of them as the class's coach or as an
+  // assistant on someone else's.
   const review = await tenantPrisma(organizationId).classReview.findFirst({
-    where: { classInstance: { coachId } },
+    where: { subjectCoachId: coachId },
     orderBy: { classInstance: { date: "desc" } },
     include: { classInstance: { select: { date: true, label: true } } },
   });
@@ -37,14 +40,14 @@ export async function getLastFocusByCoach(
   coachIds: string[]
 ): Promise<Map<string, LastFocus>> {
   const reviews = await tenantPrisma(organizationId).classReview.findMany({
-    where: { classInstance: { coachId: { in: coachIds } } },
+    where: { subjectCoachId: { in: coachIds } },
     orderBy: { classInstance: { date: "desc" } },
-    include: { classInstance: { select: { coachId: true, date: true, label: true } } },
+    include: { classInstance: { select: { date: true, label: true } } },
   });
   const map = new Map<string, LastFocus>();
   for (const review of reviews) {
-    const coachId = review.classInstance.coachId;
-    if (!coachId || map.has(coachId)) continue;
+    const coachId = review.subjectCoachId;
+    if (map.has(coachId)) continue;
     map.set(coachId, {
       reviewId: review.id,
       focusText: review.focusText,

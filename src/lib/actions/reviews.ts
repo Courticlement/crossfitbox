@@ -16,6 +16,11 @@ const optionalText = z
 
 const ClassReviewSchema = z.object({
   classInstanceId: z.string().min(1),
+  // Who this review is about — the class's coach, or one of its assistants
+  // (see ClassInstanceAssistant). Not trusted blindly: checked below
+  // against who's actually on the class, same reasoning as isOrgCoach in
+  // actions/planning.ts.
+  subjectCoachId: z.string().min(1),
   briefingNotes: optionalText,
   generalWuNotes: optionalText,
   specificWuNotes: optionalText,
@@ -50,17 +55,28 @@ export async function createClassReview(
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide" };
   }
 
-  const { classInstanceId, ...data } = parsed.data;
+  const { classInstanceId, subjectCoachId, ...data } = parsed.data;
 
   const instance = await prisma.classInstance.findFirst({
     where: { id: classInstanceId },
-    select: { id: true, review: { select: { id: true } } },
+    select: {
+      id: true,
+      coachId: true,
+      assistants: { select: { coachId: true } },
+      reviews: { where: { subjectCoachId }, select: { id: true } },
+    },
   });
   if (!instance) return { error: "Ce cours n'existe plus." };
-  if (instance.review) return { error: "Ce cours a déjà été reviewé." };
+  // subjectCoachId is client-supplied — only the coach or an assigned
+  // assistant is a legitimate review subject for this class.
+  const eligibleIds = new Set([instance.coachId, ...instance.assistants.map((a) => a.coachId)]);
+  if (!eligibleIds.has(subjectCoachId)) {
+    return { error: "Cette personne n'est ni le coach ni un assistant de ce cours." };
+  }
+  if (instance.reviews.length > 0) return { error: "Cette personne a déjà été reviewée pour ce cours." };
 
   const review = await prisma.classReview.create({
-    data: { classInstanceId, ...data },
+    data: { classInstanceId, subjectCoachId, ...data },
   });
 
   revalidatePath("/admin/planning");

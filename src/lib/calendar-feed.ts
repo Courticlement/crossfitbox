@@ -44,6 +44,12 @@ export type IcsClassInstance = {
   // (see the calendar route's query) — tagged in SUMMARY so a coach isn't
   // confused seeing a class they weren't personally assigned.
   isTeamEvent: boolean;
+  // True when this feed's own coach reaches the class only via the
+  // assistants branch of the route's query (not as coachId/
+  // substituteCoachId) — tagged in SUMMARY for the same reason isTeamEvent
+  // is: without it, an assisted class would look identical to one they're
+  // actually teaching.
+  isAssisting: boolean;
   room: { name: string };
 };
 
@@ -75,7 +81,15 @@ export function buildIcsFeed(coachName: string, instances: IcsClassInstance[]): 
       `DTSTAMP:${now}`,
       `DTSTART;TZID=Europe/Paris:${icsLocalDateTime(inst.date, inst.startTime)}`,
       `DTEND;TZID=Europe/Paris:${icsLocalDateTime(inst.date, inst.endTime)}`,
-      `SUMMARY:${icsEscape(inst.isTeamEvent ? `🎉 ${inst.label} (événement d'équipe)` : inst.isPrivate ? `${inst.label} (privé)` : inst.label)}`,
+      `SUMMARY:${icsEscape(
+        inst.isTeamEvent
+          ? `🎉 ${inst.label} (événement d'équipe)`
+          : inst.isPrivate
+            ? `${inst.label} (privé)`
+            : inst.isAssisting
+              ? `🤝 ${inst.label} (assistant·e)`
+              : inst.label
+      )}`,
       `LOCATION:${icsEscape(inst.room.name)}`,
       "STATUS:CONFIRMED",
       "END:VEVENT"

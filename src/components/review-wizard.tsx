@@ -34,7 +34,11 @@ export function ReviewWizard({
     label: string;
     time: string;
     dateLabel: string;
-    coachName: string;
+    // Who this review is about — the class's coach, or one of its
+    // assistants (see the class review page's subject picker).
+    subjectId: string;
+    subjectName: string;
+    subjectRole: "coach" | "assistant";
   };
   backHref: string;
 }) {
@@ -101,7 +105,8 @@ export function ReviewWizard({
             {title}
           </div>
           <div className="truncate text-[11px] text-neutral-500">
-            {classInfo.label} · {classInfo.coachName} · {classInfo.time}
+            {classInfo.label} · {classInfo.subjectName}
+            {classInfo.subjectRole === "assistant" ? " (assistant·e)" : ""} · {classInfo.time}
           </div>
         </div>
       </div>
@@ -120,6 +125,7 @@ export function ReviewWizard({
       <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-6 py-6">
         <form id="review-wizard-form" action={formAction}>
           <input type="hidden" name="classInstanceId" value={classInfo.id} />
+          <input type="hidden" name="subjectCoachId" value={classInfo.subjectId} />
 
           {SEGMENTS.map((seg, i) => (
             <div key={seg.key} className={step === i ? "" : "hidden"}>
@@ -234,7 +240,7 @@ export function ReviewWizard({
           <div className={isRecap ? "" : "hidden"}>
             <div className="mb-6 flex items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-3">
               <span className="text-[15px] font-bold text-white">
-                {classInfo.label} <span className="font-normal text-neutral-500">— {classInfo.coachName}</span>
+                {classInfo.label} <span className="font-normal text-neutral-500">— {classInfo.subjectName}</span>
               </span>
               <span className="text-right font-mono text-xs text-neutral-500">
                 {classInfo.dateLabel}

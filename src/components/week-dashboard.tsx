@@ -44,7 +44,7 @@ export async function WeekDashboard({
       where: {
         classInstance: { date: { gte: weekStart, lt: weekEnd } },
       },
-      select: { id: true, pastille: true, classInstance: { select: { coachId: true, date: true } } },
+      select: { id: true, pastille: true, subjectCoachId: true, classInstance: { select: { date: true } } },
       orderBy: { classInstance: { date: "desc" } },
     }),
     // A coach with no review this week links to their next scheduled class
@@ -93,8 +93,11 @@ export async function WeekDashboard({
     ).length;
     // This coach's reviews this week, most recent first (see the
     // orderBy above) — the count is the cell's value, the first entry is
-    // what "voir la dernière" links to.
-    const coachReviews = weekReviews.filter((r) => r.classInstance.coachId === coach.id);
+    // what "voir la dernière" links to. Keyed on subjectCoachId, not the
+    // class's own coachId, so a review of this coach assisting someone
+    // else's class still counts here (and one of THEM reviewed as
+    // assistant doesn't leak into the primary coach's count).
+    const coachReviews = weekReviews.filter((r) => r.subjectCoachId === coach.id);
     const reviewCount = coachReviews.length;
     const lastReviewId = coachReviews[0]?.id ?? null;
     // Oldest first so the dots read left-to-right in the order the classes

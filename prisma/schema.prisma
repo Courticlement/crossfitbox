@@ -132,14 +132,21 @@ model Coach {
   archived             Boolean   @default(false)
   createdAt            DateTime  @default(now())
 
-  classInstances    ClassInstance[]    @relation("PrimaryCoach")
-  substituteClasses ClassInstance[]    @relation("SubstituteCoach")
-  templates         ClassTemplate[]    @relation("DefaultCoach")
+  classInstances    ClassInstance[]          @relation("PrimaryCoach")
+  substituteClasses ClassInstance[]          @relation("SubstituteCoach")
+  templates         ClassTemplate[]          @relation("DefaultCoach")
   weeklyQuotas      CoachWeeklyQuota[]
   submissions       ClassSubmission[]
   unavailabilities  Unavailability[]
   privatePayments   PrivatePayment[]
   classClaims       ClassClaim[]
+  // Classes this coach assists on, alongside (not instead of) whoever's
+  // teaching — see ClassInstanceAssistant.
+  assistantOn       ClassInstanceAssistant[]
+  // Reviews written about this coach specifically — see ClassReview.
+  // subjectCoach, which is what lets a class carry a review of its coach
+  // and a separate one of an assistant instead of one review per class.
+  reviewsAbout      ClassReview[]
 
   @@unique([organizationId, name])
   @@unique([organizationId, color])
@@ -233,13 +240,33 @@ model ClassInstance {
   updatedAt         DateTime       @updatedAt
 
   submissions ClassSubmission[]
-  review      ClassReview?
+  reviews     ClassReview[]
   claims      ClassClaim[]
+  // 0, 1 or several people helping the coach run this class — see
+  // ClassInstanceAssistant. Any coach, any level, can be one; assigning or
+  // clearing an assistant never touches coachId.
+  assistants  ClassInstanceAssistant[]
 
   @@index([date])
   @@index([coachId])
   @@index([substituteCoachId])
   @@index([roomId])
+}
+
+// One row per assistant helping out on a class — 0, 1 or several per
+// ClassInstance. A join table rather than a second scalar column on
+// ClassInstance (the way substituteCoachId is) since a class can carry more
+// than one assistant, and the same coach can assist several classes.
+model ClassInstanceAssistant {
+  id              String        @id @default(cuid())
+  classInstanceId String
+  classInstance   ClassInstance @relation(fields: [classInstanceId], references: [id], onDelete: Cascade)
+  coachId         String
+  coach           Coach         @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+
+  @@unique([classInstanceId, coachId])
+  @@index([coachId])
 }
 
 // A coach's request to take an unassigned class from their own My Classes
@@ -267,13 +294,21 @@ model ClassClaim {
 
 // The head coach's structured observation of a delivered class — walks
 // through each phase of the session, scores six coaching pillars, and ends
-// on one focus area for next time plus an overall color rating. One per
-// ClassInstance (see Suivi coaching / /admin/reviews for the history view,
-// filterable by coach and date).
+// on one focus area for next time plus an overall color rating. Up to one
+// per (class, subject) pair — subjectCoachId is the class's coach by
+// default, but can instead be one of its assistants (see
+// ClassInstanceAssistant), so a single class can carry a review of the
+// coach and a separate one of an assistant (see Suivi coaching /
+// /admin/reviews for the history view, filterable by coach and date).
 model ClassReview {
   id              String        @id @default(cuid())
-  classInstanceId String        @unique
+  classInstanceId String
   classInstance   ClassInstance @relation(fields: [classInstanceId], references: [id], onDelete: Cascade)
+  // Who this review is about — not necessarily the class's coachId (see
+  // the model comment above). Required: every review is about exactly one
+  // specific person, even if the class itself has several assistants.
+  subjectCoachId  String
+  subjectCoach    Coach         @relation(fields: [subjectCoachId], references: [id], onDelete: Cascade)
 
   briefingNotes   String?
   generalWuNotes  String?
@@ -301,6 +336,8 @@ model ClassReview {
 
   createdAt DateTime @default(now())
 
+  @@unique([classInstanceId, subjectCoachId])
+  @@index([classInstanceId])
   @@index([createdAt])
 }
 

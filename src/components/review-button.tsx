@@ -10,12 +10,16 @@ import { pastilleColor, pastilleLabel } from "@/lib/review-constants";
 // the hour label, always visible while Edit/Delete only reveal on hover —
 // besides colliding with those icons on narrow room lanes, it was sitting
 // on top of the class's start time instead of near the class it belongs to.
-export function ReviewDot({ review }: { review: { id: string; pastille: string } }) {
+export function ReviewDot({
+  review,
+}: {
+  review: { id: string; pastille: string; coachName?: string };
+}) {
   const color = pastilleColor(review.pastille);
   return (
     <Link
       href={`/admin/reviews/${review.id}`}
-      title={`Reviewée · ${pastilleLabel(review.pastille)}`}
+      title={`${review.coachName ? `${review.coachName} — ` : ""}Reviewé(e) · ${pastilleLabel(review.pastille)}`}
       aria-label="Voir la review de ce cours"
       className="flex shrink-0 items-center justify-center rounded-md p-1 md:p-0.5"
     >
@@ -25,19 +29,23 @@ export function ReviewDot({ review }: { review: { id: string; pastille: string }
 }
 
 // Sits in the class block's header row (see WeekGrid's headerAction) next to
-// DeleteClassButton — a plain clipboard link into the review wizard for an
-// unreviewed class. Once a review exists this renders nothing here (see
-// ReviewDot above, rendered separately by the caller) since there's no more
-// "start a review" action to offer. Kept as a server component (no "use
-// client") since it's just a Link either way.
+// DeleteClassButton — a plain clipboard link into the review wizard for a
+// class that still has someone left to review (the coach, an assistant, or
+// both — see the review page's subject picker). Once everyone eligible has
+// been reviewed this renders nothing here (see ReviewDot above, rendered
+// separately by the caller) since there's no more "start a review" action
+// to offer. Kept as a server component (no "use client") since it's just a
+// Link either way.
 export function ReviewButton({
   classInstanceId,
-  review,
+  fullyReviewed,
   weekParam,
   light = false,
 }: {
   classInstanceId: string;
-  review: { id: string; pastille: string } | null;
+  // True once every eligible subject (coach + assistants) already has a
+  // review — the caller works this out from ClassInstance.reviews.
+  fullyReviewed: boolean;
   // Preserves ?week= on the way back from the wizard so cancelling (or
   // finishing) a review returns to the same week instead of snapping to
   // the current one.
@@ -47,7 +55,7 @@ export function ReviewButton({
   // invisible against a white card (see admin/planning's usage).
   light?: boolean;
 }) {
-  if (review) {
+  if (fullyReviewed) {
     return null;
   }
 

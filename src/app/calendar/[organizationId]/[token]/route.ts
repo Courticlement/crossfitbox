@@ -61,20 +61,35 @@ export async function GET(
         // first branch is what makes that handoff exclusive instead of
         // leaving it on both calendars. A team event has no coachId at all
         // (see ClassInstance.isTeamEvent) — it's everyone's, so it goes on
-        // every active coach's feed regardless of the other two branches.
+        // every active coach's feed regardless of the other three branches.
+        // The assistants branch is the same "same model" fix as the team-
+        // event one — this coach's own feed should include a class they're
+        // helping on, not just ones they coach.
         OR: [
           { coachId: coach.id, substituteCoachId: null },
           { substituteCoachId: coach.id },
           { isTeamEvent: true },
+          { assistants: { some: { coachId: coach.id } } },
         ],
         status: { not: "CANCELLED" },
         date: { gte: windowStart, lt: windowEnd },
       },
-      include: { room: { select: { name: true } } },
+      include: { room: { select: { name: true } }, assistants: { select: { coachId: true } } },
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
     });
 
-    const ics = buildIcsFeed(coach.name, instances);
+    const icsInstances = instances.map((inst) => ({
+      ...inst,
+      // Reaches this feed only via the assistants branch above — not as
+      // coachId or substituteCoachId — so it's tagged differently (see
+      // buildIcsFeed).
+      isAssisting:
+        inst.coachId !== coach.id &&
+        inst.substituteCoachId !== coach.id &&
+        inst.assistants.some((a) => a.coachId === coach.id),
+    }));
+
+    const ics = buildIcsFeed(coach.name, icsInstances);
     const filename = `planning-${coach.name.replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase()}.ics`;
 
     return new Response(ics, {

@@ -1,9 +1,15 @@
 "use client";
 
-import { createContext, useContext, useState, useActionState } from "react";
-import { bulkAssignCoach, type BulkAssignState } from "@/lib/actions/planning";
+import { createContext, useContext, useRef, useState, useActionState } from "react";
+import {
+  bulkAssignCoach,
+  bulkAddAssistant,
+  type BulkAssignState,
+  type BulkAssistantState,
+} from "@/lib/actions/planning";
 
 const initialAssignState: BulkAssignState = { error: null, assigned: 0 };
+const initialAssistState: BulkAssistantState = { error: null, assigned: 0 };
 
 type Ctx = {
   selected: Set<string>;
@@ -47,13 +53,17 @@ export function BulkAssignProvider({
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [assignState, assignAction] = useActionState(bulkAssignCoach, initialAssignState);
+  const [assistState, assistAction] = useActionState(bulkAddAssistant, initialAssistState);
+  const [assistPicked, setAssistPicked] = useState<Set<string>>(new Set());
+  const assistDialogRef = useRef<HTMLDialogElement>(null);
 
-  // Once the submit round-trips (its state identity changes), the action is
-  // done — clear the selection so stale checkboxes don't linger.
-  const [synced, setSynced] = useState(assignState);
-  if (synced !== assignState) {
-    setSynced(assignState);
+  // Once either submit round-trips (its state identity changes), the
+  // action is done — clear the selection so stale checkboxes don't linger.
+  const [synced, setSynced] = useState({ assignState, assistState });
+  if (synced.assignState !== assignState || synced.assistState !== assistState) {
+    setSynced({ assignState, assistState });
     setSelected(new Set());
+    setAssistPicked(new Set());
   }
 
   const toggle = (id: string) =>
@@ -101,6 +111,17 @@ export function BulkAssignProvider({
           </button>
         </form>
 
+        <div className="h-5 w-px self-stretch bg-neutral-800" />
+
+        <button
+          type="button"
+          disabled={selected.size === 0}
+          onClick={() => assistDialogRef.current?.showModal()}
+          className="rounded-md border border-teal-800 bg-teal-950/30 px-3 py-1.5 text-xs text-teal-300 hover:border-teal-500 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          🤝 Assistant(s)…
+        </button>
+
         {selected.size > 0 && (
           <button
             type="button"
@@ -115,7 +136,78 @@ export function BulkAssignProvider({
         {!assignState.error && assignState.assigned > 0 && (
           <span className="text-xs text-emerald-400">{assignState.assigned} coach(s) mis à jour.</span>
         )}
+        {!assistState.error && assistState.assigned > 0 && (
+          <span className="text-xs text-emerald-400">
+            {assistState.assigned} assistanat(s) ajouté(s).
+          </span>
+        )}
       </div>
+
+      <dialog
+        ref={assistDialogRef}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) assistDialogRef.current?.close();
+        }}
+        // Same centering fix as CopyLastWeekButton's popin — Tailwind's
+        // preflight zeroes every element's margin, defeating the browser's
+        // default `dialog:modal { margin: auto }`.
+        className="fixed inset-0 m-auto w-72 rounded-lg border border-neutral-700 bg-neutral-900 p-4 text-neutral-300 backdrop:bg-black/60"
+      >
+        <form
+          action={assistAction}
+          onSubmit={() => assistDialogRef.current?.close()}
+          className="flex flex-col gap-3"
+        >
+          {[...selected].map((id) => (
+            <input key={id} type="hidden" name="ids" value={id} />
+          ))}
+          <h3 className="text-sm font-semibold text-white">
+            Ajouter comme assistant sur {selected.size} cours sélectionné(s)
+          </h3>
+          <div className="flex max-h-64 flex-col gap-1.5 overflow-y-auto">
+            {coaches.map((coach) => {
+              const checked = assistPicked.has(coach.id);
+              return (
+                <label key={coach.id} className="flex items-center gap-2 text-sm text-neutral-300">
+                  <input
+                    type="checkbox"
+                    name="coachIds"
+                    value={coach.id}
+                    checked={checked}
+                    onChange={(e) => {
+                      setAssistPicked((prev) => {
+                        const next = new Set(prev);
+                        if (e.target.checked) next.add(coach.id);
+                        else next.delete(coach.id);
+                        return next;
+                      });
+                    }}
+                    className="h-4 w-4 rounded border-neutral-700 bg-neutral-950 accent-teal-500"
+                  />
+                  {coach.name}
+                </label>
+              );
+            })}
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => assistDialogRef.current?.close()}
+              className="rounded-md border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 hover:border-neutral-500 hover:text-white"
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              disabled={assistPicked.size === 0}
+              className="rounded-md bg-white px-3 py-1.5 text-xs font-medium text-neutral-950 hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Ajouter
+            </button>
+          </div>
+        </form>
+      </dialog>
+
       {children}
     </BulkAssignContext.Provider>
   );

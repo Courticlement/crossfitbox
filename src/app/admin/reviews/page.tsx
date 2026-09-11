@@ -49,13 +49,14 @@ export default async function ReviewsPage({
     prisma.coach.findMany({ orderBy: { name: "asc" } }),
     prisma.classReview.findMany({
       where: {
-        classInstance: {
-          ...classInstanceWhere,
-          ...(coachIdFilter ? { coachId: coachIdFilter } : {}),
-        },
+        classInstance: classInstanceWhere,
+        // subjectCoachId, not classInstance.coachId — filtering by coach
+        // should surface a review of them assisting someone else's class
+        // too, not just ones where they were the class's own coach.
+        ...(coachIdFilter ? { subjectCoachId: coachIdFilter } : {}),
         ...(pastilleFilter ? { pastille: pastilleFilter } : {}),
       },
-      include: { classInstance: { include: { coach: true } } },
+      include: { classInstance: { include: { coach: true } }, subjectCoach: true },
       orderBy: { classInstance: { date: "desc" } },
     }),
     // The chart always compares every coach — the Coach filter only
@@ -66,7 +67,7 @@ export default async function ReviewsPage({
         classInstance: classInstanceWhere,
         ...(pastilleFilter ? { pastille: pastilleFilter } : {}),
       },
-      include: { classInstance: { include: { coach: true } } },
+      include: { classInstance: true, subjectCoach: true },
     }),
   ]);
 
@@ -80,17 +81,15 @@ export default async function ReviewsPage({
     })
     .filter((item): item is NonNullable<typeof item> => item !== null);
 
-  const evolutionPoints: EvolutionPoint[] = chartReviews
-    .filter((r) => r.classInstance.coach !== null)
-    .map((r) => ({
-      id: r.id,
-      date: r.classInstance.date,
-      score: reviewScore(r),
-      pastille: r.pastille,
-      coachId: r.classInstance.coach!.id,
-      coachName: r.classInstance.coach!.name,
-      coachColor: r.classInstance.coach!.color,
-    }));
+  const evolutionPoints: EvolutionPoint[] = chartReviews.map((r) => ({
+    id: r.id,
+    date: r.classInstance.date,
+    score: reviewScore(r),
+    pastille: r.pastille,
+    coachId: r.subjectCoach.id,
+    coachName: r.subjectCoach.name,
+    coachColor: r.subjectCoach.color,
+  }));
 
   const groups = new Map<string, typeof reviews>();
   for (const review of reviews) {
@@ -143,7 +142,11 @@ export default async function ReviewsPage({
               {dayReviews.map((review) => {
                 const inst = review.classInstance;
                 const color = pastilleColor(review.pastille);
-                const coachLabel = inst.coach?.name ?? "Non assigné";
+                // The review's actual subject — the class's coach, or one
+                // of its assistants (see ClassReview.subjectCoachId) — not
+                // necessarily the class's own coach.
+                const isAssistantReview = review.subjectCoachId !== inst.coachId;
+                const coachLabel = review.subjectCoach.name + (isAssistantReview ? " (assistant·e)" : "");
                 return (
                   <div
                     key={review.id}

@@ -1,7 +1,7 @@
 // The DDL for one organization's Postgres schema — every operational
-// table (Room, Coach, ClassTemplate, ClassInstance, PlanningWeek,
-// BoxClosure, CoachWeeklyQuota, ClassSubmission, ClassReview, ClassClaim,
-// Unavailability, PrivatePayment), byte-for-byte matching
+// table (Room, Coach, ClassTemplate, ClassInstance, ClassInstanceAssistant,
+// PlanningWeek, BoxClosure, CoachWeeklyQuota, ClassSubmission, ClassReview,
+// ClassClaim, Unavailability, PrivatePayment), byte-for-byte matching
 // prisma/schema.prisma. Used by createOrganization (lib/actions/
 // organizations.ts) to provision a brand-new org's schema, and mirrors
 // exactly what the one-off migration in prisma/migrations/
@@ -105,6 +105,7 @@ export function tenantTableDdl(schema: string): string[] {
     `CREATE TABLE ${q(schema, "ClassReview")} (
       "id" TEXT NOT NULL,
       "classInstanceId" TEXT NOT NULL,
+      "subjectCoachId" TEXT NOT NULL,
       "briefingNotes" TEXT,
       "generalWuNotes" TEXT,
       "specificWuNotes" TEXT,
@@ -122,8 +123,19 @@ export function tenantTableDdl(schema: string): string[] {
       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT "ClassReview_pkey" PRIMARY KEY ("id")
     )`,
-    `CREATE UNIQUE INDEX "ClassReview_classInstanceId_key" ON ${q(schema, "ClassReview")}("classInstanceId")`,
+    `CREATE UNIQUE INDEX "ClassReview_classInstanceId_subjectCoachId_key" ON ${q(schema, "ClassReview")}("classInstanceId", "subjectCoachId")`,
+    `CREATE INDEX "ClassReview_classInstanceId_idx" ON ${q(schema, "ClassReview")}("classInstanceId")`,
     `CREATE INDEX "ClassReview_createdAt_idx" ON ${q(schema, "ClassReview")}("createdAt")`,
+
+    `CREATE TABLE ${q(schema, "ClassInstanceAssistant")} (
+      "id" TEXT NOT NULL,
+      "classInstanceId" TEXT NOT NULL,
+      "coachId" TEXT NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "ClassInstanceAssistant_pkey" PRIMARY KEY ("id")
+    )`,
+    `CREATE UNIQUE INDEX "ClassInstanceAssistant_classInstanceId_coachId_key" ON ${q(schema, "ClassInstanceAssistant")}("classInstanceId", "coachId")`,
+    `CREATE INDEX "ClassInstanceAssistant_coachId_idx" ON ${q(schema, "ClassInstanceAssistant")}("coachId")`,
 
     `CREATE TABLE ${q(schema, "ClassClaim")} (
       "id" TEXT NOT NULL,
@@ -210,6 +222,9 @@ export function tenantTableForeignKeys(schema: string): string[] {
     `ALTER TABLE ${s("ClassInstance")} ADD CONSTRAINT "ClassInstance_coachId_fkey" FOREIGN KEY ("coachId") REFERENCES ${s("Coach")}("id") ON DELETE SET NULL ON UPDATE CASCADE`,
     `ALTER TABLE ${s("ClassInstance")} ADD CONSTRAINT "ClassInstance_substituteCoachId_fkey" FOREIGN KEY ("substituteCoachId") REFERENCES ${s("Coach")}("id") ON DELETE SET NULL ON UPDATE CASCADE`,
     `ALTER TABLE ${s("ClassReview")} ADD CONSTRAINT "ClassReview_classInstanceId_fkey" FOREIGN KEY ("classInstanceId") REFERENCES ${s("ClassInstance")}("id") ON DELETE CASCADE ON UPDATE CASCADE`,
+    `ALTER TABLE ${s("ClassReview")} ADD CONSTRAINT "ClassReview_subjectCoachId_fkey" FOREIGN KEY ("subjectCoachId") REFERENCES ${s("Coach")}("id") ON DELETE CASCADE ON UPDATE CASCADE`,
+    `ALTER TABLE ${s("ClassInstanceAssistant")} ADD CONSTRAINT "ClassInstanceAssistant_classInstanceId_fkey" FOREIGN KEY ("classInstanceId") REFERENCES ${s("ClassInstance")}("id") ON DELETE CASCADE ON UPDATE CASCADE`,
+    `ALTER TABLE ${s("ClassInstanceAssistant")} ADD CONSTRAINT "ClassInstanceAssistant_coachId_fkey" FOREIGN KEY ("coachId") REFERENCES ${s("Coach")}("id") ON DELETE CASCADE ON UPDATE CASCADE`,
     `ALTER TABLE ${s("ClassClaim")} ADD CONSTRAINT "ClassClaim_classInstanceId_fkey" FOREIGN KEY ("classInstanceId") REFERENCES ${s("ClassInstance")}("id") ON DELETE CASCADE ON UPDATE CASCADE`,
     `ALTER TABLE ${s("ClassClaim")} ADD CONSTRAINT "ClassClaim_coachId_fkey" FOREIGN KEY ("coachId") REFERENCES ${s("Coach")}("id") ON DELETE CASCADE ON UPDATE CASCADE`,
     `ALTER TABLE ${s("CoachWeeklyQuota")} ADD CONSTRAINT "CoachWeeklyQuota_coachId_fkey" FOREIGN KEY ("coachId") REFERENCES ${s("Coach")}("id") ON DELETE CASCADE ON UPDATE CASCADE`,

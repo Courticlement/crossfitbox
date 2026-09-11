@@ -10,6 +10,7 @@ import {
   toDateOnly,
 } from "@/lib/dates";
 import { AddAdHocClassForm } from "@/components/add-adhoc-class-form";
+import { AssistantSelect } from "@/components/assistant-select";
 import { BoxClosuresCard } from "@/components/box-closures-card";
 import { BulkAssignProvider, SelectClassCheckbox } from "@/components/bulk-coach-assign";
 import { CoachSelect } from "@/components/coach-select";
@@ -68,7 +69,13 @@ export default async function PlanningPage({
     await Promise.all([
       prisma.classInstance.findMany({
         where: { date: { gte: weekStart, lt: weekEnd } },
-        include: { coach: true, template: { include: { coach: true } }, review: true, room: true },
+        include: {
+          coach: true,
+          template: { include: { coach: true } },
+          reviews: true,
+          room: true,
+          assistants: { include: { coach: true }, orderBy: { createdAt: "asc" } },
+        },
         orderBy: [{ date: "asc" }, { startTime: "asc" }, { room: { name: "asc" } }],
       }),
       prisma.coach.findMany({ orderBy: { name: "asc" } }),
@@ -180,7 +187,19 @@ export default async function PlanningPage({
       if (roomFilter && inst.roomId !== roomFilter) return false;
       return true;
     })
-    .map((inst) => ({ ...inst, coachColor: inst.coach?.color ?? null }));
+    .map((inst) => ({
+      ...inst,
+      coachColor: inst.coach?.color ?? null,
+      assistants: inst.assistants.map((a) => ({ id: a.coach.id, name: a.coach.name })),
+      coachReview: inst.reviews.find((r) => r.subjectCoachId === inst.coachId) ?? null,
+      assistantReviews: inst.reviews
+        .filter((r) => r.subjectCoachId !== inst.coachId)
+        .map((r) => ({
+          id: r.id,
+          pastille: r.pastille,
+          coachName: inst.assistants.find((a) => a.coach.id === r.subjectCoachId)?.coach.name ?? "",
+        })),
+    }));
 
   const submissionsByInstance = new Map<string, typeof doneSubmissions>();
   for (const sub of doneSubmissions) {
@@ -257,7 +276,13 @@ export default async function PlanningPage({
     <div className="flex items-center gap-1">
       <ReviewButton
         classInstanceId={inst.id}
-        review={inst.review ? { id: inst.review.id, pastille: inst.review.pastille } : null}
+        fullyReviewed={
+          // Nobody eligible left unreviewed — the coach (if assigned) and
+          // every assistant already each have a review.
+          [inst.coachId, ...inst.assistants.map((a) => a.id)]
+            .filter((id): id is string => id != null)
+            .every((id) => inst.reviews.some((r) => r.subjectCoachId === id))
+        }
         weekParam={weekStartStr}
         light
       />
@@ -286,6 +311,12 @@ export default async function PlanningPage({
           coachId={inst.coachId}
           coaches={coaches}
           templateCoachName={inst.template?.coach?.name ?? null}
+        />
+        <AssistantSelect
+          classInstanceId={inst.id}
+          coachId={inst.coachId}
+          assistants={inst.assistants}
+          coaches={coaches}
         />
         {inst.status === "MISSED" && (
           <SubstituteSelect

@@ -43,6 +43,8 @@ function buildTheme(light: boolean) {
       badgeUnavailText: "text-red-300",
       badgePrivateBg: "bg-violet-500/20",
       badgePrivateText: "text-violet-300",
+      badgeAssistBg: "bg-teal-500/20",
+      badgeAssistText: "text-teal-300",
     };
   }
   return {
@@ -71,6 +73,8 @@ function buildTheme(light: boolean) {
     badgeUnavailText: "text-red-700",
     badgePrivateBg: "bg-violet-100",
     badgePrivateText: "text-violet-700",
+    badgeAssistBg: "bg-teal-100",
+    badgeAssistText: "text-teal-700",
   };
 }
 
@@ -251,7 +255,14 @@ export function DayAgenda<T extends WeekGridInstance>({
                         Privé
                       </span>
                     )}
-                    {inst.review && <ReviewDot review={inst.review} />}
+                    {inst.assistants && inst.assistants.length > 0 && (
+                      <span
+                        className={`rounded-full ${theme.badgeAssistBg} px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${theme.badgeAssistText}`}
+                        title={`Assistant(s) : ${inst.assistants.map((a) => a.name).join(", ")}`}
+                      >
+                        🤝 {inst.assistants.map((a) => a.name).join(", ")}
+                      </span>
+                    )}
                     {headerAction?.(inst)}
                   </div>
                 </div>
@@ -262,6 +273,29 @@ export function DayAgenda<T extends WeekGridInstance>({
                 >
                   {inst.label}
                 </div>
+                {/* Two lines, not one row — see week-grid.tsx's same comment.
+                    Fill color is still only ever the pastille outcome; which
+                    line a dot sits on is what says who the review is about. */}
+                {(inst.coachReview || (inst.assistantReviews && inst.assistantReviews.length > 0)) && (
+                  <div className="mb-1 flex flex-col gap-1">
+                    {inst.coachReview && (
+                      <div className="flex items-center gap-1.5 text-xs text-neutral-500">
+                        <ReviewDot review={inst.coachReview} />
+                        Coach
+                      </div>
+                    )}
+                    {inst.assistantReviews && inst.assistantReviews.length > 0 && (
+                      <div className="flex items-center gap-1.5 text-xs text-neutral-500">
+                        <span className="flex items-center gap-1">
+                          {inst.assistantReviews.map((r) => (
+                            <ReviewDot key={r.id} review={r} />
+                          ))}
+                        </span>
+                        Assistant(s)
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className={`mb-2 text-xs ${theme.metaText}`}>{statusLabel(inst.status)}</div>
                 {control?.(inst)}
               </div>

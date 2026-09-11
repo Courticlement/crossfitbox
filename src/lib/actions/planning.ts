@@ -556,6 +556,94 @@ export async function bulkAssignCoach(
   };
 }
 
+// Replaces this class's whole set of assistants in one go — the per-class
+// multi-select control (see assistant-select.tsx) submits every checked
+// coach at once rather than one add/remove call per checkbox. Any coach at
+// any level can assist (see Coach.level's "Assistant" value, which is a
+// role label, not an eligibility gate) — except the class's own coach,
+// since a coach assisting themselves isn't a real second pair of hands.
+// Plain form action (no useActionState) — same shape as copyLastWeek,
+// since the popin just closes on submit and has no error state to show.
+export async function setClassAssistants(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const instance = await prisma.classInstance.findFirst({ where: { id } });
+  if (!instance) return;
+
+  const requestedIds = [...new Set(formData.getAll("coachIds").map(String).filter(Boolean))];
+  const validIds: string[] = [];
+  for (const coachId of requestedIds) {
+    if (coachId === instance.coachId) continue;
+    if (await isOrgCoach(organizationId, coachId)) validIds.push(coachId);
+  }
+
+  if (validIds.length === 0) {
+    await prisma.classInstanceAssistant.deleteMany({ where: { classInstanceId: id } });
+  } else {
+    await prisma.$transaction([
+      prisma.classInstanceAssistant.deleteMany({
+        where: { classInstanceId: id, coachId: { notIn: validIds } },
+      }),
+      ...validIds.map((coachId) =>
+        prisma.classInstanceAssistant.upsert({
+          where: { classInstanceId_coachId: { classInstanceId: id, coachId } },
+          create: { classInstanceId: id, coachId },
+          update: {},
+        })
+      ),
+    ]);
+  }
+
+  revalidateAll();
+}
+
+export type BulkAssistantState = { error: string | null; assigned: number };
+
+// Adds one or several coaches as assistants across every selected class at
+// once (Planning grid's multi-select toolbar) — additive, unlike
+// setClassAssistants' full replace: a class that already has an assistant
+// keeps them, this just adds more. Silently skips a class for a coach
+// who's already assisting it (upsert) or who is that class's own coach.
+export async function bulkAddAssistant(
+  _prevState: BulkAssistantState,
+  formData: FormData
+): Promise<BulkAssistantState> {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+  const ids = formData.getAll("ids").map(String).filter(Boolean);
+  const requestedCoachIds = [...new Set(formData.getAll("coachIds").map(String).filter(Boolean))];
+  if (ids.length === 0 || requestedCoachIds.length === 0) return { error: null, assigned: 0 };
+
+  const coachIds: string[] = [];
+  for (const coachId of requestedCoachIds) {
+    if (await isOrgCoach(organizationId, coachId)) coachIds.push(coachId);
+  }
+
+  const instances = await prisma.classInstance.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, coachId: true },
+  });
+
+  let assigned = 0;
+  for (const instance of instances) {
+    for (const coachId of coachIds) {
+      if (coachId === instance.coachId) continue;
+      await prisma.classInstanceAssistant.upsert({
+        where: { classInstanceId_coachId: { classInstanceId: instance.id, coachId } },
+        create: { classInstanceId: instance.id, coachId },
+        update: {},
+      });
+      assigned++;
+    }
+  }
+
+  revalidateAll();
+  return { error: null, assigned };
+}
+
 // Marks the given classes Fait (Done), stamping each one with its assigned
 // coach's *current* rate (paidRate) — so a later change to Coach.rate (or
 // the CrossFit-level default) never retroactively changes pay that's

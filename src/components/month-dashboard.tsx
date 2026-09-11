@@ -66,7 +66,7 @@ export async function MonthDashboard({
       where: {
         classInstance: { date: { gte: monthStart, lt: monthEnd } },
       },
-      select: { id: true, pastille: true, classInstance: { select: { coachId: true, date: true } } },
+      select: { id: true, pastille: true, subjectCoachId: true, classInstance: { select: { date: true } } },
       orderBy: { classInstance: { date: "desc" } },
     }),
     // A coach with no review this month links to their next scheduled class
@@ -124,8 +124,10 @@ export async function MonthDashboard({
     const netAmount = coachInstances
       .filter((i) => i.status === "DONE" && !i.isPrivate)
       .reduce((sum, i) => sum + (i.paidRate ?? classPayRate(i.label, fallbackRate)), 0);
-    // This coach's reviews this month, most recent first.
-    const coachReviews = monthReviews.filter((r) => r.classInstance.coachId === coach.id);
+    // This coach's reviews this month, most recent first — keyed on
+    // subjectCoachId (see week-dashboard.tsx's same comment) so an
+    // assist review counts for the assistant, not the class's own coach.
+    const coachReviews = monthReviews.filter((r) => r.subjectCoachId === coach.id);
     const reviewCount = coachReviews.length;
     const lastReviewId = coachReviews[0]?.id ?? null;
     // Oldest first so the dots read left-to-right in the order the classes
