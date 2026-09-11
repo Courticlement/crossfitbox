@@ -1,15 +1,15 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
-import { addPrivateClass, deletePrivateClass } from "@/lib/actions/submissions";
+import { addPrivateClass } from "@/lib/actions/submissions";
 import { formatDayLabel, formatDateISO, addDays } from "@/lib/dates";
 
-function AddButton({ locked }: { locked: boolean }) {
+function AddButton() {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
-      disabled={pending || locked}
+      disabled={pending}
       className="mt-1 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {pending ? "Ajout…" : "Ajouter"}
@@ -26,16 +26,18 @@ export type PrivateClassEntry = {
   athleteIsMember: boolean | null;
 };
 
+// Deliberately usable regardless of the week's lock/validate state (see
+// addPrivateClass) — a private lesson can come up any time, unlike group
+// classes. Once added, only an admin can remove one; there's no delete
+// button here on purpose (see the removed deletePrivateClass action).
 export function PrivateClassForm({
   coachId,
   weekStart,
   entries,
-  locked = false,
 }: {
   coachId: string;
   weekStart: Date;
   entries: PrivateClassEntry[];
-  locked?: boolean;
 }) {
   const weekStartStr = formatDateISO(weekStart);
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -59,8 +61,7 @@ export function PrivateClassForm({
             name="dayOfWeek"
             required
             defaultValue=""
-            disabled={locked}
-            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none disabled:opacity-50"
+            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
           >
             <option value="" disabled>
               Choisir le jour
@@ -78,8 +79,7 @@ export function PrivateClassForm({
             type="time"
             name="startTime"
             required
-            disabled={locked}
-            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none disabled:opacity-50"
+            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
           />
         </div>
         <div>
@@ -88,8 +88,7 @@ export function PrivateClassForm({
             type="time"
             name="endTime"
             required
-            disabled={locked}
-            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none disabled:opacity-50"
+            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
           />
         </div>
         <div>
@@ -98,9 +97,8 @@ export function PrivateClassForm({
             type="text"
             name="athleteName"
             required
-            disabled={locked}
             placeholder="Nom de l'athlète"
-            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none disabled:opacity-50"
+            className="rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white focus:border-neutral-500 focus:outline-none"
           />
         </div>
         <label className="mb-2 flex cursor-pointer items-center gap-2 text-sm text-neutral-300">
@@ -110,14 +108,13 @@ export function PrivateClassForm({
             <input
               type="checkbox"
               name="athleteIsMember"
-              disabled={locked}
               className="peer sr-only"
             />
             <span className="absolute left-0.5 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-4" />
           </span>
           Abonné à la box
         </label>
-        <AddButton locked={locked} />
+        <AddButton />
       </form>
 
       {entries.length > 0 && (
@@ -153,18 +150,6 @@ export function PrivateClassForm({
                     </>
                   )}
                 </span>
-                {!locked && (
-                  <form action={deletePrivateClass}>
-                    <input type="hidden" name="id" value={entry.id} />
-                    <input type="hidden" name="coachId" value={coachId} />
-                    <button
-                      type="submit"
-                      className="text-xs text-red-400 hover:text-red-300"
-                    >
-                      Supprimer
-                    </button>
-                  </form>
-                )}
               </div>
             ))}
         </div>

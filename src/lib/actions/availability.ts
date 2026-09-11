@@ -130,8 +130,8 @@ export async function submitUnavailability(formData: FormData) {
   revalidateAll();
 }
 
-// Scoped to the reporting coach's own entries, same ownership pattern as
-// deletePrivateClass — a forged coachId just fails to match any row.
+// Scoped to the reporting coach's own entries — a forged coachId just fails
+// to match any row.
 export async function deleteUnavailability(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const session = await requireCoachSession();

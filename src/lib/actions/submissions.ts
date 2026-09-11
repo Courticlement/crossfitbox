@@ -5,7 +5,6 @@ import { refresh, revalidatePath } from "next/cache";
 import { tenantPrisma } from "@/lib/prisma";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { addDays, parseDateOnly } from "@/lib/dates";
-import { isDateInValidatedWeek, isWeekValidated } from "@/lib/planning-lock";
 import { groupClassRate } from "@/lib/coach-levels";
 import { requireCoachSession, requireOrgAdmin } from "@/lib/auth-context";
 
@@ -14,16 +13,6 @@ function revalidateAll() {
   revalidatePath("/admin");
   revalidatePath("/upload");
   refresh();
-}
-
-// Blocks self-service writes (log or delete a private class) from a coach
-// who's been archived — their private link may still be bookmarked, but
-// they're no longer a coach at the box. Admin-side conflict resolution
-// (useSubmission/dismissSubmission) isn't gated by this, since that's the
-// admin acting on old history, not the coach uploading.
-async function assertCoachActive(db: PrismaClient, coachId: string): Promise<boolean> {
-  const coach = await db.coach.findUnique({ where: { id: coachId }, select: { archived: true } });
-  return coach !== null && !coach.archived;
 }
 
 type OfficialSubmission = {
@@ -189,6 +178,11 @@ const PrivateClassSchema = z
 // meaningful for a 1:1 session — it's set to the org's default (oldest
 // active) room purely so ClassInstance's required roomId is satisfied and
 // the class still renders somewhere reasonable on the Planning grid.
+// Deliberately allowed regardless of the week's lock/validate state — a
+// private lesson can come up (or get logged late) any time, unlike group
+// classes, and unlike a group class there's no matching admin-side record
+// this could conflict with. A coach can no longer delete one once added
+// (see the removed deletePrivateClass) — get an admin to fix a mistake.
 export async function addPrivateClass(formData: FormData) {
   const session = await requireCoachSession();
   if (!session) return;
@@ -212,7 +206,6 @@ export async function addPrivateClass(formData: FormData) {
 
   const weekStartDate = parseDateOnly(weekStart);
   if (!weekStartDate) return;
-  if (await isWeekValidated(organizationId, weekStartDate)) return;
 
   const defaultRoom = await prisma.room.findFirst({
     where: { archived: false },
@@ -234,28 +227,6 @@ export async function addPrivateClass(formData: FormData) {
       coachId,
     },
   });
-
-  revalidateAll();
-}
-
-// Scoped to the reporting coach's own private classes — a forged coachId
-// just fails the ownership check instead of deleting someone else's record.
-export async function deletePrivateClass(formData: FormData) {
-  const session = await requireCoachSession();
-  const id = String(formData.get("id") ?? "");
-  if (!id || !session) return;
-  const { coachId, organizationId } = session;
-  const prisma = tenantPrisma(organizationId);
-
-  if (!(await assertCoachActive(prisma, coachId))) return;
-
-  const instance = await prisma.classInstance.findFirst({
-    where: { id, coachId, isPrivate: true },
-  });
-  if (!instance) return;
-  if (await isDateInValidatedWeek(organizationId, instance.date)) return;
-
-  await prisma.classInstance.delete({ where: { id: instance.id } });
 
   revalidateAll();
 }

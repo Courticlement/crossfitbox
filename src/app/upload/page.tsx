@@ -167,7 +167,6 @@ export default async function UploadPage({
           coachId={coach.id}
           weekStart={weekStart}
           entries={myPrivateClasses}
-          locked={locked}
         />
 
         {instances.length > 0 ? (
@@ -188,7 +187,7 @@ export default async function UploadPage({
         )}
       </main>
 
-      <PrivateClassFab coachId={coach.id} weekStart={weekStart} locked={locked} />
+      <PrivateClassFab coachId={coach.id} weekStart={weekStart} />
     </div>
   );
 }

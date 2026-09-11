@@ -8,21 +8,17 @@ import { formatDayLabel, formatDateISO, addDays } from "@/lib/dates";
 // form — that form lives mid-page, past the week nav and unavailability
 // card, which is a lot of scrolling on a phone just to log a private
 // lesson. Desktop already has the inline form in easy reach, so this stays
-// md:hidden rather than duplicating the affordance there too.
+// md:hidden rather than duplicating the affordance there too. Always
+// available regardless of the week's lock/validate state, same as
+// PrivateClassForm itself (see addPrivateClass).
 export function PrivateClassFab({
   coachId,
   weekStart,
-  locked,
 }: {
   coachId: string;
   weekStart: Date;
-  locked: boolean;
 }) {
   const [open, setOpen] = useState(false);
-
-  // Nothing to shortcut to once the week's locked — PrivateClassForm's own
-  // fields are disabled for the same reason.
-  if (locked) return null;
 
   const weekStartStr = formatDateISO(weekStart);
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
