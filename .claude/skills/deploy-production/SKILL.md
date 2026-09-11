@@ -5,6 +5,11 @@ description: Deploy this app (crossfitbox) to Prisma Compute production or previ
 
 # Deploying crossfitbox to Prisma Compute
 
+This is the app-code half of a deploy. If the change being shipped also touched
+`prisma/schema.prisma` (a new table, column, etc.), the database needs to be migrated on that
+environment *first* — see the sibling `migrate-database` skill — or the app will 500 on every
+request touching the new table/column the moment this deploy goes live.
+
 This app deploys via `@prisma/cli`'s Composer-based `deploy` command (`module.ts` /
 `service.ts`), not the classic `app deploy` flow. Two branches (stages) exist on the
 platform side already — don't create new ones:
