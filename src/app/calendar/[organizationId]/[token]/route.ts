@@ -39,17 +39,18 @@ export async function GET(
     // The forward edge follows the same "next week opens Friday" rule as
     // the coach's own /upload view (see UploadPage's maxWeekStart) — a
     // subscribed calendar shouldn't leak next week's schedule before the
-    // admin's typically finished planning it. Once Friday opens it, a class
-    // only ever gets generated a handful of weeks ahead anyway (see
-    // generateWeek), so a fixed 180-day window is generous rather than an
-    // artificial cutoff. Either way this week's own classes — and any
-    // last-minute change to one — reach the feed the moment a calendar app
-    // re-polls, since nothing here is cached (see Cache-Control below).
+    // admin's typically finished planning it, and shouldn't leak *beyond*
+    // next week either once it does open: the window is always at most
+    // this week plus next week, never further out, mirroring maxWeekStart
+    // exactly rather than a generous-but-unbounded horizon. This week's own
+    // classes — and any last-minute change to one — still reach the feed
+    // the moment a calendar app re-polls, since nothing here is cached
+    // (see Cache-Control below).
     const today = toDateOnly(new Date());
     const thisWeekStart = startOfWeekMonday(today);
     const windowStart = thisWeekStart;
     const nextWeekOpen = isoWeekday(today) >= 5;
-    const windowEnd = nextWeekOpen ? addDays(today, 180) : addDays(thisWeekStart, 7);
+    const windowEnd = addDays(thisWeekStart, nextWeekOpen ? 14 : 7);
 
     const instances = await prisma.classInstance.findMany({
       where: {
