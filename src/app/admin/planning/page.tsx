@@ -14,7 +14,6 @@ import { AssistantSelect } from "@/components/assistant-select";
 import { BoxClosuresCard } from "@/components/box-closures-card";
 import { BulkAssignProvider, SelectClassCheckbox } from "@/components/bulk-coach-assign";
 import { CoachSelect } from "@/components/coach-select";
-import { ConflictsPanel, type ConflictInstance } from "@/components/conflicts-panel";
 import { DayAgenda } from "@/components/day-agenda";
 import { DeleteClassButton } from "@/components/delete-class-button";
 import { EditClassButton } from "@/components/edit-class-button";
@@ -24,6 +23,7 @@ import { PrevWeekBanner } from "@/components/prev-week-banner";
 import { ScrollToHighlight } from "@/components/scroll-to-highlight";
 import { UnavailabilityAlert } from "@/components/unavailability-alert";
 import { PendingClaimsPanel } from "@/components/pending-claims-panel";
+import { UnassignedClassesAlert } from "@/components/unassigned-classes-alert";
 import { ResetWeekButton } from "@/components/reset-week-button";
 import { CopyLastWeekButton } from "@/components/copy-last-week-button";
 import { SubstituteSelect } from "@/components/substitute-select";
@@ -201,29 +201,6 @@ export default async function PlanningPage({
         })),
     }));
 
-  const submissionsByInstance = new Map<string, typeof doneSubmissions>();
-  for (const sub of doneSubmissions) {
-    const list = submissionsByInstance.get(sub.classInstanceId) ?? [];
-    list.push(sub);
-    submissionsByInstance.set(sub.classInstanceId, list);
-  }
-  const conflicts: ConflictInstance[] = instances
-    .filter((inst) => (submissionsByInstance.get(inst.id)?.length ?? 0) > 1)
-    .map((inst) => ({
-      id: inst.id,
-      date: inst.date,
-      startTime: inst.startTime,
-      endTime: inst.endTime,
-      label: inst.label,
-      room: inst.room.name,
-      officialCoachId: inst.substituteCoachId ?? inst.coachId,
-      submissions: (submissionsByInstance.get(inst.id) ?? []).map((sub) => ({
-        id: sub.id,
-        coachId: sub.coachId,
-        coachName: sub.coach.name,
-      })),
-    }));
-
   // Same coach reporting two (or more) classes whose times overlap — a
   // physical impossibility, so it's flagged for the admin instead of blocked
   // outright (a coach can always change their own status, per design).
@@ -378,6 +355,7 @@ export default async function PlanningPage({
       <PrevWeekBanner organizationId={organizationId} />
       <UnavailabilityAlert organizationId={organizationId} />
       <PendingClaimsPanel organizationId={organizationId} />
+      <UnassignedClassesAlert organizationId={organizationId} />
 
       <div className="mb-6 flex items-center gap-3">
         <form action={generateWeek}>
@@ -459,7 +437,6 @@ export default async function PlanningPage({
         </p>
       )}
 
-      <ConflictsPanel instances={conflicts} />
       <TimeConflictsPanel groups={timeConflictGroups} />
 
       <PlanningFilters

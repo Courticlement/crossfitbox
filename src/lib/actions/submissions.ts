@@ -22,9 +22,10 @@ type OfficialSubmission = {
 
 // Applies a submission as the class's official record, or (if null) resets
 // the class back to an unreported PLANNED state. Only reachable now via the
-// admin's conflict-resolution actions below (useSubmission/dismissSubmission)
-// — coaches no longer self-report; going forward a class only becomes Fait
-// via validateWeek ("Valider le planning") in actions/planning.ts.
+// admin's conflict-resolution actions below (dismissSubmission/
+// dismissSubmissions) — coaches no longer self-report; going forward a class
+// only becomes Fait via validateWeek ("Valider le planning") in
+// actions/planning.ts.
 //
 // For a DONE report, coachId is overwritten to whoever the admin picked as
 // official — this re-derives from whatever's left among the historical
@@ -42,7 +43,7 @@ type OfficialSubmission = {
 // previous coach's claim) that had nothing to do with it. An admin can
 // always explicitly unassign a class from the Planning tab if that's really
 // what's needed. classInstanceId is assumed already ownership-checked by
-// the caller (useSubmission/dismissSubmission/dismissSubmissions).
+// the caller (dismissSubmission/dismissSubmissions).
 async function applyOfficial(
   db: PrismaClient,
   classInstanceId: string,
@@ -80,29 +81,6 @@ async function applyOfficial(
       paidRate,
     },
   });
-}
-
-// Admin conflict resolution: force a specific submission to be the official
-// record (even if it's not the most recent one), then drop the other DONE
-// submissions for that class since the conflict is now settled.
-export async function useSubmission(formData: FormData) {
-  const { organizationId } = await requireOrgAdmin();
-  const prisma = tenantPrisma(organizationId);
-  const classInstanceId = String(formData.get("classInstanceId") ?? "");
-  const coachId = String(formData.get("coachId") ?? "");
-  if (!classInstanceId || !coachId) return;
-
-  const submission = await prisma.classSubmission.findFirst({
-    where: { classInstanceId, coachId },
-  });
-  if (!submission) return;
-
-  await applyOfficial(prisma, classInstanceId, submission);
-  await prisma.classSubmission.deleteMany({
-    where: { classInstanceId, coachId: { not: coachId }, status: "DONE" },
-  });
-
-  revalidateAll();
 }
 
 // Admin conflict resolution: discard one coach's claim. The class's official
