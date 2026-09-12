@@ -70,7 +70,7 @@ export default async function AdminDashboardPage({
                   type="submit"
                   className="inline-flex items-center gap-1 rounded-md bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-500"
                 >
-                  Valider →
+                  Valider la semaine dernière pour facturer les cours collectifs →
                 </button>
               </form>
             )}
