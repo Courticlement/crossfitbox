@@ -12,6 +12,7 @@ import {
   impersonateOrganization,
 } from "@/lib/actions/organizations";
 import { DeleteAdminButton } from "@/components/delete-admin-button";
+import { DeleteOrganizationButton } from "@/components/delete-organization-button";
 
 // Without this, Next would statically prerender the page and freeze this
 // organization's room list until the next deploy — same reasoning as every
@@ -318,6 +319,15 @@ export default async function SuperadminOrganizationPage({
             Ajouter l&apos;administrateur
           </button>
         </form>
+      </div>
+
+      <div className="mt-8 max-w-sm rounded-lg border border-red-900 bg-red-950/20 p-4">
+        <h2 className="mb-1 text-sm font-medium text-red-300">Zone de danger</h2>
+        <p className="mb-3 text-xs text-neutral-500">
+          Supprime définitivement cette organisation et toutes ses données (coachs, cours, avis,
+          paiements). Aucune récupération possible.
+        </p>
+        <DeleteOrganizationButton id={organization.id} name={organization.name} />
       </div>
     </div>
   );

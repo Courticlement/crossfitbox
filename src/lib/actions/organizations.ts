@@ -247,6 +247,33 @@ export async function platformDeleteAdmin(formData: FormData) {
   revalidateOrgPaths(organizationId);
 }
 
+// Hard delete: irreversibly drops the organization's entire Postgres
+// tenant schema (every Room/Coach/ClassTemplate/ClassInstance/... — see
+// lib/tenant-schema.ts, and createOrganization's comment on why this data
+// lives in its own schema rather than a shared table), plus its Admin rows
+// and the Organization row itself. All in one transaction, same reasoning
+// as createOrganization's provisioning transaction: a failure partway
+// through rolls back instead of leaving a dangling schema or an
+// Organization row with nothing behind it. There is no undo — no archive
+// flag, no soft-delete — so the confirming UI (see DeleteOrganizationButton)
+// requires typing the box's name back, not just a plain confirm().
+export async function deleteOrganization(formData: FormData) {
+  await requirePlatformSuperadmin();
+
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const schema = tenantSchemaName(id);
+  await prisma.$transaction(async (tx) => {
+    await tx.admin.deleteMany({ where: { organizationId: id } });
+    await tx.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+    await tx.organization.delete({ where: { id } });
+  });
+
+  revalidatePath("/superadmin");
+  redirect("/superadmin");
+}
+
 // Lets a PLATFORM_SUPERADMIN log in as a box's own admin without knowing
 // that admin's password — for support/QA, or to finish setting a box up
 // after creating it. Prefers that box's oldest active SUPERADMIN (the
