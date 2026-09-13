@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { tenantPrisma } from "@/lib/prisma";
+import { prisma as basePrisma, tenantPrisma } from "@/lib/prisma";
 import {
   startOfWeekMonday,
   addDays,
@@ -39,6 +39,11 @@ export default async function UploadPage({
 
   const coach = await prisma.coach.findUnique({ where: { id: coachId } });
   if (!coach || coach.archived) redirect("/login");
+
+  const organization = await basePrisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { name: true },
+  });
 
   // A coach's own view is deliberately narrow — last week, this week, and
   // (from Friday of this week onward, once the admin has typically finished
@@ -105,7 +110,7 @@ export default async function UploadPage({
       <header className="border-b border-neutral-800 bg-neutral-950">
         <div className="mx-auto flex max-w-5xl items-center px-4 py-3">
           <span className="text-sm font-semibold text-white">
-            Crossfit Box — Mes cours
+            {organization?.name ?? "Crossfit Box"} — Mes cours
           </span>
           <form action={coachLogout} className="ml-auto">
             <button type="submit" className="text-sm text-neutral-400 hover:text-white">

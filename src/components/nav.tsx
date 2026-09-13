@@ -10,12 +10,12 @@ export type NavItem =
   | { href: string; label: string }
   | { label: string; items: { href: string; label: string }[] };
 
-export function Nav({ links }: { links: NavItem[] }) {
+export function Nav({ links, orgName }: { links: NavItem[]; orgName: string }) {
   return (
     <header className="border-b border-neutral-800 bg-neutral-950">
       <div className="mx-auto flex max-w-7xl items-center px-4 py-3">
         <span className="mr-6 text-sm font-semibold text-white">
-          Crossfit Box
+          {orgName}
         </span>
         <nav className="hidden flex-1 items-center gap-4 md:flex">
           {links.map((link) =>

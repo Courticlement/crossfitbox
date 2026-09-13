@@ -15,7 +15,7 @@ export default async function SuperadminLayout({ children }: LayoutProps<"/super
 
   return (
     <div className="flex flex-1 flex-col bg-neutral-950">
-      <Nav links={links} />
+      <Nav links={links} orgName="Super Admin" />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">{children}</main>
     </div>
   );

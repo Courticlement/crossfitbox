@@ -38,18 +38,19 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   // lib/actions/organizations.ts) — surfaced so it's never mistaken for a
   // real admin login.
   const isImpersonating = (await cookies()).has(IMPERSONATOR_COOKIE);
-  const organization =
-    isImpersonating && session?.organizationId
-      ? await prisma.organization.findUnique({
-          where: { id: session.organizationId },
-          select: { name: true },
-        })
-      : null;
+  const organization = session?.organizationId
+    ? await prisma.organization.findUnique({
+        where: { id: session.organizationId },
+        select: { name: true },
+      })
+    : null;
 
   return (
     <div className="flex flex-1 flex-col bg-neutral-950">
-      {organization && <ImpersonationBanner organizationName={organization.name} />}
-      <Nav links={links} />
+      {isImpersonating && organization && (
+        <ImpersonationBanner organizationName={organization.name} />
+      )}
+      <Nav links={links} orgName={organization?.name ?? "Crossfit Box"} />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
         {children}
       </main>
