@@ -39,7 +39,7 @@ export async function getPrevWeekAlert(organizationId: string): Promise<PrevWeek
   ).length;
 
   return {
-    show: planningWeek === null && instances.length > 0,
+    show: (planningWeek === null || planningWeek.paidAt === null) && instances.length > 0,
     prevWeekStart,
     unreported,
   };

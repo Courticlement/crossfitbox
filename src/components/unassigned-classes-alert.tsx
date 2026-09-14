@@ -30,15 +30,15 @@ export async function UnassignedClassesAlert({ organizationId }: { organizationI
       {classes.map((cls) => (
         <li
           key={cls.id}
-          className="flex flex-wrap items-center justify-between gap-2 rounded border border-amber-900/60 bg-amber-950/40 px-2 py-1.5"
+          className="flex flex-wrap items-center justify-between gap-2 rounded border border-red-800/60 bg-red-950/40 px-2 py-1.5"
         >
           <span>
-            <strong className="text-amber-100">{cls.label}</strong> —{" "}
+            <strong className="text-red-100">{cls.label}</strong> —{" "}
             {formatDayLabel(cls.date)} {cls.startTime}–{cls.endTime} ({cls.room.name})
           </span>
           <Link
             href={`/admin/planning?week=${formatDateISO(startOfWeekMonday(cls.date))}&highlight=${cls.id}`}
-            className="shrink-0 text-xs font-medium text-amber-200 underline hover:text-white"
+            className="shrink-0 text-xs font-medium text-white underline hover:text-red-100"
           >
             Assigner →
           </Link>
@@ -49,8 +49,8 @@ export async function UnassignedClassesAlert({ organizationId }: { organizationI
 
   if (classes.length > CONDENSE_THRESHOLD) {
     return (
-      <details className="mb-6 rounded-md border border-amber-900 bg-amber-950 px-3 py-2 text-sm text-amber-300">
-        <summary className="cursor-pointer select-none font-medium text-amber-200">
+      <details className="mb-6 rounded-md border-2 border-red-600 bg-red-950 px-3 py-2 text-sm text-red-200">
+        <summary className="cursor-pointer select-none font-medium text-white">
           {heading}
         </summary>
         <div className="mt-2">{list}</div>
@@ -59,8 +59,8 @@ export async function UnassignedClassesAlert({ organizationId }: { organizationI
   }
 
   return (
-    <div className="mb-6 rounded-md border border-amber-900 bg-amber-950 px-3 py-2 text-sm text-amber-300">
-      <p className="mb-2 font-medium text-amber-200">{heading}</p>
+    <div className="mb-6 rounded-md border-2 border-red-600 bg-red-950 px-3 py-2 text-sm text-red-200">
+      <p className="mb-2 font-medium text-white">{heading}</p>
       {list}
     </div>
   );

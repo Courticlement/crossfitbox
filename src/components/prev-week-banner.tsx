@@ -10,7 +10,7 @@ export async function PrevWeekBanner({ organizationId }: { organizationId: strin
   if (!show) return null;
 
   return (
-    <p className="mb-6 rounded-md border border-amber-900 bg-amber-950 px-3 py-2 text-sm text-amber-300">
+    <p className="mb-6 rounded-md border-2 border-red-600 bg-red-950 px-3 py-2 text-sm text-red-200">
       ⚠ La semaine dernière ({formatDayLabel(prevWeekStart)} –{" "}
       {formatDayLabel(addDays(prevWeekStart, 6))}) n&apos;a pas encore été
       validée
@@ -19,7 +19,7 @@ export async function PrevWeekBanner({ organizationId }: { organizationId: strin
       .{" "}
       <Link
         href={`/admin/planning?week=${formatDateISO(prevWeekStart)}`}
-        className="font-medium text-amber-100 underline hover:text-white"
+        className="font-medium text-white underline hover:text-red-100"
       >
         Vérifier et valider →
       </Link>
