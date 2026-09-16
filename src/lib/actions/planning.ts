@@ -204,17 +204,26 @@ export async function generateWeek(formData: FormData) {
 // flag) onto this week — an alternative to Generate for a week that
 // shouldn't follow the standing ClassTemplate schedule, e.g. a one-off week
 // that itself deviated from the templates and should just repeat as-is.
-// Follows the same shape as generateWeek: closed dates are skipped, a slot
-// already generated (matched here by date+startTime+room, since a copied
-// instance may carry no templateId) is synced only while still PLANNED, and
-// the coach is only carried over if they're not already busy that slot.
-// Cancelled source classes aren't copied — cancelling wasn't a scheduling
-// choice worth repeating. Private classes aren't copied either — they're
-// one-off ad hoc lessons a coach logs for that specific week (see
-// addPrivateClass), not a recurring slot worth repeating onto the next one.
-// `days` (see CopyLastWeekButton's popin) narrows the copy down to just the
-// target dates ("YYYY-MM-DD", this week's) the admin picked instead of the
-// whole week — defaults to every day of the week when omitted.
+// Follows the same shape as generateWeek, including its matching key: a
+// source instance that still carries a templateId is matched against this
+// week's existing instance by templateId+date, exactly like generateWeek —
+// falling back to date+startTime+room only for a template-less (ad hoc)
+// source instance. Matching by date+startTime+room alone (as this used to)
+// silently broke whenever last week's class had been retimed or moved to a
+// different room via EditClassButton without touching the template (the
+// whole point of this feature, per the comment above): this week's
+// template-generated instance sits at the template's own time/room, so the
+// old key never found it and a duplicate got created instead of the
+// deviation being copied over. A slot already generated is synced only
+// while still PLANNED, and the coach is only carried over if they're not
+// already busy that slot. Cancelled source classes aren't copied —
+// cancelling wasn't a scheduling choice worth repeating. Private classes
+// aren't copied either — they're one-off ad hoc lessons a coach logs for
+// that specific week (see addPrivateClass), not a recurring slot worth
+// repeating onto the next one. `days` (see CopyLastWeekButton's popin)
+// narrows the copy down to just the target dates ("YYYY-MM-DD", this
+// week's) the admin picked instead of the whole week — defaults to every
+// day of the week when omitted.
 export async function copyLastWeek(formData: FormData) {
   const { organizationId } = await requireOrgAdmin();
   const prisma = tenantPrisma(organizationId);
@@ -247,6 +256,14 @@ export async function copyLastWeek(formData: FormData) {
   const existing = await prisma.classInstance.findMany({
     where: { date: { gte: weekStart, lt: addDays(weekStart, 7) } },
   });
+  // Same templateId+date key generateWeek matches on, so a source instance
+  // that still traces back to a template lands on the same row that
+  // generateWeek would (or already did) create for that slot this week.
+  const existingByTemplateDate = new Map(
+    existing.filter((e) => e.templateId).map((e) => [`${e.templateId}-${formatDateISO(e.date)}`, e])
+  );
+  // Fallback for a template-less (ad hoc) source instance, which has no
+  // templateId to match on.
   const existingByDateTimeRoom = new Map(
     existing.map((e) => [`${formatDateISO(e.date)}-${e.startTime}-${e.roomId}`, e])
   );
@@ -274,8 +291,11 @@ export async function copyLastWeek(formData: FormData) {
     const dateStr = formatDateISO(date);
     if (!targetDays.has(dateStr)) continue; // day not selected in the popin
     if (closedDates.has(dateStr)) continue; // box closed that day — nothing to copy
-    const key = `${dateStr}-${src.startTime}-${src.roomId}`;
-    const existingInstance = existingByDateTimeRoom.get(key);
+    const templateKey = src.templateId ? `${src.templateId}-${dateStr}` : null;
+    const dateTimeRoomKey = `${dateStr}-${src.startTime}-${src.roomId}`;
+    const existingInstance = templateKey
+      ? existingByTemplateDate.get(templateKey)
+      : existingByDateTimeRoom.get(dateTimeRoomKey);
 
     if (!existingInstance) {
       let coachId = src.isTeamEvent ? null : src.coachId;
@@ -294,16 +314,19 @@ export async function copyLastWeek(formData: FormData) {
           coachId,
         },
       });
-      existingByDateTimeRoom.set(key, created);
+      if (templateKey) existingByTemplateDate.set(templateKey, created);
+      existingByDateTimeRoom.set(dateTimeRoomKey, created);
       if (coachId) busy.push({ coachId, date: dateStr, startTime: src.startTime, endTime: src.endTime });
       continue;
     }
 
     // Already present this week (e.g. a prior Generate/Copy run). Leave
     // resolved (Fait/Manqué/Annulé) classes untouched; for a still-PLANNED
-    // one, sync it to last week's version — filling in the coach only if
-    // it's currently unassigned, so a manual reassignment made this week
-    // isn't clobbered.
+    // one, sync it to last week's version — including startTime/endTime now
+    // that a templateId match can land on an instance still sitting at the
+    // template's own time (see the matching-key comment above) — filling in
+    // the coach only if it's currently unassigned, so a manual reassignment
+    // made this week isn't clobbered.
     if (existingInstance.status !== "PLANNED") continue;
 
     let coachId = existingInstance.coachId;
@@ -319,6 +342,8 @@ export async function copyLastWeek(formData: FormData) {
     await prisma.classInstance.update({
       where: { id: existingInstance.id },
       data: {
+        startTime: src.startTime,
+        endTime: src.endTime,
         label: src.label,
         roomId: src.roomId,
         isPrivate: src.isPrivate,
