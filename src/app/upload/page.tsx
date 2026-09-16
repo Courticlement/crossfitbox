@@ -45,13 +45,17 @@ export default async function UploadPage({
     select: { name: true },
   });
 
-  // A coach's own view is deliberately narrow — last week, this week, and
-  // (from Friday of this week onward, once the admin has typically finished
-  // planning it) next week. Keeps them focused on what's actionable instead
-  // of wandering arbitrarily far into the past or future.
+  // A coach's own view is deliberately narrow going forward — this week,
+  // and (from Friday of this week onward, once the admin has typically
+  // finished planning it) next week, so they're not wandering arbitrarily
+  // far into a planning that isn't final yet. Going backward is more
+  // generous (8 weeks) since addPrivateClass is deliberately allowed for
+  // any past week regardless of lock/validate state (a private lesson can
+  // get logged late) — a coach needs to actually be able to page back to
+  // the week it happened in to do that.
   const today = toDateOnly(new Date());
   const thisWeekStart = startOfWeekMonday(today);
-  const minWeekStart = addDays(thisWeekStart, -7);
+  const minWeekStart = addDays(thisWeekStart, -56);
   const maxWeekStart = isoWeekday(today) >= 5 ? addDays(thisWeekStart, 7) : thisWeekStart;
 
   const requested = (weekParam && parseDateOnly(weekParam)) || today;
