@@ -79,22 +79,22 @@ model Admin {
 }
 
 model Coach {
-  id                   String    @id @default(cuid())
+  id                    String    @id @default(cuid())
   // Plain column, not a Prisma relation — see Organization's comment above.
-  organizationId       String
-  name                 String
-  level                String? // free-text CrossFit level, e.g. "Level 1"
+  organizationId        String
+  name                  String
+  level                 String? // free-text CrossFit level, e.g. "Level 1"
   // Standard weekly quota of group classes, used on the Dashboard whenever
   // that week has no explicit CoachWeeklyQuota override — lets the admin
   // set it once instead of every week. A week-specific override in
   // CoachWeeklyQuota always wins over this.
-  weeklyQuota          Int?
+  weeklyQuota           Int?
   // € paid per validated group class this coach delivers (see
   // computeCoachStats). Null falls back to the CrossFit-level default (see
   // groupClassRate) — set once the admin edits it on the Coaches page, at
   // which point it's a plain per-coach number and no longer follows level
   // changes automatically.
-  rate                 Int?
+  rate                  Int?
   // Hex color (e.g. "#3b82f6") tinting this coach's classes on the admin
   // Planning grid, so the head coach can see who's teaching what at a
   // glance — see WeekGrid. Null falls back to the room-based tint. Unique
@@ -103,13 +103,13 @@ model Coach {
   // sharing a color — see renameCoach's takenColors check, which is the
   // primary guard; this is the backstop against a race between two saves.
   // Unique per-organization (Coach.name is too — see @@unique below).
-  color                String?
+  color                 String?
   // Login credential for /upload — the coach's unique `name` doubles as
   // their username. Null until the admin sets one (see setCoachPassword on
   // the Coaches page); a coach with no password set can't log in yet.
   // Replaces the old unguessable-link (accessToken) system now that /upload
   // is gated by real auth (see middleware.ts).
-  passwordHash         String?
+  passwordHash          String?
   // Opaque secret embedded in this coach's calendar subscription link (see
   // /calendar/[organizationId]/[token] and regenerateCalendarToken) — null
   // until they first turn sync on from My Classes. Regenerating it swaps in
@@ -117,20 +117,26 @@ model Coach {
   // (the feed route looks the token up directly, nothing else references
   // the old value) — the coach's way to revoke a leaked or no-longer-wanted
   // subscription without touching their login password.
-  calendarToken        String?   @unique
+  calendarToken         String?   @unique
   // Set when the admin marks this coach's private-class debt as settled
   // (see markPrivateBalancePaid) — only private classes delivered after
   // this date count toward the outstanding balance shown on the Coaches
   // page (see computePrivateBalance). Null means nothing has ever been
   // paid, so the whole history counts.
-  privateBalancePaidAt DateTime?
+  privateBalancePaidAt  DateTime?
   // Soft-delete: set once a coach no longer works at the box. Keeps their
   // history (past classes, submissions, stats) intact while cutting off
   // their private upload access (see /upload/[token] and the coach-active
   // guard in lib/actions/submissions.ts) — reversible via unarchiveCoach,
   // unlike Remove which permanently deletes the row.
-  archived             Boolean   @default(false)
-  createdAt            DateTime  @default(now())
+  archived              Boolean   @default(false)
+  // Grants this coach an exception from the standing forward-looking clamp
+  // on their own /upload page (see maxWeekStart in app/upload/page.tsx),
+  // which otherwise only lets a coach see next week from Friday onward —
+  // set from the Coaches page for the rare coach (deputy/assistant head
+  // coach) who needs to see the full future planning, not just next week.
+  canViewFuturePlanning Boolean   @default(false)
+  createdAt             DateTime  @default(now())
 
   classInstances    ClassInstance[]          @relation("PrimaryCoach")
   substituteClasses ClassInstance[]          @relation("SubstituteCoach")

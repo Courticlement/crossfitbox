@@ -155,6 +155,33 @@ export async function unarchiveCoach(formData: FormData) {
   revalidateUploadPaths();
 }
 
+// Grants this coach an exception from the standing forward-looking clamp on
+// their own /upload page (see maxWeekStart in app/upload/page.tsx), which
+// otherwise only lets a coach see next week from Friday onward — for the
+// rare coach (deputy/assistant head coach) who needs the full future
+// planning visible in their own space, not just next week.
+export async function allowFuturePlanning(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  await prisma.coach.updateMany({ where: { id }, data: { canViewFuturePlanning: true } });
+  revalidateUploadPaths();
+}
+
+export async function revokeFuturePlanning(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  await prisma.coach.updateMany({ where: { id }, data: { canViewFuturePlanning: false } });
+  revalidateUploadPaths();
+}
+
 // Settles the coach's outstanding private-class balance: stamps "now" so
 // computeCoachStats stops counting any private class delivered before this
 // point (see privateBalancePaidAt on Coach) — the balance shown on the

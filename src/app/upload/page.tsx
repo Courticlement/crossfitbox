@@ -52,11 +52,17 @@ export default async function UploadPage({
   // generous (8 weeks) since addPrivateClass is deliberately allowed for
   // any past week regardless of lock/validate state (a private lesson can
   // get logged late) — a coach needs to actually be able to page back to
-  // the week it happened in to do that.
+  // the week it happened in to do that. A coach the admin has explicitly
+  // authorized (Coach.canViewFuturePlanning, set from the Coaches page —
+  // e.g. a deputy/assistant head coach) skips the forward clamp entirely.
   const today = toDateOnly(new Date());
   const thisWeekStart = startOfWeekMonday(today);
   const minWeekStart = addDays(thisWeekStart, -56);
-  const maxWeekStart = isoWeekday(today) >= 5 ? addDays(thisWeekStart, 7) : thisWeekStart;
+  const maxWeekStart = coach.canViewFuturePlanning
+    ? addDays(thisWeekStart, 3650)
+    : isoWeekday(today) >= 5
+      ? addDays(thisWeekStart, 7)
+      : thisWeekStart;
 
   const requested = (weekParam && parseDateOnly(weekParam)) || today;
   let weekStart = startOfWeekMonday(requested);

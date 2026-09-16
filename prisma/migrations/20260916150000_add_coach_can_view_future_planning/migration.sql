@@ -1,0 +1,12 @@
+-- Adds Coach.canViewFuturePlanning — grants a specific coach an exception
+-- from the standing forward-looking clamp on their own /upload page
+-- (maxWeekStart in app/upload/page.tsx), which otherwise only lets a coach
+-- see next week from Friday onward. Set from the Coaches page.
+--
+-- Documentation only, like every migration since 20260904081635_multi_tenant_boxes:
+-- tenant tables live in each organization's own "org_<id>" Postgres schema,
+-- not "public" (see lib/prisma.ts), so this ALTER was actually applied per
+-- existing org schema by a one-off script (mirroring lib/tenant-schema.ts's
+-- tenantTableDdl, which is what provisions this column for every *new* org
+-- going forward). Keep this file in sync with both.
+ALTER TABLE "Coach" ADD COLUMN "canViewFuturePlanning" BOOLEAN NOT NULL DEFAULT false;

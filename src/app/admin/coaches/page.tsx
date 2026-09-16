@@ -5,6 +5,8 @@ import {
   deleteCoach,
   archiveCoach,
   unarchiveCoach,
+  allowFuturePlanning,
+  revokeFuturePlanning,
 } from "@/lib/actions/coaches";
 import { computeCoachStats, type CoachStats } from "@/lib/coach-stats";
 import { groupClassRate } from "@/lib/coach-levels";
@@ -47,6 +49,7 @@ type CoachCardData = {
   passwordHash: string | null;
   archived: boolean;
   privateBalancePaidAt: Date | null;
+  canViewFuturePlanning: boolean;
 };
 
 function CoachCard({
@@ -134,6 +137,37 @@ function CoachCard({
           hasPassword={coach.passwordHash !== null}
           disabled={coach.archived}
         />
+        <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-neutral-800 pt-2.5">
+          <span
+            className="text-xs text-neutral-500"
+            title="Sans cette autorisation, un coach ne voit dans son propre espace que la semaine prochaine (à partir de vendredi) — jamais plus loin."
+          >
+            Voir tout le planning futur
+          </span>
+          {coach.canViewFuturePlanning ? (
+            <form action={revokeFuturePlanning}>
+              <input type="hidden" name="id" value={coach.id} />
+              <button
+                type="submit"
+                disabled={coach.archived}
+                className="rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-400 hover:border-neutral-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Autorisé — révoquer
+              </button>
+            </form>
+          ) : (
+            <form action={allowFuturePlanning}>
+              <input type="hidden" name="id" value={coach.id} />
+              <button
+                type="submit"
+                disabled={coach.archived}
+                className="rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-400 hover:border-neutral-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Autoriser
+              </button>
+            </form>
+          )}
+        </div>
       </div>
 
       <div className="mb-4">
