@@ -20,7 +20,7 @@ import { requireOrgAdmin } from "@/lib/auth-context";
 
 // No searchParams/cookies() here to otherwise force dynamic rendering — left
 // to itself, Next statically prerenders this page at build time, freezing
-// coach edits (rate, color, quota, stats) until the next deploy.
+// coach edits (rate, color, stats) until the next deploy.
 export const dynamic = "force-dynamic";
 
 function formatHours(hours: number): string {
@@ -44,7 +44,6 @@ type CoachCardData = {
   name: string;
   level: string | null;
   color: string | null;
-  weeklyQuota: number | null;
   rate: number | null;
   passwordHash: string | null;
   archived: boolean;
@@ -86,13 +85,7 @@ function CoachCard({
               </span>
             )}
           </div>
-          <div className="text-xs text-neutral-500">
-            {coach.level || "Niveau non défini"}
-            {" · "}
-            {coach.weeklyQuota === null
-              ? "Pas de quota standard"
-              : `${coach.weeklyQuota} cours/semaine`}
-          </div>
+          <div className="text-xs text-neutral-500">{coach.level || "Niveau non défini"}</div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {coach.archived ? (
@@ -263,18 +256,6 @@ function CoachCard({
               <LevelSelect name="level" defaultValue={coach.level ?? ""} />
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs text-neutral-500">Quota hebdomadaire</span>
-              <input
-                type="number"
-                name="weeklyQuota"
-                min={0}
-                defaultValue={coach.weeklyQuota ?? ""}
-                placeholder="—"
-                title="Quota hebdomadaire standard — utilisé sur le tableau de bord pour toute semaine sans exception propre"
-                className="w-full rounded border border-neutral-800 bg-transparent px-1.5 py-1 text-xs text-white hover:border-neutral-700 focus:border-neutral-500 focus:outline-none"
-              />
-            </label>
-            <label className="block">
               <span className="mb-1 block text-xs text-neutral-500">Taux (€/cours)</span>
               <input
                 type="number"
@@ -405,18 +386,6 @@ export default async function CoachesPage() {
           <div>
             <span className="mb-1 block text-xs text-neutral-500">Niveau CrossFit</span>
             <LevelSelect name="level" defaultValue="" />
-          </div>
-          <div>
-            <span className="mb-1 block text-xs text-neutral-500">
-              Quota hebdomadaire standard
-            </span>
-            <input
-              type="number"
-              name="weeklyQuota"
-              min={0}
-              placeholder="ex. 10"
-              className="w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:outline-none"
-            />
           </div>
           <button
             type="submit"

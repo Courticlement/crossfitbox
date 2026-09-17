@@ -19,13 +19,7 @@ function revalidateUploadPaths() {
 const CoachSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   level: z.string().trim().optional(),
-  weeklyQuota: z.coerce.number().int().min(0).optional(),
 });
-
-function parseWeeklyQuota(formData: FormData): number | undefined {
-  const raw = formData.get("weeklyQuota");
-  return raw === null || raw === "" ? undefined : Number(raw);
-}
 
 function parseRate(formData: FormData): number | undefined {
   const raw = formData.get("rate");
@@ -39,7 +33,6 @@ export async function createCoach(formData: FormData) {
   const parsed = CoachSchema.safeParse({
     name: formData.get("name"),
     level: formData.get("level") || undefined,
-    weeklyQuota: parseWeeklyQuota(formData),
   });
   if (!parsed.success) return;
 
@@ -52,7 +45,6 @@ export async function createCoach(formData: FormData) {
       organizationId,
       name: parsed.data.name,
       level,
-      weeklyQuota: parsed.data.weeklyQuota ?? null,
     },
   });
 
@@ -69,10 +61,8 @@ export async function renameCoach(formData: FormData) {
   const level = isCoachLevel(levelRaw) ? levelRaw : null;
   const colorRaw = String(formData.get("color") ?? "").trim();
   const color = isCoachColor(colorRaw) ? colorRaw : null;
-  const weeklyQuota = parseWeeklyQuota(formData);
   const rate = parseRate(formData);
   if (!id || !name) return;
-  if (weeklyQuota !== undefined && (!Number.isInteger(weeklyQuota) || weeklyQuota < 0)) return;
   if (rate !== undefined && (!Number.isInteger(rate) || rate < 0)) return;
 
   const coach = await prisma.coach.findFirst({ where: { id }, select: { id: true } });
@@ -81,7 +71,7 @@ export async function renameCoach(formData: FormData) {
   try {
     await prisma.coach.update({
       where: { id },
-      data: { name, level, color, weeklyQuota: weeklyQuota ?? null, rate: rate ?? null },
+      data: { name, level, color, rate: rate ?? null },
     });
   } catch (err) {
     // The dropdown already excludes colors taken by other coaches, so this
@@ -91,7 +81,7 @@ export async function renameCoach(formData: FormData) {
     if (isPrismaErrorCode(err, "P2002")) {
       await prisma.coach.update({
         where: { id },
-        data: { name, level, weeklyQuota: weeklyQuota ?? null, rate: rate ?? null },
+        data: { name, level, rate: rate ?? null },
       });
     } else {
       throw err;
