@@ -1,8 +1,18 @@
 import { tenantPrisma } from "@/lib/prisma";
-import { addDays, formatDateISO, formatDayLabel, parseDateOnly, toDateOnly } from "@/lib/dates";
+import {
+  addDays,
+  addMonths,
+  formatDateISO,
+  formatDayLabel,
+  formatMonthLabel,
+  parseDateOnly,
+  startOfMonth,
+  toDateOnly,
+} from "@/lib/dates";
 import { requireOrgAdmin } from "@/lib/auth-context";
 import { PrivateClassesFilters } from "@/components/private-classes-filters";
 import { PrivateClassesTable } from "@/components/private-classes-table";
+import { PrivateClassesChart, type PrivateClassesMonthPoint } from "@/components/private-classes-chart";
 
 export default async function PrivateClassesPage({
   searchParams,
@@ -44,6 +54,30 @@ export default async function PrivateClassesPage({
     time: `${i.startTime}–${i.endTime}`,
   }));
 
+  // One point per calendar month covering the filtered range. A class whose
+  // athleteIsMember was never set (logged before that field existed) counts
+  // as "non abonné" so the chart always shows exactly the two lines asked
+  // for, rather than a third silent bucket.
+  const firstMonthStart = startOfMonth(from);
+  const toMonthStart = startOfMonth(to);
+  const monthCount =
+    (toMonthStart.getUTCFullYear() - firstMonthStart.getUTCFullYear()) * 12 +
+    (toMonthStart.getUTCMonth() - firstMonthStart.getUTCMonth()) +
+    1;
+  const monthPoints: PrivateClassesMonthPoint[] = Array.from({ length: monthCount }, (_, i) => ({
+    label: formatMonthLabel(addMonths(firstMonthStart, i)),
+    subscribed: 0,
+    unsubscribed: 0,
+  }));
+  for (const i of instances) {
+    const idx =
+      (i.date.getUTCFullYear() - firstMonthStart.getUTCFullYear()) * 12 +
+      (i.date.getUTCMonth() - firstMonthStart.getUTCMonth());
+    if (idx < 0 || idx >= monthCount) continue;
+    if (i.athleteIsMember === true) monthPoints[idx].subscribed++;
+    else monthPoints[idx].unsubscribed++;
+  }
+
   return (
     <div className="text-neutral-300">
       <h1 className="mb-1 text-lg font-semibold text-white">Cours privés</h1>
@@ -53,6 +87,8 @@ export default async function PrivateClassesPage({
       </p>
 
       <PrivateClassesFilters from={fromStr} to={toStr} coachId={coachIdFilter} coaches={coaches} />
+
+      <PrivateClassesChart points={monthPoints} />
 
       <h2 className="mb-2 text-sm font-medium text-white">
         {rows.length} cours privé{rows.length === 1 ? "" : "s"} ({formatDayLabel(from)} –{" "}
