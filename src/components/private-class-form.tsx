@@ -43,7 +43,7 @@ export function PrivateClassForm({
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   return (
-    <div className="mb-6 rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+    <div id="private-class-form" className="mb-6 scroll-mt-4 rounded-lg border border-neutral-800 bg-neutral-900 p-4">
       <h2 className="mb-1 text-sm font-medium text-white">
         Cours privés donnés cette semaine
       </h2>

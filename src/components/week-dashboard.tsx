@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DashboardCoachCards } from "@/components/dashboard-coach-cards";
+import { InvitePrivateClassForm } from "@/components/invite-private-class-form";
 import { tenantPrisma } from "@/lib/prisma";
 import {
   startOfWeekMonday,
@@ -130,6 +131,12 @@ export async function WeekDashboard({
       netAmount,
     };
   });
+
+  // Powers InvitePrivateClassForm's pre-checked coaches — anyone with zero
+  // private classes done this week, same figure as their own Privés column.
+  const withoutPrivateClassIds = new Set(
+    rows.filter((r) => r.privateDone === 0 && !r.coach.archived).map((r) => r.coach.id)
+  );
 
   const totals = rows.reduce(
     (acc, r) => ({
@@ -316,15 +323,18 @@ export async function WeekDashboard({
         </table>
       </div>
 
-      <form method="get" action="/admin/digest/week/pdf">
-        <input type="hidden" name="week" value={weekStartStr} />
-        <button
-          type="submit"
-          className="rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
-        >
-          Exporter le récapitulatif hebdomadaire en PDF
-        </button>
-      </form>
+      <div className="flex flex-wrap items-end gap-3">
+        <form method="get" action="/admin/digest/week/pdf">
+          <input type="hidden" name="week" value={weekStartStr} />
+          <button
+            type="submit"
+            className="rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
+          >
+            Exporter le récapitulatif hebdomadaire en PDF
+          </button>
+        </form>
+        <InvitePrivateClassForm coaches={coaches} withoutPrivateClassIds={withoutPrivateClassIds} />
+      </div>
     </>
   );
 }

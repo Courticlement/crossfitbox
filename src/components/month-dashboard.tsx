@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DashboardCoachCards } from "@/components/dashboard-coach-cards";
+import { InvitePrivateClassForm } from "@/components/invite-private-class-form";
 import { MonthHoursChart, type CoachWeeklyHours } from "@/components/month-hours-chart";
 import { tenantPrisma } from "@/lib/prisma";
 import {
@@ -149,6 +150,12 @@ export async function MonthDashboard({
       netAmount,
     };
   });
+
+  // Powers InvitePrivateClassForm's pre-checked coaches — anyone with zero
+  // private classes done this month, same figure as their own Privés column.
+  const withoutPrivateClassIds = new Set(
+    rows.filter((r) => r.privateDone === 0 && !r.coach.archived).map((r) => r.coach.id)
+  );
 
   const totals = rows.reduce(
     (acc, r) => ({
@@ -358,15 +365,18 @@ export async function MonthDashboard({
       <h2 className="mb-3 text-sm font-medium text-neutral-400">Heures par coach et par semaine</h2>
       <MonthHoursChart weekLabels={weekLabels} series={weeklySeries} />
 
-      <form method="get" action="/admin/digest/month/pdf" className="mt-6">
-        <input type="hidden" name="month" value={monthStartStr} />
-        <button
-          type="submit"
-          className="rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
-        >
-          Exporter le récapitulatif mensuel en PDF
-        </button>
-      </form>
+      <div className="mt-6 flex flex-wrap items-end gap-3">
+        <form method="get" action="/admin/digest/month/pdf">
+          <input type="hidden" name="month" value={monthStartStr} />
+          <button
+            type="submit"
+            className="rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
+          >
+            Exporter le récapitulatif mensuel en PDF
+          </button>
+        </form>
+        <InvitePrivateClassForm coaches={coaches} withoutPrivateClassIds={withoutPrivateClassIds} />
+      </div>
     </>
   );
 }

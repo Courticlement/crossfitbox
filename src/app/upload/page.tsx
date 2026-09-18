@@ -16,9 +16,11 @@ import { CalendarSyncCard } from "@/components/calendar-sync-card";
 import { UnavailabilityForm } from "@/components/unavailability-form";
 import { MyClassesGrid } from "@/components/my-classes-grid";
 import { MyFocusCard } from "@/components/my-focus-card";
+import { PrivateClassInvitationAlert } from "@/components/private-class-invitation-alert";
 import { coachLogout } from "@/lib/actions/auth";
 import { loadCoachWeekData } from "@/lib/coach-upload-data";
 import { getLastFocus } from "@/lib/coaching-focus";
+import { getPendingPrivateClassInvitations } from "@/lib/private-class-invitation-alerts";
 import { requireCoachSession } from "@/lib/auth-context";
 
 export default async function UploadPage({
@@ -97,7 +99,7 @@ export default async function UploadPage({
     orderBy: { createdAt: "asc" },
   });
 
-  const [{ instances, myPrivateClasses, locked }, myUnavailability, lastFocus] =
+  const [{ instances, myPrivateClasses, locked }, myUnavailability, lastFocus, pendingPrivateClassInvitations] =
     await Promise.all([
       // Includes classes this coach is assisting on, alongside ones they
       // coach — see loadCoachWeekData and MyClassesGrid, which rings an
@@ -113,6 +115,7 @@ export default async function UploadPage({
         orderBy: { startDate: "asc" },
       }),
       getLastFocus(organizationId, coach.id),
+      getPendingPrivateClassInvitations(organizationId, coach.id),
     ]);
 
   return (
@@ -140,6 +143,8 @@ export default async function UploadPage({
           validé par l&apos;admin. Si l&apos;un de vos cours est marqué
           Manqué, vous pouvez indiquer directement qui l&apos;a couvert.
         </p>
+
+        <PrivateClassInvitationAlert invitations={pendingPrivateClassInvitations} />
 
         <MyFocusCard focus={lastFocus} />
 

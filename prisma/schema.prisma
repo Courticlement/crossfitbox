@@ -153,6 +153,9 @@ model Coach {
   // subjectCoach, which is what lets a class carry a review of its coach
   // and a separate one of an assistant instead of one review per class.
   reviewsAbout      ClassReview[]
+  // Admin nudges inviting this coach to log a private class — see
+  // PrivateClassInvitation.
+  privateClassInvitations PrivateClassInvitation[]
 
   @@unique([organizationId, name])
   @@unique([organizationId, color])
@@ -441,4 +444,21 @@ model Unavailability {
 
   @@index([coachId])
   @@index([endDate])
+}
+
+// The admin's nudge inviting a specific coach to log a private class on
+// their own My Classes page (see PrivateClassForm/addPrivateClass) —
+// mirrors Unavailability's ack pattern in the other direction: there the
+// coach notifies the admin, here the admin notifies the coach. Purely a
+// notification, shown as a banner on /upload until the coach dismisses it
+// (see acknowledgePrivateClassInvitation) — it never creates a
+// ClassInstance itself, it's just a prompt to use the existing form.
+model PrivateClassInvitation {
+  id             String    @id @default(cuid())
+  coachId        String
+  coach          Coach     @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+  acknowledgedAt DateTime?
+
+  @@index([coachId])
 }

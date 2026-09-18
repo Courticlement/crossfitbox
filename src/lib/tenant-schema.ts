@@ -205,6 +205,15 @@ export function tenantTableDdl(schema: string): string[] {
     )`,
     `CREATE INDEX "Unavailability_coachId_idx" ON ${q(schema, "Unavailability")}("coachId")`,
     `CREATE INDEX "Unavailability_endDate_idx" ON ${q(schema, "Unavailability")}("endDate")`,
+
+    `CREATE TABLE ${q(schema, "PrivateClassInvitation")} (
+      "id" TEXT NOT NULL,
+      "coachId" TEXT NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "acknowledgedAt" TIMESTAMP(3),
+      CONSTRAINT "PrivateClassInvitation_pkey" PRIMARY KEY ("id")
+    )`,
+    `CREATE INDEX "PrivateClassInvitation_coachId_idx" ON ${q(schema, "PrivateClassInvitation")}("coachId")`,
   ];
 }
 
@@ -234,5 +243,6 @@ export function tenantTableForeignKeys(schema: string): string[] {
     `ALTER TABLE ${s("ClassSubmission")} ADD CONSTRAINT "ClassSubmission_coachId_fkey" FOREIGN KEY ("coachId") REFERENCES ${s("Coach")}("id") ON DELETE CASCADE ON UPDATE CASCADE`,
     `ALTER TABLE ${s("BoxClosure")} ADD CONSTRAINT "BoxClosure_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE`,
     `ALTER TABLE ${s("Unavailability")} ADD CONSTRAINT "Unavailability_coachId_fkey" FOREIGN KEY ("coachId") REFERENCES ${s("Coach")}("id") ON DELETE CASCADE ON UPDATE CASCADE`,
+    `ALTER TABLE ${s("PrivateClassInvitation")} ADD CONSTRAINT "PrivateClassInvitation_coachId_fkey" FOREIGN KEY ("coachId") REFERENCES ${s("Coach")}("id") ON DELETE CASCADE ON UPDATE CASCADE`,
   ];
 }
