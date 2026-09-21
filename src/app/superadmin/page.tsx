@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { prisma, tenantPrisma } from "@/lib/prisma";
+import { prisma, tenantSchemaName } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { createOrganization, impersonateOrganization } from "@/lib/actions/organizations";
 import { RoomNamesInput } from "@/components/room-names-input";
 import { formatDateISO } from "@/lib/dates";
@@ -16,17 +17,34 @@ export default async function SuperadminPage() {
   });
 
   // Coach/Room live in each organization's own Postgres schema (see
-  // tenantPrisma in lib/prisma.ts) — unlike admins, their counts can't come
-  // from a single cross-schema Prisma _count, so each org gets its own pair
-  // of queries. Fine at "a handful of organizations" scale; would need
-  // batching if this ever needs to list hundreds.
-  const organizations = await Promise.all(
-    organizationsBase.map(async (org) => {
-      const db = tenantPrisma(org.id);
-      const [coachCount, roomCount] = await Promise.all([db.coach.count(), db.room.count()]);
-      return { ...org, coachCount, roomCount };
-    })
-  );
+  // tenantSchemaName in lib/prisma.ts), so their counts can't come from a
+  // single cross-schema Prisma _count. Opening a tenantPrisma() client per
+  // org — each its own fresh connection pool — used to fan out into N
+  // brand-new Postgres connections in parallel on every page load; on a cold
+  // container (and Prisma Postgres's own idle suspend), that fan-out was
+  // slow enough to blow past the platform's response-streaming timeout and
+  // surface as a gateway timeout. One raw query over the already-open
+  // control-plane connection avoids opening any new connections at all.
+  const countsByOrgId = new Map<string, { coachCount: number; roomCount: number }>();
+  if (organizationsBase.length > 0) {
+    const perOrg = organizationsBase.map((org) => {
+      const schema = tenantSchemaName(org.id);
+      return Prisma.sql`SELECT ${org.id} AS "organizationId",
+        (SELECT count(*)::int FROM ${Prisma.raw(`"${schema}"."Coach"`)}) AS "coachCount",
+        (SELECT count(*)::int FROM ${Prisma.raw(`"${schema}"."Room"`)}) AS "roomCount"`;
+    });
+    const rows = await prisma.$queryRaw<
+      { organizationId: string; coachCount: number; roomCount: number }[]
+    >(Prisma.join(perOrg, " UNION ALL "));
+    for (const row of rows) {
+      countsByOrgId.set(row.organizationId, { coachCount: row.coachCount, roomCount: row.roomCount });
+    }
+  }
+
+  const organizations = organizationsBase.map((org) => ({
+    ...org,
+    ...(countsByOrgId.get(org.id) ?? { coachCount: 0, roomCount: 0 }),
+  }));
 
   return (
     <div className="text-neutral-300">
