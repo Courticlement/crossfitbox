@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createClassReview,
@@ -18,10 +18,6 @@ import {
   type PastilleKey,
 } from "@/lib/review-constants";
 import { ReviewRecap } from "@/components/review-recap";
-
-const TOTAL_STEPS = 8; // 5 segments + Piliers + Feedback + Récap
-const PROGRESS_SEGMENTS = 7; // Récap doesn't get its own tick — it's the confirm screen
-const NEXT_LABEL = ["Suivant", "Suivant", "Suivant", "Suivant", "Piliers", "Feedback", "Récap", "Valider"];
 
 const initialState: CreateClassReviewResult = {};
 
@@ -48,62 +44,29 @@ export function ReviewWizard({
     initialState
   );
 
-  const [step, setStep] = useState(0);
   const [notes, setNotes] = useState<Partial<Record<string, string>>>({});
   const [pillars, setPillars] = useState<Partial<Record<PillarKey, PillarRating>>>({});
   const [identifiedText, setIdentifiedText] = useState("");
   const [focusText, setFocusText] = useState("");
   const [pastille, setPastille] = useState<PastilleKey | undefined>();
 
-  const isSegment = step < SEGMENTS.length;
-  const isPillars = step === 5;
-  const isFeedback = step === 6;
-  const isRecap = step === 7;
-
-  const accent = isSegment ? SEGMENTS[step].accent : CLOSING_ACCENT;
-  const title = isRecap ? "Récap" : isFeedback ? "Feedback" : isPillars ? "Piliers" : SEGMENTS[step].title;
-
-  const canAdvance = isPillars
-    ? PILLARS.every((p) => pillars[p.key])
-    : isFeedback
-      ? Boolean(focusText.trim()) && Boolean(pastille)
-      : true;
-
-  function goBack() {
-    if (step === 0) router.push(backHref);
-    else setStep((s) => s - 1);
-  }
-  function goNext() {
-    if (!canAdvance) return;
-    setStep((s) => Math.min(s + 1, TOTAL_STEPS - 1));
-  }
-
-  // "Valider" sits in the exact same footer slot the "Récap →" button just
-  // occupied — a fast double-click (trackpad double-tap, or a stray repeat
-  // event) can land its second click on Valider before anyone's actually
-  // looked at the recap. A brief disable on arrival closes that gap.
-  const [recapReady, setRecapReady] = useState(false);
-  useEffect(() => {
-    if (!isRecap || recapReady) return;
-    const timer = setTimeout(() => setRecapReady(true), 500);
-    return () => clearTimeout(timer);
-  }, [isRecap, recapReady]);
+  const pillarsComplete = PILLARS.every((p) => pillars[p.key]);
+  const feedbackComplete = Boolean(focusText.trim()) && Boolean(pastille);
+  const canSubmit = pillarsComplete && feedbackComplete;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-neutral-950">
       <div className="mx-auto flex w-full max-w-2xl items-center gap-4 border-b border-neutral-800 px-6 py-4">
         <button
           type="button"
-          onClick={goBack}
+          onClick={() => router.push(backHref)}
           aria-label="Retour"
           className="shrink-0 text-2xl leading-none text-white"
         >
           ‹
         </button>
         <div className="min-w-0">
-          <div className="text-xl font-extrabold" style={{ color: isSegment ? accent : "#ffffff" }}>
-            {title}
-          </div>
+          <div className="text-xl font-extrabold text-white">Nouvelle review</div>
           <div className="truncate text-[11px] text-neutral-500">
             {classInfo.label} · {classInfo.subjectName}
             {classInfo.subjectRole === "assistant" ? " (assistant·e)" : ""} · {classInfo.time}
@@ -111,39 +74,31 @@ export function ReviewWizard({
         </div>
       </div>
 
-      <div className="mx-auto flex w-full max-w-2xl gap-1.5 px-6 pt-4">
-        {Array.from({ length: PROGRESS_SEGMENTS }).map((_, i) => (
-          <span
-            key={i}
-            className={`h-1 flex-1 rounded-full ${
-              i < step ? "bg-red-800" : i === step ? "bg-red-500" : "bg-red-950"
-            }`}
-          />
-        ))}
-      </div>
-
       <div className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-6 py-6">
         <form id="review-wizard-form" action={formAction}>
           <input type="hidden" name="classInstanceId" value={classInfo.id} />
           <input type="hidden" name="subjectCoachId" value={classInfo.subjectId} />
 
-          {SEGMENTS.map((seg, i) => (
-            <div key={seg.key} className={step === i ? "" : "hidden"}>
-              <p className="mb-4 text-[13.5px] text-neutral-400">
-                Étape {i + 1} sur {PROGRESS_SEGMENTS} — observations sur ce temps de cours.
-              </p>
+          {SEGMENTS.map((seg) => (
+            <section key={seg.key} className="mb-8">
+              <h3 className="mb-3 text-[15px] font-extrabold" style={{ color: seg.accent }}>
+                {seg.title}
+              </h3>
               <textarea
                 name={`${seg.key}Notes`}
                 value={notes[seg.key] ?? ""}
                 onChange={(e) => setNotes((n) => ({ ...n, [seg.key]: e.target.value }))}
                 placeholder="Observations sur ce segment…"
-                className="h-72 w-full resize-y rounded-xl border-[1.5px] bg-neutral-900 p-4 text-[15px] leading-relaxed text-white placeholder:text-neutral-600 focus:outline-none"
+                className="h-40 w-full resize-y rounded-xl border-[1.5px] bg-neutral-900 p-4 text-[15px] leading-relaxed text-white placeholder:text-neutral-600 focus:outline-none"
                 style={{ borderColor: seg.accent }}
               />
-            </div>
+            </section>
           ))}
 
-          <div className={isPillars ? "" : "hidden"}>
+          <section className="mb-8">
+            <h3 className="mb-1 text-[15px] font-extrabold" style={{ color: CLOSING_ACCENT }}>
+              Piliers
+            </h3>
             <p className="mb-2 text-[13.5px] text-neutral-400">
               Évalue chaque pilier sur l&apos;ensemble de la séance.
             </p>
@@ -177,9 +132,13 @@ export function ReviewWizard({
                 </div>
               ))}
             </div>
-          </div>
+          </section>
 
-          <div className={isFeedback ? "" : "hidden"}>
+          <section className="mb-8">
+            <h3 className="mb-4 text-[15px] font-extrabold" style={{ color: CLOSING_ACCENT }}>
+              Feedback
+            </h3>
+
             <div className="mb-6">
               <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-neutral-500">
                 Le coach a identifié
@@ -235,9 +194,12 @@ export function ReviewWizard({
               </div>
               <input type="hidden" name="pastille" value={pastille ?? ""} />
             </div>
-          </div>
+          </section>
 
-          <div className={isRecap ? "" : "hidden"}>
+          <section>
+            <h3 className="mb-3 text-[15px] font-extrabold" style={{ color: CLOSING_ACCENT }}>
+              Récap
+            </h3>
             <div className="mb-6 flex items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-3">
               <span className="text-[15px] font-bold text-white">
                 {classInfo.label} <span className="font-normal text-neutral-500">— {classInfo.subjectName}</span>
@@ -258,38 +220,33 @@ export function ReviewWizard({
             />
 
             {state.error && <p className="mt-2 text-sm text-red-400">{state.error}</p>}
-          </div>
+          </section>
         </form>
       </div>
 
-      <div className="mx-auto flex w-full max-w-2xl gap-2.5 px-6 pb-8 pt-2">
-        <button
-          type="button"
-          onClick={goBack}
-          className="w-14 shrink-0 rounded-xl border border-neutral-700 text-lg text-white hover:border-neutral-500"
-        >
-          ‹
-        </button>
-        {isRecap ? (
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-2 px-6 pb-8 pt-2">
+        {!canSubmit && (
+          <p className="text-center text-[12px] text-neutral-500">
+            Complète les piliers, l&apos;axe de travail et la pastille pour valider.
+          </p>
+        )}
+        <div className="flex gap-2.5">
+          <button
+            type="button"
+            onClick={() => router.push(backHref)}
+            className="w-14 shrink-0 rounded-xl border border-neutral-700 text-lg text-white hover:border-neutral-500"
+          >
+            ‹
+          </button>
           <button
             type="submit"
             form="review-wizard-form"
-            disabled={pending || !recapReady}
+            disabled={pending || !canSubmit}
             className="flex-1 rounded-xl bg-emerald-500 py-4 text-[15px] font-bold text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
           >
             {pending ? "Enregistrement…" : "Valider ✓"}
           </button>
-        ) : (
-          <button
-            type="button"
-            onClick={goNext}
-            disabled={!canAdvance}
-            className="flex-1 rounded-xl py-4 text-[15px] font-bold text-neutral-950 disabled:opacity-40"
-            style={{ backgroundColor: accent }}
-          >
-            {NEXT_LABEL[step]} →
-          </button>
-        )}
+        </div>
       </div>
     </div>
   );
