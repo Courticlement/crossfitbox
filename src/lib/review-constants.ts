@@ -10,9 +10,9 @@
 // athletes, e.g. a coach being observed while practicing their coaching.
 export type ReviewContextKey = "class" | "observation";
 
-export const REVIEW_CONTEXTS: { key: ReviewContextKey; label: string; description: string }[] = [
-  { key: "class", label: "Cours avec athlètes", description: "Séance réelle, face à des athlètes." },
-  { key: "observation", label: "Observation / formation", description: "Séance d'observation ou de formation, sans athlètes." },
+export const REVIEW_CONTEXTS: { key: ReviewContextKey; label: string }[] = [
+  { key: "class", label: "Cours en tant qu'athlète" },
+  { key: "observation", label: "Observation / formation" },
 ];
 
 export function reviewContextLabel(key: string | null | undefined): string {

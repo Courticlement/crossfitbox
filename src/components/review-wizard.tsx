@@ -98,14 +98,13 @@ export function ReviewWizard({
                     type="button"
                     onClick={() => setReviewContext(c.key)}
                     aria-pressed={selected}
-                    className="flex flex-col items-start gap-1 rounded-xl border-2 px-4 py-3 text-left"
+                    className="flex items-center justify-center rounded-xl border-2 px-4 py-3.5 text-center"
                     style={{
                       borderColor: selected ? CLOSING_ACCENT : "#404040",
                       backgroundColor: selected ? `${CLOSING_ACCENT}1a` : "transparent",
                     }}
                   >
                     <span className="text-[14px] font-bold text-white">{c.label}</span>
-                    <span className="text-[12px] text-neutral-500">{c.description}</span>
                   </button>
                 );
               })}
