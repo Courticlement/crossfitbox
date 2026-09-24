@@ -24,6 +24,7 @@
   "devDependencies": {
     "@effect/platform-bun": "^4.0.0-rc.111",
     "@effect/platform-node": "^4.0.0-rc.111",
+    "@prisma/cli-engine": "^0.3.0",
     "@prisma/composer": "^0.14.0",
     "@prisma/composer-prisma-cloud": "^0.14.0",
     "@tailwindcss/postcss": "^4",
