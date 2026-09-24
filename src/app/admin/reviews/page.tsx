@@ -101,13 +101,21 @@ export default async function ReviewsPage({
 
   return (
     <div className="text-neutral-300">
-      <div className="mb-4">
-        <p className="mb-1 text-[11px] font-mono uppercase tracking-wide text-neutral-500">Suivi coaching</p>
-        <h1 className="mb-1 text-lg font-semibold text-white">Historique des reviews</h1>
-        <p className="max-w-2xl text-sm text-neutral-400">
-          Toutes les observations en classe, consultables par coach et par date pour suivre la progression dans le
-          temps.
-        </p>
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <p className="mb-1 text-[11px] font-mono uppercase tracking-wide text-neutral-500">Suivi coaching</p>
+          <h1 className="mb-1 text-lg font-semibold text-white">Historique des reviews</h1>
+          <p className="max-w-2xl text-sm text-neutral-400">
+            Toutes les observations en classe, consultables par coach et par date pour suivre la progression dans le
+            temps.
+          </p>
+        </div>
+        <Link
+          href="/admin/reviews/export"
+          className="shrink-0 rounded-md bg-white px-3 py-2 text-sm font-medium text-neutral-950 hover:bg-neutral-200"
+        >
+          Exporter en PDF
+        </Link>
       </div>
 
       <CoachingFocusPanel items={focusItems} />
