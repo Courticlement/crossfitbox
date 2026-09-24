@@ -107,6 +107,7 @@ export function tenantTableDdl(schema: string): string[] {
       "id" TEXT NOT NULL,
       "classInstanceId" TEXT NOT NULL,
       "subjectCoachId" TEXT NOT NULL,
+      "reviewContext" TEXT NOT NULL DEFAULT 'class',
       "briefingNotes" TEXT,
       "generalWuNotes" TEXT,
       "specificWuNotes" TEXT,

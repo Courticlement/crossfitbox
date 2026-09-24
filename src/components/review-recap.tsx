@@ -5,6 +5,7 @@ import {
   pillarRatingColor,
   pastilleColor,
   pastilleLabel,
+  reviewContextLabel,
   type PillarKey,
   type PillarRating,
 } from "@/lib/review-constants";
@@ -13,12 +14,14 @@ import {
 // wizard's own Récap step (fed live draft state) and the saved review's
 // detail page (fed the persisted row) so the two never drift apart.
 export function ReviewRecap({
+  reviewContext,
   segments,
   pillars,
   identifiedText,
   focusText,
   pastille,
 }: {
+  reviewContext?: string | null;
   segments: Partial<Record<string, string | null>>;
   pillars: Partial<Record<PillarKey, PillarRating | null>>;
   identifiedText: string | null;
@@ -27,6 +30,12 @@ export function ReviewRecap({
 }) {
   return (
     <div>
+      {reviewContext !== undefined && (
+        <RecapSection title="Contexte">
+          <span className="text-[13.5px] font-semibold text-white">{reviewContextLabel(reviewContext)}</span>
+        </RecapSection>
+      )}
+
       <RecapSection title="Déroulé du cours">
         {SEGMENTS.map((seg) => (
           <p key={seg.key} className="mb-2 text-[13.5px] leading-relaxed text-neutral-400">

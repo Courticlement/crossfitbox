@@ -319,6 +319,14 @@ model ClassReview {
   subjectCoachId  String
   subjectCoach    Coach         @relation(fields: [subjectCoachId], references: [id], onDelete: Cascade)
 
+  // What kind of session this review is about — "class" (a real class,
+  // athletes present) or "observation" (a training/shadowing session, no
+  // athletes) — picked first in the wizard, before any notes, purely to
+  // give the rest of the review context. Defaulted for the backfill of
+  // reviews written before this column existed, which were all real
+  // classes.
+  reviewContext String @default("class")
+
   briefingNotes   String?
   generalWuNotes  String?
   specificWuNotes String?

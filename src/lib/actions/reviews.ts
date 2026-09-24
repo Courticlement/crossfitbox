@@ -8,6 +8,7 @@ import { requireOrgAdmin } from "@/lib/auth-context";
 
 const PillarValue = z.enum(["ok", "mid", "bad"]);
 const PastilleValue = z.enum(["green", "yellow", "orange", "red"]);
+const ReviewContextValue = z.enum(["class", "observation"]);
 const optionalText = z
   .string()
   .trim()
@@ -21,6 +22,7 @@ const ClassReviewSchema = z.object({
   // against who's actually on the class, same reasoning as isOrgCoach in
   // actions/planning.ts.
   subjectCoachId: z.string().min(1),
+  reviewContext: ReviewContextValue,
   briefingNotes: optionalText,
   generalWuNotes: optionalText,
   specificWuNotes: optionalText,

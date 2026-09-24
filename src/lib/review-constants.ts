@@ -3,6 +3,22 @@
 // wizard, the recap screens, and the Prisma column names all have to agree
 // on the same keys.
 
+// What kind of session this review is about — picked first, before any
+// notes, so every review carries this context even though it doesn't
+// affect scoring. "class" covers the normal case (a real class, athletes
+// in the room); "observation" is a training/shadowing session with no
+// athletes, e.g. a coach being observed while practicing their coaching.
+export type ReviewContextKey = "class" | "observation";
+
+export const REVIEW_CONTEXTS: { key: ReviewContextKey; label: string; description: string }[] = [
+  { key: "class", label: "Cours avec athlètes", description: "Séance réelle, face à des athlètes." },
+  { key: "observation", label: "Observation / formation", description: "Séance d'observation ou de formation, sans athlètes." },
+];
+
+export function reviewContextLabel(key: string | null | undefined): string {
+  return REVIEW_CONTEXTS.find((c) => c.key === key)?.label ?? "—";
+}
+
 export type SegmentKey =
   | "briefing"
   | "generalWu"

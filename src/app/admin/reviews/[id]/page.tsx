@@ -63,6 +63,7 @@ export default async function ReviewDetailPage({
       </div>
 
       <ReviewRecap
+        reviewContext={review.reviewContext}
         segments={{
           briefing: review.briefingNotes,
           generalWu: review.generalWuNotes,

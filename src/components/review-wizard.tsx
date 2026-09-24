@@ -13,9 +13,11 @@ import {
   PILLAR_RATINGS,
   PILLAR_COLUMN,
   PASTILLES,
+  REVIEW_CONTEXTS,
   type PillarKey,
   type PillarRating,
   type PastilleKey,
+  type ReviewContextKey,
 } from "@/lib/review-constants";
 import { ReviewRecap } from "@/components/review-recap";
 
@@ -44,6 +46,7 @@ export function ReviewWizard({
     initialState
   );
 
+  const [reviewContext, setReviewContext] = useState<ReviewContextKey | undefined>();
   const [notes, setNotes] = useState<Partial<Record<string, string>>>({});
   const [pillars, setPillars] = useState<Partial<Record<PillarKey, PillarRating>>>({});
   const [identifiedText, setIdentifiedText] = useState("");
@@ -52,7 +55,7 @@ export function ReviewWizard({
 
   const pillarsComplete = PILLARS.every((p) => pillars[p.key]);
   const feedbackComplete = Boolean(focusText.trim()) && Boolean(pastille);
-  const canSubmit = pillarsComplete && feedbackComplete;
+  const canSubmit = Boolean(reviewContext) && pillarsComplete && feedbackComplete;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-neutral-950">
@@ -78,6 +81,37 @@ export function ReviewWizard({
         <form id="review-wizard-form" action={formAction}>
           <input type="hidden" name="classInstanceId" value={classInfo.id} />
           <input type="hidden" name="subjectCoachId" value={classInfo.subjectId} />
+
+          <section className="mb-8">
+            <h3 className="mb-1 text-[15px] font-extrabold" style={{ color: CLOSING_ACCENT }}>
+              Contexte
+            </h3>
+            <p className="mb-3 text-[13.5px] text-neutral-400">
+              De quoi cette review parle-t-elle ?
+            </p>
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              {REVIEW_CONTEXTS.map((c) => {
+                const selected = reviewContext === c.key;
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => setReviewContext(c.key)}
+                    aria-pressed={selected}
+                    className="flex flex-col items-start gap-1 rounded-xl border-2 px-4 py-3 text-left"
+                    style={{
+                      borderColor: selected ? CLOSING_ACCENT : "#404040",
+                      backgroundColor: selected ? `${CLOSING_ACCENT}1a` : "transparent",
+                    }}
+                  >
+                    <span className="text-[14px] font-bold text-white">{c.label}</span>
+                    <span className="text-[12px] text-neutral-500">{c.description}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <input type="hidden" name="reviewContext" value={reviewContext ?? ""} />
+          </section>
 
           {SEGMENTS.map((seg) => (
             <section key={seg.key} className="mb-8">
@@ -212,6 +246,7 @@ export function ReviewWizard({
             </div>
 
             <ReviewRecap
+              reviewContext={reviewContext ?? null}
               segments={notes}
               pillars={pillars}
               identifiedText={identifiedText}
@@ -227,7 +262,7 @@ export function ReviewWizard({
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-2 px-6 pb-8 pt-2">
         {!canSubmit && (
           <p className="text-center text-[12px] text-neutral-500">
-            Complète les piliers, l&apos;axe de travail et la pastille pour valider.
+            Complète le contexte, les piliers, l&apos;axe de travail et la pastille pour valider.
           </p>
         )}
         <div className="flex gap-2.5">
