@@ -26,7 +26,11 @@ export function ReviewRecap({
   pillars: Partial<Record<PillarKey, PillarRating | null>>;
   identifiedText: string | null;
   focusText: string;
-  pastille: string | null;
+  // Omit entirely (rather than pass null) to hide the section — used for
+  // the coach-facing view, where the overall session grade is deliberately
+  // the head coach's own call, not something handed back to the coach (see
+  // MyFocusCard's the same reasoning for the standing focus card).
+  pastille?: string | null;
 }) {
   return (
     <div>
@@ -58,7 +62,7 @@ export function ReviewRecap({
         </div>
       </RecapSection>
 
-      <RecapSection title="Feedback">
+      <RecapSection title="Feedback" last={pastille === undefined}>
         <p className="mb-2 text-[13.5px] text-neutral-400">
           <b className="text-white">Le coach a identifié — </b>
           {identifiedText || "—"}
@@ -69,19 +73,21 @@ export function ReviewRecap({
         </p>
       </RecapSection>
 
-      <RecapSection title="Pastille de séance" last>
-        {pastille ? (
-          <span
-            className="inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-extrabold"
-            style={{ backgroundColor: `${pastilleColor(pastille)}26`, color: pastilleColor(pastille) }}
-          >
-            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: pastilleColor(pastille) }} />
-            {pastilleLabel(pastille)}
-          </span>
-        ) : (
-          <span className="text-sm text-neutral-500">Non définie</span>
-        )}
-      </RecapSection>
+      {pastille !== undefined && (
+        <RecapSection title="Pastille de séance" last>
+          {pastille ? (
+            <span
+              className="inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-extrabold"
+              style={{ backgroundColor: `${pastilleColor(pastille)}26`, color: pastilleColor(pastille) }}
+            >
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: pastilleColor(pastille) }} />
+              {pastilleLabel(pastille)}
+            </span>
+          ) : (
+            <span className="text-sm text-neutral-500">Non définie</span>
+          )}
+        </RecapSection>
+      )}
     </div>
   );
 }

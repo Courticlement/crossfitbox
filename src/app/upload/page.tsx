@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { prisma as basePrisma, tenantPrisma } from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/prisma";
 import {
   startOfWeekMonday,
   addDays,
@@ -17,7 +17,6 @@ import { UnavailabilityForm } from "@/components/unavailability-form";
 import { MyClassesGrid } from "@/components/my-classes-grid";
 import { MyFocusCard } from "@/components/my-focus-card";
 import { PrivateClassInvitationAlert } from "@/components/private-class-invitation-alert";
-import { coachLogout } from "@/lib/actions/auth";
 import { loadCoachWeekData } from "@/lib/coach-upload-data";
 import { getLastFocus } from "@/lib/coaching-focus";
 import { getPendingPrivateClassInvitations } from "@/lib/private-class-invitation-alerts";
@@ -41,11 +40,6 @@ export default async function UploadPage({
 
   const coach = await prisma.coach.findUnique({ where: { id: coachId } });
   if (!coach || coach.archived) redirect("/login");
-
-  const organization = await basePrisma.organization.findUnique({
-    where: { id: organizationId },
-    select: { name: true },
-  });
 
   // A coach's own view is deliberately narrow going forward — this week,
   // and (from Friday of this week onward, once the admin has typically
@@ -119,20 +113,7 @@ export default async function UploadPage({
     ]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-neutral-950">
-      <header className="border-b border-neutral-800 bg-neutral-950">
-        <div className="mx-auto flex max-w-5xl items-center px-4 py-3">
-          <span className="text-sm font-semibold text-white">
-            {organization?.name ?? "Crossfit Box"} — Mes cours
-          </span>
-          <form action={coachLogout} className="ml-auto">
-            <button type="submit" className="text-sm text-neutral-400 hover:text-white">
-              Se déconnecter
-            </button>
-          </form>
-        </div>
-      </header>
-
+    <>
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 text-neutral-300">
         <h1 className="mb-1 text-lg font-semibold text-white">
           Cours de {coach.name}
@@ -212,6 +193,6 @@ export default async function UploadPage({
       </main>
 
       <PrivateClassFab coachId={coach.id} weekStart={weekStart} />
-    </div>
+    </>
   );
 }
