@@ -16,8 +16,26 @@ function connectionUrl(): string {
   return process.env.APP_DATABASE_URL ?? process.env.DATABASE_URL!;
 }
 
+// Pool settings shared by the control-plane and every tenant client. Preview
+// on Prisma Compute logged "Connection terminated unexpectedly" right before
+// gateway timeouts on login: pg's defaults keep idle sockets for 10s, never
+// probe them, and wait forever for a new connection, so a socket the
+// database side had already dropped (or a DB still waking from idle) could
+// hang a request until the platform gave up with a 504. These make the pool
+// drop idle/old sockets early, detect dead ones, and fail fast instead.
+function poolConfig() {
+  return {
+    connectionString: connectionUrl(),
+    idleTimeoutMillis: 5_000,
+    maxLifetimeSeconds: 60,
+    connectionTimeoutMillis: 10_000,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 5_000,
+  };
+}
+
 function createPrismaClient() {
-  const adapter = new PrismaPg(connectionUrl());
+  const adapter = new PrismaPg(poolConfig());
   return new PrismaClient({ adapter });
 }
 
@@ -69,7 +87,7 @@ export function tenantPrisma(organizationId: string): PrismaClient {
   const existing = cache.get(organizationId);
   if (existing) return existing;
 
-  const adapter = new PrismaPg(connectionUrl(), { schema: schemaNameFor(organizationId) });
+  const adapter = new PrismaPg(poolConfig(), { schema: schemaNameFor(organizationId) });
   const client = new PrismaClient({ adapter });
   cache.set(organizationId, client);
   return client;
