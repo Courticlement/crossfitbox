@@ -12,9 +12,9 @@ no deploying, no fixing, no modifying files. Report what you find.
 
 ## What to check
 
-1. `curl -s -o /tmp/preview-health.json -w '%{http_code}' --max-time 20 https://ywiudpf9p27dxnh0mwygilyx.ewr.prisma.build/api/health`
+1. `curl -s -o /tmp/preview-health.json -w '%{http_code}' --max-time 20 https://d30lwyopqtk9otec7fp932ms.cdg.prisma.build/api/health`
    — expect HTTP 200 and a body shaped like `{"ok":true,"dbMs":<number>}`.
-2. `curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://ywiudpf9p27dxnh0mwygilyx.ewr.prisma.build/admin-login`
+2. `curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://d30lwyopqtk9otec7fp932ms.cdg.prisma.build/admin-login`
    — expect HTTP 200.
 
 If this URL looks wrong (the service was replaced), the current one is
@@ -23,7 +23,7 @@ re-derive it with:
 
 ```sh
 set -a; source <(grep -E '^(PRISMA_SERVICE_TOKEN|PRISMA_WORKSPACE_ID)=' .env); set +a
-bunx @prisma/cli@latest service show crossfitbox --branch preview --json
+bunx @prisma/cli@latest service show crossfitbox --branch preview-paris --json
 ```
 
 ## Retries

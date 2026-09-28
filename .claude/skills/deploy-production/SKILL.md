@@ -17,9 +17,27 @@ platform side already — don't create new ones:
 | Branch name | Role | Live URL |
 | --- | --- | --- |
 | `main` | production | https://sozs41b0z2fndybwg8z54u3s.ewr.prisma.build |
-| `preview` | preview | https://ywiudpf9p27dxnh0mwygilyx.ewr.prisma.build |
+| `preview-paris` | preview (Paris, `cdg`) | https://d30lwyopqtk9otec7fp932ms.cdg.prisma.build |
+| `preview` | **retired** — old Newark preview, don't deploy to it | https://ywiudpf9p27dxnh0mwygilyx.ewr.prisma.build |
 
 (Confirm current URLs with `service show` below — they can change across deploys.)
+
+**The box's real users work on preview**, i.e. `preview-paris` is the live app. `main`
+(Newark, DB = Crossfit-app "Primary database", untouched since 2026-09-09) is effectively unused.
+
+**Don't run services in Newark (`ewr`).** On 2026-09-28 both Newark services kept losing their
+DB connections (`Connection terminated due to connection timeout`) — even after preview's DB was
+moved into us-east-1 next to it. Preview was recreated in Paris (`cdg`, stage `preview-paris`)
+with DB `crossfitbox-preview-paris` (eu-west-3, project `crossfitbox-preview-v2`); `dbMs` ~2ms.
+
+A service's region is immutable: redeploying with another `PRISMA_REGION` fails ("Prisma App
+region is immutable…"). Moving means a new stage (or `--name <other>`) in the target region,
+then cutting users over. That does **not** work on `main`: the API refuses to create Composer's
+`COMPOSER_*` vars on the production branch (`validation-error`). Custom domains only attach to
+the production branch, so a stable domain needs that fixed by Prisma first.
+
+A branch-level env override beats the `preview` role scope (the old `preview` branch had one
+for `APP_DATABASE_URL`). `preview-paris` has none — it uses the role scope.
 
 ## The command
 
@@ -30,8 +48,8 @@ set -a; source <(grep -E '^(PRISMA_SERVICE_TOKEN|PRISMA_WORKSPACE_ID)=' .env); s
 # Production:
 bunx @prisma/cli@latest deploy module.ts --config ./prisma.compute.config.ts --stage main --yes
 
-# Preview:
-bunx @prisma/cli@latest deploy module.ts --config ./prisma.compute.config.ts --stage preview --yes
+# Preview (Paris — PRISMA_REGION only matters when the service is first created, keep it anyway):
+PRISMA_REGION=eu-west-3 bunx @prisma/cli@latest deploy module.ts --config ./prisma.compute.config.ts --stage preview-paris --yes
 ```
 
 Two flags are load-bearing and easy to get wrong:
@@ -46,7 +64,11 @@ Two flags are load-bearing and easy to get wrong:
   of `main`. Always pass `--stage main` explicitly for a production deploy. Don't trust the
   help text over this file.
 
-Run a local build first to catch errors before spending a deploy cycle:
+**Always run `npm run build` immediately before deploying.** The deploy does *not* build:
+it packages whatever is already in `.next/`. Without a fresh build it ships the old code, and
+a new service version is only created when that bundle changes — so an env var change
+(e.g. a new `APP_DATABASE_URL`) never reaches the app either. Seen on 2026-09-28: three
+"successful" deploys left preview on the old version and the old DB.
 
 ```sh
 npm run build

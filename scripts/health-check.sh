@@ -6,7 +6,7 @@
 # for this app.
 set -uo pipefail
 
-URL="https://ywiudpf9p27dxnh0mwygilyx.ewr.prisma.build/api/health"
+URL="https://d30lwyopqtk9otec7fp932ms.cdg.prisma.build/api/health"
 LOG="$HOME/Library/Logs/crossfitbox-health-check.log"
 TIMEOUT=20
 

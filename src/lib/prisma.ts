@@ -23,6 +23,11 @@ function connectionUrl(): string {
 // database side had already dropped (or a DB still waking from idle) could
 // hang a request until the platform gave up with a 504. These make the pool
 // drop idle/old sockets early, detect dead ones, and fail fast instead.
+//
+// They don't fix the bigger cause found on 2026-09-28: Compute in Newark
+// (ewr) kept losing its DB connections — even to a same-region DB — so
+// preview now runs in Paris (cdg) next to its Paris DB. See the
+// deploy-production skill before moving or recreating a service.
 function poolConfig() {
   return {
     connectionString: connectionUrl(),
