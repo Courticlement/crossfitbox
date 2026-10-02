@@ -247,6 +247,13 @@ export async function copyLastWeek(formData: FormData) {
   });
   if (sourceInstances.length === 0) return;
 
+  // A guest coach covers one specific class (see Coach.isGuest) — copying
+  // them onto next week's slot would quietly book an outsider again.
+  const guestIds = new Set(
+    (await prisma.coach.findMany({ where: { isGuest: true }, select: { id: true } })).map((c) => c.id)
+  );
+  const copyableCoachId = (id: string | null) => (id && !guestIds.has(id) ? id : null);
+
   const closures = await prisma.boxClosure.findMany({
     where: { organizationId, date: { gte: weekStart, lt: addDays(weekStart, 7) } },
     select: { date: true },
@@ -298,7 +305,7 @@ export async function copyLastWeek(formData: FormData) {
       : existingByDateTimeRoom.get(dateTimeRoomKey);
 
     if (!existingInstance) {
-      let coachId = src.isTeamEvent ? null : src.coachId;
+      let coachId = src.isTeamEvent ? null : copyableCoachId(src.coachId);
       if (coachId && isBusy(coachId, dateStr, src.startTime, src.endTime)) coachId = null;
 
       const created = await prisma.classInstance.create({
@@ -333,8 +340,8 @@ export async function copyLastWeek(formData: FormData) {
     if (
       !coachId &&
       !src.isTeamEvent &&
-      src.coachId &&
-      !isBusy(src.coachId, dateStr, src.startTime, src.endTime)
+      copyableCoachId(src.coachId) &&
+      !isBusy(src.coachId!, dateStr, src.startTime, src.endTime)
     ) {
       coachId = src.coachId;
     }
@@ -521,6 +528,49 @@ export async function assignCoach(
       ...(orphaning ? { status: "PLANNED", substituteCoachId: null } : {}),
     },
   });
+  revalidateAll();
+  return { error: null };
+}
+
+// Puts an outside coach on a class when no team coach is free — the admin
+// just types a name on the Planning grid. Reuses an existing guest of that
+// name (so the same person adds up on the Dashboard across classes), or
+// creates one (Coach.isGuest). Refuses a name that's already a team coach,
+// since that's almost certainly the admin meaning to pick them instead.
+export async function assignGuestCoach(
+  _prevState: AssignCoachState,
+  formData: FormData
+): Promise<AssignCoachState> {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+  const id = String(formData.get("id") ?? "");
+  const name = String(formData.get("guestName") ?? "").trim().replace(/\s+/g, " ");
+  if (!id) return { error: null };
+  if (!name) return { error: "Nom du coach invité requis." };
+  if (name.length > 60) return { error: "Nom trop long (60 caractères max)." };
+
+  const instance = await prisma.classInstance.findFirst({ where: { id } });
+  if (!instance) return { error: null };
+
+  // Case-insensitive so "jean" doesn't create a second guest next to "Jean".
+  const existing = await prisma.coach.findFirst({
+    where: { name: { equals: name, mode: "insensitive" } },
+  });
+  if (existing && !existing.isGuest) {
+    return { error: `« ${existing.name} » est déjà un coach de l'équipe — choisis-le dans la liste.` };
+  }
+
+  if (existing) {
+    const conflict = await findSchedulingConflict(organizationId, existing.id, instance);
+    if (conflict) {
+      return {
+        error: `Déjà assigné à « ${conflict.label} » en ${conflict.room.name} de ${conflict.startTime} à ${conflict.endTime}.`,
+      };
+    }
+  }
+  const guest = existing ?? (await prisma.coach.create({ data: { organizationId, name, isGuest: true } }));
+
+  await prisma.classInstance.update({ where: { id }, data: { coachId: guest.id } });
   revalidateAll();
   return { error: null };
 }

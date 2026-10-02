@@ -27,7 +27,10 @@ export async function weeklyDigestRows(
   const weekEnd = addDays(weekStart, 7);
 
   const [coaches, instances, weekReviews] = await Promise.all([
-    tenant.coach.findMany({ orderBy: { name: "asc" } }),
+    tenant.coach.findMany({
+      where: { OR: [{ isGuest: false }, { classInstances: { some: { date: { gte: weekStart, lt: weekEnd } } } }] },
+      orderBy: [{ isGuest: "asc" }, { name: "asc" }],
+    }),
     tenant.classInstance.findMany({
       where: { date: { gte: weekStart, lt: weekEnd }, coachId: { not: null } },
     }),
@@ -66,7 +69,7 @@ export async function weeklyDigestRows(
     const netAmount = coachInstances
       .filter((i) => i.status === "DONE" && !i.isPrivate)
       .reduce((sum, i) => sum + (i.paidRate ?? classPayRate(i.label, fallbackRate)), 0);
-    return { name: coach.name, totalHours, heuresFixes, reviewCount, reviewPastilles, privateDone, netAmount };
+    return { name: coach.isGuest ? `${coach.name} (invité)` : coach.name, totalHours, heuresFixes, reviewCount, reviewPastilles, privateDone, netAmount };
   });
 
   const periodLabel = `${formatDayLabel(weekStart)} au ${formatDayLabel(addDays(weekStart, 6))}`;
@@ -81,7 +84,10 @@ export async function monthlyDigestRows(
   const monthEnd = addMonths(monthStart, 1);
 
   const [coaches, instances, monthReviews] = await Promise.all([
-    tenant.coach.findMany({ orderBy: { name: "asc" } }),
+    tenant.coach.findMany({
+      where: { OR: [{ isGuest: false }, { classInstances: { some: { date: { gte: monthStart, lt: monthEnd } } } }] },
+      orderBy: [{ isGuest: "asc" }, { name: "asc" }],
+    }),
     tenant.classInstance.findMany({
       where: { date: { gte: monthStart, lt: monthEnd }, coachId: { not: null } },
     }),
@@ -113,7 +119,7 @@ export async function monthlyDigestRows(
     const netAmount = coachInstances
       .filter((i) => i.status === "DONE" && !i.isPrivate)
       .reduce((sum, i) => sum + (i.paidRate ?? classPayRate(i.label, fallbackRate)), 0);
-    return { name: coach.name, totalHours, heuresFixes, reviewCount, reviewPastilles, privateDone, netAmount };
+    return { name: coach.isGuest ? `${coach.name} (invité)` : coach.name, totalHours, heuresFixes, reviewCount, reviewPastilles, privateDone, netAmount };
   });
 
   const periodLabel = formatMonthLabel(monthStart);

@@ -7,7 +7,7 @@ import { pastilleColor } from "@/lib/review-constants";
 // hours, the month view shows assigned/done/planned/missed), so a row
 // carries one or the other and the render branches on which is present.
 type Row = {
-  coach: { id: string; name: string };
+  coach: { id: string; name: string; isGuest?: boolean };
   // Week view only.
   totalHours?: number;
   heuresFixes?: number;
@@ -40,7 +40,14 @@ export function DashboardCoachCards({ rows }: { rows: Row[] }) {
       {rows.map((r) => (
         <div key={r.coach.id} className="rounded-lg border border-neutral-800 bg-neutral-900 p-3">
           <div className="flex items-center justify-between gap-2">
-            <span className="font-semibold text-white">{r.coach.name}</span>
+            <span className="font-semibold text-white">
+              {r.coach.name}
+              {r.coach.isGuest && (
+                <span className="ml-2 rounded bg-violet-900/60 px-1.5 py-0.5 text-[10px] font-medium text-violet-300">
+                  Invité
+                </span>
+              )}
+            </span>
             {r.reviewCount > 0 ? (
               <span className="flex items-center gap-2">
                 <Link

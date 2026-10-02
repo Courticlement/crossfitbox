@@ -24,7 +24,7 @@ export async function invitePrivateClass(formData: FormData) {
 
   const [activeCoaches, alreadyInvited] = await Promise.all([
     prisma.coach.findMany({
-      where: { id: { in: coachIds }, archived: false },
+      where: { id: { in: coachIds }, archived: false, isGuest: false },
       select: { id: true },
     }),
     prisma.privateClassInvitation.findMany({

@@ -50,7 +50,7 @@ export default async function ClassTemplatesPage({
       include: { coach: true, room: true },
       orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
     }),
-    prisma.coach.findMany({ orderBy: { name: "asc" } }),
+    prisma.coach.findMany({ where: { isGuest: false }, orderBy: { name: "asc" } }),
     prisma.room.findMany({
       where: { archived: false },
       orderBy: { createdAt: "asc" },

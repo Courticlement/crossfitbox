@@ -10,7 +10,7 @@ import { computeCoachStats, type ClassInstanceForStats } from "@/lib/coach-stats
 export async function PrivatePaymentAlert({ organizationId }: { organizationId: string }) {
   const prisma = tenantPrisma(organizationId);
   const [coaches, instances] = await Promise.all([
-    prisma.coach.findMany({ where: { archived: false } }),
+    prisma.coach.findMany({ where: { archived: false, isGuest: false } }),
     prisma.classInstance.findMany({
       where: {
         isPrivate: true,

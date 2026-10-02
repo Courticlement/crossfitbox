@@ -46,6 +46,7 @@ export function tenantTableDdl(schema: string): string[] {
       "privateBalancePaidAt" TIMESTAMP(3),
       "archived" BOOLEAN NOT NULL DEFAULT false,
       "canViewFuturePlanning" BOOLEAN NOT NULL DEFAULT false,
+      "isGuest" BOOLEAN NOT NULL DEFAULT false,
       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT "Coach_pkey" PRIMARY KEY ("id")
     )`,

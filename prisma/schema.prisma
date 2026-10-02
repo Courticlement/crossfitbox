@@ -136,6 +136,12 @@ model Coach {
   // set from the Coaches page for the rare coach (deputy/assistant head
   // coach) who needs to see the full future planning, not just next week.
   canViewFuturePlanning Boolean   @default(false)
+  // An outside coach the admin names straight from the Planning grid to
+  // cover a class when no team coach is free (see assignGuestCoach). Never
+  // gets a password, so can never log in; hidden from team-only screens
+  // (Coaches page, templates, private-class nudges) and only listed on the
+  // Dashboard/digests for a period they actually have classes in.
+  isGuest               Boolean   @default(false)
   createdAt             DateTime  @default(now())
 
   classInstances    ClassInstance[]          @relation("PrimaryCoach")
