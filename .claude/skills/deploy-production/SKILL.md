@@ -17,14 +17,18 @@ platform side already — don't create new ones:
 | Branch name | Role | Live URL |
 | --- | --- | --- |
 | `prod-fra` | production (Frankfurt, `fra`) — production DB via a branch-level `APP_DATABASE_URL` override | https://n8rxh8cjn8a87hvwbn2fynhm.fra.prisma.build |
-| `main` | **old production** (Newark) — superseded by `prod-fra` on 2026-10-02 | https://sozs41b0z2fndybwg8z54u3s.ewr.prisma.build |
+| `main` | **empty — don't deploy to it.** Old Newark production service deleted 2026-10-02 | — |
 | `preview-paris` | preview (Paris, `cdg`) | https://d30lwyopqtk9otec7fp932ms.cdg.prisma.build |
 | `preview` | **retired** — old Newark preview, don't deploy to it | https://ywiudpf9p27dxnh0mwygilyx.ewr.prisma.build |
 
 (Confirm current URLs with `service show` below — they can change across deploys.)
 
-**The box's real users work on preview**, i.e. `preview-paris` is the live app. `main`
-(Newark, DB = Crossfit-app "Primary database", untouched since 2026-09-09) is effectively unused.
+**The box's real users work on preview**, i.e. `preview-paris` is the live app. Production
+(`prod-fra`, DB = Crossfit-app "Primary database") is barely used.
+
+**Never deploy with `--stage main`.** Its Newark service was deleted on 2026-10-02 after
+production moved to `prod-fra`; a `--stage main` deploy would recreate a service there, in
+Newark by default, next to the same production DB.
 
 **Don't run services in Newark (`ewr`).** On 2026-09-28 both Newark services kept losing their
 DB connections (`Connection terminated due to connection timeout`) — even after preview's DB was
@@ -46,9 +50,6 @@ for `APP_DATABASE_URL`). `preview-paris` has none — it uses the role scope.
 cd "/Users/clement/Documents/Claude Vs code/Crossfit box"
 set -a; source <(grep -E '^(PRISMA_SERVICE_TOKEN|PRISMA_WORKSPACE_ID)=' .env); set +a
 
-# Production:
-bunx @prisma/cli@latest deploy module.ts --config ./prisma.compute.config.ts --stage main --yes
-
 # Production (Frankfurt) — a preview-role branch, so it needs its own APP_DATABASE_URL override
 # (already set, credential `prod-fra-app` on Crossfit-app "Primary database"):
 PRISMA_REGION=eu-central-1 bunx @prisma/cli@latest deploy module.ts --config ./prisma.compute.config.ts --stage prod-fra --yes
@@ -63,11 +64,10 @@ Two flags are load-bearing and easy to get wrong:
   is the Prisma ORM v7 config (predates the `$prismaConfig` marker this CLI needs) — passing
   no `--config` fails immediately with `CLI.CONFIG_MISSING_MARKER`. The Compute config lives
   in the sibling `prisma.compute.config.ts` file instead; that's the one to pass.
-- **`--stage main` is required for production — do not omit `--stage`.** The CLI's own
+- **Always pass `--stage` explicitly (`prod-fra` or `preview-paris`).** The CLI's own
   `--help` text says "omit for production," but that is not what happens in this repo: an
   omitted `--stage` was observed landing changes on the `preview` branch's resource instead
-  of `main`. Always pass `--stage main` explicitly for a production deploy. Don't trust the
-  help text over this file.
+  of `main`. Don't trust the help text over this file.
 
 **Always run `npm run build` immediately before deploying.** The deploy does *not* build:
 it packages whatever is already in `.next/`. Without a fresh build it ships the old code, and
@@ -93,7 +93,7 @@ having gone wrong.
    deploy**, to either branch. It is non-fatal noise from Prisma Cloud's topology-recording
    step — the deploy still proceeds and succeeds. Do not treat this line alone as a failure.
 
-2. **The `main` branch has intermittently failed to replace two supporting env-var
+2. **(Historical — `main` is no longer deployed to.) The `main` branch has intermittently failed to replace two supporting env-var
    resources** (`COMPOSER_CROSSFITBOX_ORIGIN-var`, `COMPOSER_CROSSFITBOX_PORT-var`) with a
    generic `PrismaApiError: ... (validation-error)` and no further detail, while the actual
    app resource (`crossfitbox-deploy`) still updates and goes live successfully in the same
@@ -120,7 +120,7 @@ confirm both of these:
 set -a; source <(grep -E '^(PRISMA_SERVICE_TOKEN|PRISMA_WORKSPACE_ID)=' .env); set +a
 
 # liveVersion.createdAt should be within the last few minutes, status "running", live: true
-bunx @prisma/cli@latest service show crossfitbox --branch main --json    # or --branch preview
+bunx @prisma/cli@latest service show crossfitbox --branch prod-fra --json    # or --branch preview-paris
 
 # should be 200
 curl -s -o /dev/null -w "%{http_code}\n" "<liveUrl-from-above>/admin-login"
