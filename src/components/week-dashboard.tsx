@@ -33,7 +33,11 @@ export async function WeekDashboard({
   const today = toDateOnly(new Date());
 
   const [coaches, instances, weekReviews, upcomingClasses] = await Promise.all([
-    prisma.coach.findMany({ orderBy: { name: "asc" } }),
+    // Guest coaches (Coach.isGuest) only show for a period they covered.
+    prisma.coach.findMany({
+      where: { OR: [{ isGuest: false }, { classInstances: { some: { date: { gte: weekStart, lt: weekEnd } } } }] },
+      orderBy: [{ isGuest: "asc" }, { name: "asc" }],
+    }),
     // Unfiltered by coach on purpose — the box-wide summary below needs
     // unassigned classes too, not just ones already claimed by someone.
     prisma.classInstance.findMany({
@@ -255,7 +259,14 @@ export async function WeekDashboard({
               netAmount,
             }) => (
               <tr key={coach.id} className="border-t border-neutral-800">
-                <td className="px-4 py-2 text-white">{coach.name}</td>
+                <td className="px-4 py-2 text-white">
+                  {coach.name}
+                  {coach.isGuest && (
+                    <span className="ml-2 rounded bg-violet-900/60 px-1.5 py-0.5 text-[10px] font-medium text-violet-300">
+                      Invité
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-2 text-white">{totalHours.toFixed(1)}h</td>
                 <td className="px-4 py-2 text-neutral-400">{heuresFixes.toFixed(1)}h</td>
                 <td className="px-4 py-2">
@@ -333,7 +344,7 @@ export async function WeekDashboard({
             Exporter le récapitulatif hebdomadaire en PDF
           </button>
         </form>
-        <InvitePrivateClassForm coaches={coaches} withoutPrivateClassIds={withoutPrivateClassIds} />
+        <InvitePrivateClassForm coaches={coaches.filter((c) => !c.isGuest)} withoutPrivateClassIds={withoutPrivateClassIds} />
       </div>
     </>
   );

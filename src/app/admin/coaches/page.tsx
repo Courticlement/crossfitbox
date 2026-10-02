@@ -288,6 +288,7 @@ export default async function CoachesPage() {
   const prisma = tenantPrisma(organizationId);
   const [coaches, instances] = await Promise.all([
     prisma.coach.findMany({
+      where: { isGuest: false },
       orderBy: [{ archived: "asc" }, { name: "asc" }],
     }),
     prisma.classInstance.findMany({
