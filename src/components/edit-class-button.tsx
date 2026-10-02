@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { updateClassInstance, type UpdateClassState } from "@/lib/actions/planning";
+import { removeGuestCoach, updateClassInstance, type UpdateClassState } from "@/lib/actions/planning";
 
 const initialState: UpdateClassState = { error: null };
 
@@ -14,12 +14,16 @@ export function EditClassButton({
   label,
   startTime,
   endTime,
+  guestName,
   light = false,
 }: {
   classInstanceId: string;
   label: string;
   startTime: string;
   endTime: string;
+  // Set only when this class is taught by a guest coach (Coach.isGuest) —
+  // adds a field to rename that guest (see updateClassInstance).
+  guestName?: string;
   // Matches WeekGrid/DayAgenda's own `light` switch — this button sits
   // inside their cards, so its hover color has to flip too or it goes
   // invisible against a white card (see admin/planning's usage).
@@ -27,14 +31,20 @@ export function EditClassButton({
 }) {
   const [state, formAction] = useActionState(updateClassInstance, initialState);
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [fields, setFields] = useState({ label, startTime, endTime });
+  const initial = { label, startTime, endTime, guestName: guestName ?? "" };
+  const [fields, setFields] = useState(initial);
 
   // Resyncs the form to the server-confirmed values whenever they change —
   // same "adjust state during render" pattern as CoachSelect/SubstituteSelect.
-  const [synced, setSynced] = useState({ label, startTime, endTime });
-  if (synced.label !== label || synced.startTime !== startTime || synced.endTime !== endTime) {
-    setSynced({ label, startTime, endTime });
-    setFields({ label, startTime, endTime });
+  const [synced, setSynced] = useState(initial);
+  if (
+    synced.label !== initial.label ||
+    synced.startTime !== initial.startTime ||
+    synced.endTime !== initial.endTime ||
+    synced.guestName !== initial.guestName
+  ) {
+    setSynced(initial);
+    setFields(initial);
   }
 
   // Closing the dialog is a DOM API call, not React state, so it belongs in
@@ -64,7 +74,7 @@ export function EditClassButton({
         onClick={(e) => {
           if (e.target === e.currentTarget) dialogRef.current?.close();
         }}
-        onClose={() => setFields({ label, startTime, endTime })}
+        onClose={() => setFields(initial)}
         className="w-72 rounded-lg border border-neutral-700 bg-neutral-900 p-4 text-neutral-300 backdrop:bg-black/60"
       >
         <form action={formAction} className="flex flex-col gap-3">
@@ -105,6 +115,40 @@ export function EditClassButton({
               />
             </label>
           </div>
+          {guestName !== undefined && (
+            <label className="flex flex-col gap-1 text-xs text-neutral-400">
+              Coach invité
+              <input
+                type="text"
+                name="guestName"
+                value={fields.guestName}
+                onChange={(e) => setFields((f) => ({ ...f, guestName: e.target.value }))}
+                required
+                maxLength={60}
+                className="rounded-md border border-neutral-700 bg-neutral-950 px-2 py-1.5 text-sm text-white focus:border-neutral-500 focus:outline-none"
+              />
+              <span className="text-[10px] text-neutral-600">
+                Renomme ce coach invité sur tous ses cours.
+              </span>
+              <button
+                type="submit"
+                formAction={removeGuestCoach}
+                formNoValidate
+                onClick={(e) => {
+                  if (
+                    !confirm(
+                      `Retirer ${guestName} ? Ses cours non validés repasseront en « Non assigné ». Les cours déjà validés restent comptés.`
+                    )
+                  ) {
+                    e.preventDefault();
+                  }
+                }}
+                className="self-start text-[11px] text-red-400 hover:text-red-300"
+              >
+                Retirer ce coach invité
+              </button>
+            </label>
+          )}
           {state.error && <p className="text-xs text-red-400">{state.error}</p>}
           <p className="text-[10px] text-neutral-600">
             Ne modifie que ce cours — le modèle récurrent n&apos;est pas affecté.

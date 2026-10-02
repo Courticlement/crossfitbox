@@ -16,7 +16,7 @@ export function CoachSelect({
 }: {
   classInstanceId: string;
   coachId: string | null;
-  coaches: { id: string; name: string; isGuest?: boolean }[];
+  coaches: { id: string; name: string; isGuest?: boolean; archived?: boolean }[];
   // Who the template's default coach is for this slot — purely informational,
   // shown alongside the select so the admin can see at a glance whether the
   // current assignment still matches the template or was overridden. Doesn't
@@ -43,7 +43,9 @@ export function CoachSelect({
     if (synced.coachId !== coachId) setAddingGuest(false);
   }
   const team = coaches.filter((c) => !c.isGuest);
-  const guests = coaches.filter((c) => c.isGuest);
+  // A removed guest (archived, see removeGuestCoach) only stays listed on a
+  // class they still teach, so the select can show it.
+  const guests = coaches.filter((c) => c.isGuest && (!c.archived || c.id === coachId));
   const error = state.error ?? guestState.error;
 
   if (addingGuest) {

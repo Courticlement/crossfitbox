@@ -569,10 +569,59 @@ export async function assignGuestCoach(
     }
   }
   const guest = existing ?? (await prisma.coach.create({ data: { organizationId, name, isGuest: true } }));
+  // Picking a removed guest's name again brings them back (see removeGuestCoach).
+  if (guest.archived) await prisma.coach.update({ where: { id: guest.id }, data: { archived: false } });
 
   await prisma.classInstance.update({ where: { id }, data: { coachId: guest.id } });
   revalidateAll();
   return { error: null };
+}
+
+// Removes the guest teaching this class (EditClassButton's "Retirer ce coach
+// invité"). Every class of theirs not yet validated goes back to unassigned —
+// same orphaning rule as assignCoach (a MISSED class resets to PLANNED), a
+// CANCELLED one stays cancelled. Validated (DONE) classes are already paid,
+// so they're never touched: a guest who has any is archived instead of
+// deleted (hidden from the dropdown, still on past Dashboards), one who
+// doesn't is deleted outright.
+export async function removeGuestCoach(formData: FormData) {
+  const { organizationId } = await requireOrgAdmin();
+  const prisma = tenantPrisma(organizationId);
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const instance = await prisma.classInstance.findFirst({ where: { id } });
+  if (!instance?.coachId) return;
+  const guest = await prisma.coach.findFirst({ where: { id: instance.coachId, isGuest: true } });
+  if (!guest) return;
+
+  await prisma.$transaction([
+    prisma.classInstance.updateMany({
+      where: { coachId: guest.id, status: { in: ["PLANNED", "CANCELLED"] } },
+      data: { coachId: null },
+    }),
+    prisma.classInstance.updateMany({
+      where: { coachId: guest.id, status: "MISSED" },
+      data: { coachId: null, status: "PLANNED", substituteCoachId: null },
+    }),
+    prisma.classInstance.updateMany({
+      where: { substituteCoachId: guest.id, status: { not: "DONE" } },
+      data: { substituteCoachId: null },
+    }),
+    prisma.classInstanceAssistant.deleteMany({
+      where: { coachId: guest.id, classInstance: { status: { not: "DONE" } } },
+    }),
+  ]);
+
+  const validated = await prisma.classInstance.count({
+    where: { OR: [{ coachId: guest.id }, { substituteCoachId: guest.id }] },
+  });
+  if (validated > 0) {
+    await prisma.coach.update({ where: { id: guest.id }, data: { archived: true } });
+  } else {
+    await prisma.coach.delete({ where: { id: guest.id } });
+  }
+  revalidateAll();
 }
 
 export type BulkAssignState = { error: string | null; assigned: number };
@@ -855,6 +904,25 @@ export async function updateClassInstance(
 
   const instance = await prisma.classInstance.findFirst({ where: { id } });
   if (!instance) return { error: null };
+
+  // Only sent when this class is taught by a guest (see EditClassButton's
+  // guestName) — renames that guest Coach row itself, so the new name
+  // shows on all their classes and on the Dashboard, not just this one.
+  if (formData.has("guestName")) {
+    const guestName = String(formData.get("guestName") ?? "").trim().replace(/\s+/g, " ");
+    if (!guestName) return { error: "Nom du coach invité requis." };
+    if (guestName.length > 60) return { error: "Nom trop long (60 caractères max)." };
+    const guest = instance.coachId
+      ? await prisma.coach.findFirst({ where: { id: instance.coachId, isGuest: true } })
+      : null;
+    if (guest && guest.name !== guestName) {
+      const taken = await prisma.coach.findFirst({
+        where: { id: { not: guest.id }, name: { equals: guestName, mode: "insensitive" } },
+      });
+      if (taken) return { error: `« ${taken.name} » existe déjà — choisis-le dans la liste des coachs.` };
+      await prisma.coach.update({ where: { id: guest.id }, data: { name: guestName } });
+    }
+  }
 
   await prisma.classInstance.update({
     where: { id },

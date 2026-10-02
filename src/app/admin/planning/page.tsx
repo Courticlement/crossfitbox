@@ -268,6 +268,7 @@ export default async function PlanningPage({
         label={inst.label}
         startTime={inst.startTime}
         endTime={inst.endTime}
+        guestName={inst.coach?.isGuest ? inst.coach.name : undefined}
         light
       />
       <DeleteClassButton
