@@ -16,7 +16,8 @@ platform side already — don't create new ones:
 
 | Branch name | Role | Live URL |
 | --- | --- | --- |
-| `main` | production | https://sozs41b0z2fndybwg8z54u3s.ewr.prisma.build |
+| `prod-fra` | production (Frankfurt, `fra`) — production DB via a branch-level `APP_DATABASE_URL` override | https://n8rxh8cjn8a87hvwbn2fynhm.fra.prisma.build |
+| `main` | **old production** (Newark) — superseded by `prod-fra` on 2026-10-02 | https://sozs41b0z2fndybwg8z54u3s.ewr.prisma.build |
 | `preview-paris` | preview (Paris, `cdg`) | https://d30lwyopqtk9otec7fp932ms.cdg.prisma.build |
 | `preview` | **retired** — old Newark preview, don't deploy to it | https://ywiudpf9p27dxnh0mwygilyx.ewr.prisma.build |
 
@@ -47,6 +48,10 @@ set -a; source <(grep -E '^(PRISMA_SERVICE_TOKEN|PRISMA_WORKSPACE_ID)=' .env); s
 
 # Production:
 bunx @prisma/cli@latest deploy module.ts --config ./prisma.compute.config.ts --stage main --yes
+
+# Production (Frankfurt) — a preview-role branch, so it needs its own APP_DATABASE_URL override
+# (already set, credential `prod-fra-app` on Crossfit-app "Primary database"):
+PRISMA_REGION=eu-central-1 bunx @prisma/cli@latest deploy module.ts --config ./prisma.compute.config.ts --stage prod-fra --yes
 
 # Preview (Paris — PRISMA_REGION only matters when the service is first created, keep it anyway):
 PRISMA_REGION=eu-west-3 bunx @prisma/cli@latest deploy module.ts --config ./prisma.compute.config.ts --stage preview-paris --yes
