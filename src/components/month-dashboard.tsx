@@ -58,9 +58,9 @@ export async function MonthDashboard({
   const today = toDateOnly(new Date());
 
   const [coaches, instances, monthReviews, upcomingClasses] = await Promise.all([
-    // Guest coaches (Coach.isGuest) only show for a period they covered.
+    // Archived coaches are hidden; guest coaches (Coach.isGuest) only show for a period they covered.
     prisma.coach.findMany({
-      where: { OR: [{ isGuest: false }, { classInstances: { some: { date: { gte: monthStart, lt: monthEnd } } } }] },
+      where: { archived: false, OR: [{ isGuest: false }, { classInstances: { some: { date: { gte: monthStart, lt: monthEnd } } } }] },
       orderBy: [{ isGuest: "asc" }, { name: "asc" }],
     }),
     prisma.classInstance.findMany({
@@ -158,7 +158,7 @@ export async function MonthDashboard({
   // Powers InvitePrivateClassForm's pre-checked coaches — anyone with zero
   // private classes done this month, same figure as their own Privés column.
   const withoutPrivateClassIds = new Set(
-    rows.filter((r) => r.privateDone === 0 && !r.coach.archived).map((r) => r.coach.id)
+    rows.filter((r) => r.privateDone === 0).map((r) => r.coach.id)
   );
 
   const totals = rows.reduce(

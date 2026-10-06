@@ -13,6 +13,14 @@ export const COACH_COLORS = [
   { name: "Fuchsia", value: "#d946ef" },
   { name: "Rose", value: "#ec4899" },
   { name: "Orange", value: "#f97316" },
+  { name: "Marine", value: "#1d4ed8" },
+  { name: "Bleu nuit", value: "#1e3a8a" },
+  { name: "Pétrole", value: "#0f766e" },
+  { name: "Lavande", value: "#a5b4fc" },
+  { name: "Prune", value: "#7e22ce" },
+  { name: "Framboise", value: "#be185d" },
+  { name: "Ardoise", value: "#475569" },
+  { name: "Taupe", value: "#78716c" },
 ] as const;
 
 export function isCoachColor(value: string): boolean {

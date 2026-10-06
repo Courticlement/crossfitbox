@@ -33,9 +33,9 @@ export async function WeekDashboard({
   const today = toDateOnly(new Date());
 
   const [coaches, instances, weekReviews, upcomingClasses] = await Promise.all([
-    // Guest coaches (Coach.isGuest) only show for a period they covered.
+    // Archived coaches are hidden; guest coaches (Coach.isGuest) only show for a period they covered.
     prisma.coach.findMany({
-      where: { OR: [{ isGuest: false }, { classInstances: { some: { date: { gte: weekStart, lt: weekEnd } } } }] },
+      where: { archived: false, OR: [{ isGuest: false }, { classInstances: { some: { date: { gte: weekStart, lt: weekEnd } } } }] },
       orderBy: [{ isGuest: "asc" }, { name: "asc" }],
     }),
     // Unfiltered by coach on purpose — the box-wide summary below needs
@@ -139,7 +139,7 @@ export async function WeekDashboard({
   // Powers InvitePrivateClassForm's pre-checked coaches — anyone with zero
   // private classes done this week, same figure as their own Privés column.
   const withoutPrivateClassIds = new Set(
-    rows.filter((r) => r.privateDone === 0 && !r.coach.archived).map((r) => r.coach.id)
+    rows.filter((r) => r.privateDone === 0).map((r) => r.coach.id)
   );
 
   const totals = rows.reduce(
