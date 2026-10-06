@@ -58,6 +58,11 @@ PRISMA_REGION=eu-central-1 bunx @prisma/cli@latest deploy module.ts --config ./p
 PRISMA_REGION=eu-west-3 bunx @prisma/cli@latest deploy module.ts --config ./prisma.compute.config.ts --stage preview-paris --yes
 ```
 
+**CLI version (2026-10-06):** `@prisma/cli@latest` (= `8.0.0-rc.20`) no longer reads
+`prisma-composer.config.ts` / `composer.configPath` and fails with `CLI.CONFIG_SECTION_INVALID`.
+Until the config is migrated into a `composer` section, use `bunx @prisma/cli@8.0.0-rc.19` in
+place of `@latest` in every command here (deploy and `service show`).
+
 Two flags are load-bearing and easy to get wrong:
 
 - **`--config ./prisma.compute.config.ts` is required.** This repo's plain `prisma.config.ts`
