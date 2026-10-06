@@ -60,11 +60,12 @@ export async function MonthDashboard({
   const [coaches, instances, monthReviews, upcomingClasses] = await Promise.all([
     // Archived coaches are hidden; guest coaches (Coach.isGuest) only show for a period they covered.
     prisma.coach.findMany({
-      where: { archived: false, OR: [{ isGuest: false }, { classInstances: { some: { date: { gte: monthStart, lt: monthEnd } } } }] },
+      where: { archived: false, OR: [{ isGuest: false }, { classInstances: { some: { date: { gte: monthStart, lt: monthEnd } } } }, { assistantOn: { some: { classInstance: { date: { gte: monthStart, lt: monthEnd } } } } }] },
       orderBy: [{ isGuest: "asc" }, { name: "asc" }],
     }),
     prisma.classInstance.findMany({
       where: { date: { gte: monthStart, lt: monthEnd } },
+      include: { assistants: { select: { coachId: true } } },
     }),
     // Scoped to this month, same as Faits/Prévus below.
     prisma.classReview.findMany({
@@ -116,6 +117,12 @@ export async function MonthDashboard({
     const heuresFixes = groupCoachInstances
       .filter((i) => isoWeekday(i.date) <= 5)
       .reduce((sum, i) => sum + classDurationHours(i.startTime, i.endTime), 0);
+    // Hours spent assisting someone else's group class (ClassInstanceAssistant),
+    // same non-cancelled, planned-or-done rule as Heure total — kept separate
+    // from it since assisting isn't paid like leading.
+    const assistantHours = activeInstances
+      .filter((i) => !i.isPrivate && !i.isTeamEvent && i.assistants.some((a) => a.coachId === coach.id))
+      .reduce((sum, i) => sum + classDurationHours(i.startTime, i.endTime), 0);
     const privateDone = coachInstances.filter(
       (i) => i.status === "DONE" && i.isPrivate
     ).length;
@@ -145,6 +152,7 @@ export async function MonthDashboard({
       coach,
       totalHours,
       heuresFixes,
+      assistantHours,
       privateDone,
       reviewCount,
       lastReviewId,
@@ -165,11 +173,12 @@ export async function MonthDashboard({
     (acc, r) => ({
       totalHours: acc.totalHours + r.totalHours,
       heuresFixes: acc.heuresFixes + r.heuresFixes,
+      assistantHours: acc.assistantHours + r.assistantHours,
       privateDone: acc.privateDone + r.privateDone,
       reviewCount: acc.reviewCount + r.reviewCount,
       netAmount: acc.netAmount + r.netAmount,
     }),
-    { totalHours: 0, heuresFixes: 0, privateDone: 0, reviewCount: 0, netAmount: 0 }
+    { totalHours: 0, heuresFixes: 0, assistantHours: 0, privateDone: 0, reviewCount: 0, netAmount: 0 }
   );
 
   // Same non-cancelled classes as the table's Heure total / Heures fixes
@@ -272,6 +281,9 @@ export async function MonthDashboard({
               <th className="px-4 py-2 font-medium" title="Total des heures de cours collectifs non annulés du lundi au vendredi — hors privés et événements d'équipe">
                 Heures fixes
               </th>
+              <th className="px-4 py-2 font-medium" title="Heures de cours collectifs non annulés où ce coach est assistant (faits ou prévus)">
+                Heures assist.
+              </th>
               <th className="px-4 py-2 font-medium" title="Reviews de coaching ce mois-ci — clic sur le nombre pour voir la dernière, ou le prochain cours à observer">
                 Review
               </th>
@@ -289,6 +301,7 @@ export async function MonthDashboard({
               coach,
               totalHours,
               heuresFixes,
+              assistantHours,
               privateDone,
               reviewCount,
               lastReviewId,
@@ -308,6 +321,7 @@ export async function MonthDashboard({
                 </td>
                 <td className="px-4 py-2 text-white">{totalHours.toFixed(1)}h</td>
                 <td className="px-4 py-2 text-neutral-400">{heuresFixes.toFixed(1)}h</td>
+                <td className="px-4 py-2 text-neutral-400">{assistantHours.toFixed(1)}h</td>
                 <td className="px-4 py-2">
                   {reviewCount > 0 ? (
                     <span className="flex items-center gap-2">
@@ -348,7 +362,7 @@ export async function MonthDashboard({
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-neutral-500">
+                <td colSpan={7} className="px-4 py-6 text-center text-neutral-500">
                   Aucun coach pour l&apos;instant.
                 </td>
               </tr>
@@ -360,6 +374,7 @@ export async function MonthDashboard({
                 <td className="px-4 py-2 text-white">Total</td>
                 <td className="px-4 py-2 text-white">{totals.totalHours.toFixed(1)}h</td>
                 <td className="px-4 py-2 text-neutral-400">{totals.heuresFixes.toFixed(1)}h</td>
+                <td className="px-4 py-2 text-neutral-400">{totals.assistantHours.toFixed(1)}h</td>
                 <td className="px-4 py-2 text-neutral-400">{totals.reviewCount}</td>
                 <td className="px-4 py-2 text-neutral-400">{totals.privateDone}</td>
                 <td

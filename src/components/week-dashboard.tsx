@@ -35,13 +35,14 @@ export async function WeekDashboard({
   const [coaches, instances, weekReviews, upcomingClasses] = await Promise.all([
     // Archived coaches are hidden; guest coaches (Coach.isGuest) only show for a period they covered.
     prisma.coach.findMany({
-      where: { archived: false, OR: [{ isGuest: false }, { classInstances: { some: { date: { gte: weekStart, lt: weekEnd } } } }] },
+      where: { archived: false, OR: [{ isGuest: false }, { classInstances: { some: { date: { gte: weekStart, lt: weekEnd } } } }, { assistantOn: { some: { classInstance: { date: { gte: weekStart, lt: weekEnd } } } } }] },
       orderBy: [{ isGuest: "asc" }, { name: "asc" }],
     }),
     // Unfiltered by coach on purpose — the box-wide summary below needs
     // unassigned classes too, not just ones already claimed by someone.
     prisma.classInstance.findMany({
       where: { date: { gte: weekStart, lt: weekEnd } },
+      include: { assistants: { select: { coachId: true } } },
     }),
     // Scoped to this week, same as Faits/Prévus below — the count in the
     // Review column and the "last review" it links to both come from here.
@@ -93,6 +94,12 @@ export async function WeekDashboard({
     const heuresFixes = groupCoachInstances
       .filter((i) => isoWeekday(i.date) <= 5)
       .reduce((sum, i) => sum + classDurationHours(i.startTime, i.endTime), 0);
+    // Hours spent assisting someone else's group class (ClassInstanceAssistant),
+    // same non-cancelled, planned-or-done rule as Heure total — kept separate
+    // from it since assisting isn't paid like leading.
+    const assistantHours = activeInstances
+      .filter((i) => !i.isPrivate && !i.isTeamEvent && i.assistants.some((a) => a.coachId === coach.id))
+      .reduce((sum, i) => sum + classDurationHours(i.startTime, i.endTime), 0);
     const privateDone = coachInstances.filter(
       (i) => i.status === "DONE" && i.isPrivate
     ).length;
@@ -126,6 +133,7 @@ export async function WeekDashboard({
       coach,
       totalHours,
       heuresFixes,
+      assistantHours,
       privateDone,
       reviewCount,
       lastReviewId,
@@ -146,6 +154,7 @@ export async function WeekDashboard({
     (acc, r) => ({
       totalHours: acc.totalHours + r.totalHours,
       heuresFixes: acc.heuresFixes + r.heuresFixes,
+      assistantHours: acc.assistantHours + r.assistantHours,
       privateDone: acc.privateDone + r.privateDone,
       reviewCount: acc.reviewCount + r.reviewCount,
       netAmount: acc.netAmount + r.netAmount,
@@ -153,6 +162,7 @@ export async function WeekDashboard({
     {
       totalHours: 0,
       heuresFixes: 0,
+      assistantHours: 0,
       privateDone: 0,
       reviewCount: 0,
       netAmount: 0,
@@ -233,6 +243,9 @@ export async function WeekDashboard({
               <th className="px-4 py-2 font-medium" title="Total des heures de cours collectifs non annulés du lundi au vendredi — hors privés et événements d'équipe">
                 Heures fixes
               </th>
+              <th className="px-4 py-2 font-medium" title="Heures de cours collectifs non annulés où ce coach est assistant (faits ou prévus)">
+                Heures assist.
+              </th>
               <th className="px-4 py-2 font-medium" title="Reviews de coaching cette semaine — clic sur le nombre pour voir la dernière, ou le prochain cours à observer">
                 Review
               </th>
@@ -250,6 +263,7 @@ export async function WeekDashboard({
               coach,
               totalHours,
               heuresFixes,
+              assistantHours,
               privateDone,
               reviewCount,
               lastReviewId,
@@ -269,6 +283,7 @@ export async function WeekDashboard({
                 </td>
                 <td className="px-4 py-2 text-white">{totalHours.toFixed(1)}h</td>
                 <td className="px-4 py-2 text-neutral-400">{heuresFixes.toFixed(1)}h</td>
+                <td className="px-4 py-2 text-neutral-400">{assistantHours.toFixed(1)}h</td>
                 <td className="px-4 py-2">
                   {reviewCount > 0 ? (
                     <span className="flex items-center gap-2">
@@ -309,7 +324,7 @@ export async function WeekDashboard({
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-neutral-500">
+                <td colSpan={7} className="px-4 py-6 text-center text-neutral-500">
                   Aucun coach pour l&apos;instant.
                 </td>
               </tr>
@@ -321,6 +336,7 @@ export async function WeekDashboard({
                 <td className="px-4 py-2 text-white">Total</td>
                 <td className="px-4 py-2 text-white">{totals.totalHours.toFixed(1)}h</td>
                 <td className="px-4 py-2 text-neutral-400">{totals.heuresFixes.toFixed(1)}h</td>
+                <td className="px-4 py-2 text-neutral-400">{totals.assistantHours.toFixed(1)}h</td>
                 <td className="px-4 py-2 text-neutral-400">{totals.reviewCount}</td>
                 <td className="px-4 py-2 text-neutral-400">{totals.privateDone}</td>
                 <td

@@ -11,6 +11,8 @@ type Row = {
   // Week view only.
   totalHours?: number;
   heuresFixes?: number;
+  // Both views.
+  assistantHours?: number;
   // Month view only.
   assigned?: number;
   done?: number;
@@ -97,6 +99,11 @@ export function DashboardCoachCards({ rows }: { rows: Row[] }) {
                   {r.planned} prévu{r.planned === 1 ? "" : "s"}
                 </span>
               </>
+            )}
+            {!!r.assistantHours && (
+              <span className="rounded-md border border-neutral-800 px-2 py-1 text-neutral-400">
+                {r.assistantHours.toFixed(1)}h assist.
+              </span>
             )}
             {r.privateDone > 0 && (
               <span className="rounded-md border border-neutral-800 px-2 py-1 text-neutral-400">
